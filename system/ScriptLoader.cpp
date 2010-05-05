@@ -363,7 +363,6 @@ extern void AddSC_instance_pinnacle();
 extern void AddSC_borean_tundra();
 extern void AddSC_dalaran();
 extern void AddSC_dragonblight();
-extern void AddSC_grizzly_hills();
 extern void AddSC_howling_fjord();
 extern void AddSC_icecrown();
 extern void AddSC_sholazar_basin();
@@ -389,6 +388,8 @@ extern void AddSC_boss_deathbringer_saurfang();
 extern void AddSC_boss_rotface();
 extern void AddSC_boss_festergut();
 extern void AddSC_boss_proffesor_putricide();
+extern void AddSC_blood_prince_council();
+extern void AddSC_boss_blood_queen_lanathel();
 
 extern void AddSC_instance_forge_of_souls();
 extern void AddSC_boss_devourer_of_souls();
@@ -836,7 +837,6 @@ void AddScripts()
     AddSC_borean_tundra();
     AddSC_dalaran();
     AddSC_dragonblight();
-    AddSC_grizzly_hills();
     AddSC_howling_fjord();
     AddSC_icecrown();
     AddSC_sholazar_basin();
@@ -862,6 +862,8 @@ void AddScripts()
     AddSC_boss_rotface();
     AddSC_boss_festergut();
     AddSC_boss_proffesor_putricide();
+    AddSC_blood_prince_council();
+    AddSC_boss_blood_queen_lanathel();
 
     AddSC_instance_forge_of_souls();
     AddSC_boss_devourer_of_souls();
