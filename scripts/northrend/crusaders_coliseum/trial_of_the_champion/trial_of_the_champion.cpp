@@ -28,7 +28,7 @@ EndContentData */
 #include "precompiled.h"
 #include "trial_of_the_champion.h"
 
-#define GOSSIP_START_EVENT     "Im ready for the next challenge."
+#define GOSSIP_START_EVENT     "Estoy preparado para el siguiente reto"
 
 /*######
 ## npc_toc5_announcer
@@ -43,10 +43,10 @@ struct _Messages
 
 static _Messages _GossipMessage[]=
 {
-{"Вы готовы драться с чемпионами противоположной фракции?",GOSSIP_ACTION_INFO_DEF+1,false,TYPE_GRAND_CHAMPIONS}, //
-{"Вы готовы драться с чемпионом Серебряного Рассвета?",GOSSIP_ACTION_INFO_DEF+2,false,TYPE_ARGENT_CHALLENGE},  //
-{"Вы готовы драться с Черным рыцарем?",GOSSIP_ACTION_INFO_DEF+3,false,TYPE_BLACK_KNIGHT}, //
-{"Не надо сюда тыкать. На сегодня арена закрыта.",GOSSIP_ACTION_INFO_DEF+4,true,TYPE_BLACK_KNIGHT}, //
+{"Preparado para combatir contra los Campeones de la faccion contraria?",GOSSIP_ACTION_INFO_DEF+1,false,TYPE_GRAND_CHAMPIONS}, //
+{"Preparado para pelear con el Campeon del Alba Argenta?",GOSSIP_ACTION_INFO_DEF+2,false,TYPE_ARGENT_CHALLENGE},  //
+{"Estas listo para luchar contra el Caballero Negro?",GOSSIP_ACTION_INFO_DEF+3,false,TYPE_BLACK_KNIGHT}, //
+{"Ahora no tienes nada que hacer aqui, la arena esta cerrada",GOSSIP_ACTION_INFO_DEF+4,true,TYPE_BLACK_KNIGHT}, //
 };
 
 struct MANGOS_DLL_DECL npc_toc5_announcerAI : public ScriptedAI
