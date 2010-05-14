@@ -1864,71 +1864,43 @@ CreatureAI* GetAI_mob_mirror_image(Creature* pCreature)
 
 #define MOB_VIPER 19921
 
-#define VENOMOUS_SNAKE_TIMER 1500
-#define VIPER_TIMER 3000
-
 struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
 {
-    npc_snake_trap_serpentsAI(Creature *c) : ScriptedAI(c) {}
-    
+    npc_snake_trap_serpentsAI(Creature *c) : ScriptedAI(c) {Reset();}
+   
     uint32 SpellTimer;
     bool IsViper;
-    
-    void EnterCombat(Unit *who) {}
-    
+   
     void Reset()
     {
-        SpellTimer = 0;
-        
+        SpellTimer = 500;
+       
         Unit *Owner = m_creature->GetOwner();
-        if (!m_creature->isPet() || !Owner) return;
-        
+        if (!Owner) return;
+       
         CreatureInfo const *Info = m_creature->GetCreatureInfo();
-        
+       
         if (Info->Entry == MOB_VIPER)
             IsViper = true;
         else
             IsViper = false;
-
     }
-    
-    //Redefined for random target selection:
-    void MoveInLineOfSight(Unit *who)
-    {
-        if (!m_creature->getVictim() && who->isTargetableForAttack() && (m_creature->IsHostileTo(who)) && who->isInAccessablePlaceFor(m_creature))
-        {
-            if (m_creature->GetDistanceZ(who) > CREATURE_Z_ATTACK_RANGE)
-                return;
-            
-            float attackRadius = m_creature->GetAttackDistance(who);
-            if (m_creature->IsWithinDistInMap(who, attackRadius) && m_creature->IsWithinLOSInMap(who))
-            {
-                if (!(rand() % 5))
-                {
-                    m_creature->setAttackTimer(BASE_ATTACK, (rand() % 10) * 100);
-                    SpellTimer = (rand() % 10) * 100;
-                    AttackStart(who);
-                }
-            }
-        }
-    }
-    
+   
     void UpdateAI(const uint32 diff)
     {
         Unit *Owner = m_creature->GetOwner();
-        
-        if (!m_creature->isPet() || !Owner) return;
-        
+       
+        if (!Owner) return;
+       
         if (!m_creature->getVictim())
         {
             if (m_creature->isInCombat())
                 DoStopAttack();
-            
+           
             if (Owner->getAttackerForHelper())
                 AttackStart(Owner->getAttackerForHelper());
-            return;
         }
-        
+       
         if (SpellTimer <= diff)
         {
             if (IsViper) //Viper - 19921
@@ -1940,17 +1912,17 @@ struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
                         spell = SPELL_MIND_NUMBING_POISON;
                     else
                         spell = SPELL_CRIPPLING_POISON;
-                    
+                   
                     m_creature->CastSpell(m_creature->getVictim(), spell, true);
                 }
-                
-                SpellTimer = VIPER_TIMER;
+               
+                SpellTimer = urand(3000, 5000);
             }
             else //Venomous Snake - 19833
             {
-                if (urand(0,2) == 0) //80% chance to cast
+                if (urand(0,1) == 0) //80% chance to cast
                     m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
-                SpellTimer = VENOMOUS_SNAKE_TIMER + (rand() %5)*100;
+                SpellTimer = urand(2500, 4500);
             }
         } else SpellTimer -= diff;
         DoMeleeAttackIfReady();
