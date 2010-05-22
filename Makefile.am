@@ -50,6 +50,7 @@ include/sc_instance.h \
 include/sc_boss_spell_worker.cpp \
 include/sc_boss_spell_worker.h \
 scripts/battlegrounds/battleground.cpp \
+scripts/battlegrounds/battlegroundSA.cpp \
 scripts/custom/npc_arena_honor.cpp \
 scripts/custom/teleguy.cpp \
 scripts/eastern_kingdoms/alterac_mountains.cpp \
