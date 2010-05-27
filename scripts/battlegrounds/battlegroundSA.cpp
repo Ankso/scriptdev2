@@ -171,8 +171,8 @@
      return true;
  }
  
- #define GOSSIP_START_EVENT_1		/*"Запустить строительство Разрушителя!\nВремя строительства 1.5 минуты!\nПовторный запуск прервет предыдущий процесс!"*/ "Comienza a contruir el Destructor! Tienes un minuto y medio!"
- #define GOSSIP_START_EVENT_2		/*"Закрыть окно!"*/ "Cerrar ventana!"
+ #define GOSSIP_START_EVENT_1		 "Comienza a contruir el Destructor! Tienes un minuto y medio!"
+ #define GOSSIP_START_EVENT_2		 "Cerrar ventana!"
  
  #define NPC_DEMILISHER		28781
  
