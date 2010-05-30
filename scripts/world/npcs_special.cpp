@@ -1859,7 +1859,7 @@ CreatureAI* GetAI_mob_mirror_image(Creature* pCreature)
  ####*/
 
 #define SPELL_MIND_NUMBING_POISON    25810   //Viper
-#define SPELL_CRIPPLING_POISON       30981    //Viper
+#define SPELL_CRIPPLING_POISON       30981   //Viper
 #define SPELL_DEADLY_POISON          34655   //Venomous Snake
 
 #define MOB_VIPER 19921
@@ -1924,7 +1924,12 @@ struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
                     m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
                 SpellTimer = urand(2500, 4500);
             }
-        } else SpellTimer -= diff;
+        } 
+        else 
+        {
+            SpellTimer -= diff;
+            DoMeleeAttackIfReady();
+        }
         DoMeleeAttackIfReady();
     }
 };
