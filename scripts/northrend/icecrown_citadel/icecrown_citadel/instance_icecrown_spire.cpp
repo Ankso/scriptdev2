@@ -92,6 +92,10 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
     uint64 m_uiFrostyWindGUID;
     uint64 m_uiFrostyEdgeGUID;
 
+    uint64 m_uiFrostmourneGUID;
+    uint64 m_uiFrostmourneTriggerGUID;
+    uint64 m_uiFrostmourneHolderGUID;
+
     uint64 m_uiSaurfangCacheGUID;
     uint64 m_uiGunshipArmoryAGUID;
     uint64 m_uiGunshipArmoryHGUID;
@@ -128,9 +132,8 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
         if (m_auiEncounter[2] == DONE) {
                         if (GameObject* pGO = instance->GetGameObject(m_uiDeathWhisperElevatorGUID))
                             {
-                              pGO->SetUInt32Value(GAMEOBJECT_LEVEL, 1);
+                              pGO->SetUInt32Value(GAMEOBJECT_LEVEL, 0);
                               pGO->SetGoState(GO_STATE_READY);
-                              pGO->SetRespawnTime(MINUTE);
                             }
                                        };
         if (m_auiEncounter[5] == DONE) OpenDoor(m_uiSDoorOrangeGUID);
@@ -157,8 +160,8 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
 
         m_auiEncounter[0] = 0;
 
-        m_uiMarrogwarGUID =0;
-        m_uiDeathWhisperGUID =0;
+        m_uiMarrogwarGUID = 0;
+        m_uiDeathWhisperGUID = 0;
         m_uiSaurfangGUID = 0;
         m_uiSaurfangCacheGUID = 0;
         m_uiGunshipArmoryAGUID = 0;
@@ -263,6 +266,10 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
             case NPC_PRECIOUS:
                           m_uiPreciousGUID = pCreature->GetGUID();
                           break;
+            case NPC_FROSTMOURNE_TRIGGER:
+                          m_uiFrostmourneTriggerGUID = pCreature->GetGUID(); break;
+            case NPC_FROSTMOURNE_HOLDER:
+                          m_uiFrostmourneHolderGUID = pCreature->GetGUID(); break;
         }
     }
 
@@ -447,11 +454,8 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
                 if (uiData == DONE) {
                     if (GameObject* pGO = instance->GetGameObject(m_uiDeathWhisperElevatorGUID))
                         {
-                              pGO->SetUInt32Value(GAMEOBJECT_LEVEL, 1);
+                              pGO->SetUInt32Value(GAMEOBJECT_LEVEL, 0);
                               pGO->SetGoState(GO_STATE_READY);
-//                              pGO->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
-//                              pGO->SetRespawnTime(MINUTE);
-//                              pGOTemp->SetGoState(GO_STATE_ACTIVE);
                         }
                 }
                 break;
@@ -716,6 +720,8 @@ struct MANGOS_DLL_DECL instance_icecrown_spire : public ScriptedInstance
             case GO_ICESHARD_4:               return m_uiIceShard4GUID;
             case GO_FROSTY_WIND:              return m_uiFrostyWindGUID;
             case GO_FROSTY_EDGE:              return m_uiFrostyEdgeGUID;
+            case NPC_FROSTMOURNE_TRIGGER:     return m_uiFrostmourneTriggerGUID;
+            case NPC_FROSTMOURNE_HOLDER:      return m_uiFrostmourneHolderGUID;
         }
         return 0;
     }

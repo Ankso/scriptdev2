@@ -50,7 +50,6 @@ enum BossSpells
     NPC_ICE_TOMB             = 36980,
     NPC_FROST_BOMB           = 37186,
 
-    SPELL_FLY_VISUAL         = 57764,
     SPELL_BERSERK            = 47008,
 
 // Rimefang
@@ -261,7 +260,6 @@ struct MANGOS_DLL_DECL boss_sindragosaAI : public ScriptedAI
                     stage = 2;
                     MovementStarted = true;
                     SetCombatMovement(false);
-                    bsw->doCast(SPELL_FLY_VISUAL);
                     m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 50331648);
                     m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 50331648);
                     m_creature->GetMotionMaster()->MovePoint(1, SpawnLoc[1].x, SpawnLoc[1].y, SpawnLoc[1].z);
@@ -302,7 +300,6 @@ struct MANGOS_DLL_DECL boss_sindragosaAI : public ScriptedAI
                            stage = 0;
                            SetCombatMovement(true);
                            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
-                           bsw->doRemove(SPELL_FLY_VISUAL);
                            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 0);
                            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
                            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
@@ -347,10 +344,12 @@ struct MANGOS_DLL_DECL mob_ice_tombAI : public ScriptedAI
     mob_ice_tombAI(Creature *pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
+        bsw = new BossSpellWorker(this);
         Reset();
     }
 
     ScriptedInstance *m_pInstance;
+    BossSpellWorker* bsw;
     Unit* pVictim;
 
     void Reset()
@@ -370,24 +369,24 @@ struct MANGOS_DLL_DECL mob_ice_tombAI : public ScriptedAI
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
     {
         if (uiDamage > m_creature->GetHealth())
-            if (pVictim) pVictim->RemoveAurasDueToSpell(SPELL_ICY_TOMB);
+            if (pVictim) bsw->doRemove(SPELL_ICY_TOMB,pVictim);
     }
 
     void KilledUnit(Unit* _Victim)
     {
-        if (pVictim) pVictim->RemoveAurasDueToSpell(SPELL_ICY_TOMB);
+        if (pVictim) bsw->doRemove(SPELL_ICY_TOMB,pVictim);
     }
 
     void JustDied(Unit* Killer)
     {
-        if (pVictim) pVictim->RemoveAurasDueToSpell(SPELL_ICY_TOMB);
+        if (pVictim) bsw->doRemove(SPELL_ICY_TOMB,pVictim);
     }
 
     void UpdateAI(const uint32 uiDiff)
     {
         if(m_pInstance && m_pInstance->GetData(TYPE_SINDRAGOSA) != IN_PROGRESS)
         {
-        if (pVictim) pVictim->RemoveAurasDueToSpell(SPELL_ICY_TOMB);
+        if (pVictim) bsw->doRemove(SPELL_ICY_TOMB,pVictim);
             m_creature->ForcedDespawn();
         }
 
