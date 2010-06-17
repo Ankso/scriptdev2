@@ -3271,7 +3271,7 @@ CreatureAI* GetAI_npc_the_lich_king_tirion_dawn(Creature* pCreature)
 
 /*######
 ## npc_eye_of_acherus
-######*/
+######
 
 struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
 {
@@ -3361,7 +3361,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
 CreatureAI* GetAI_npc_eye_of_acherus(Creature* pCreature)
 {
     return new npc_eye_of_acherusAI(pCreature);
-}
+}*/
 
 /*######
 ## go_eye_of_acherus
@@ -3460,10 +3460,10 @@ void AddSC_ebon_hold()
     newscript->GetAI = &GetAI_npc_the_lich_king_tirion_dawn;
     newscript->RegisterSelf();
 
-    newscript = new Script;
+    /*newscript = new Script;
     newscript->Name = "npc_eye_of_acherus";
     newscript->GetAI = &GetAI_npc_eye_of_acherus;
-    newscript->RegisterSelf();
+    newscript->RegisterSelf();*/
 
     newscript = new Script;
     newscript->Name = "go_eye_of_acherus";
