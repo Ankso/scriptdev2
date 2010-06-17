@@ -3270,7 +3270,7 @@ CreatureAI* GetAI_npc_the_lich_king_tirion_dawn(Creature* pCreature)
 }
 
 /*######
-## npc_eye_of_acherus
+## npc_eye_of_acherus - Not used for now
 ######
 
 struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
