@@ -189,6 +189,7 @@ extern void AddSC_silvermoon_city();
 extern void AddSC_silverpine_forest();
 extern void AddSC_stormwind_city();
 extern void AddSC_stranglethorn_vale();
+extern void AddSC_swamp_of_sorrows();
 extern void AddSC_tirisfal_glades();
 extern void AddSC_undercity();
 extern void AddSC_western_plaguelands();
@@ -404,6 +405,8 @@ extern void AddSC_boss_lich_king_icc();
 extern void AddSC_instance_forge_of_souls();
 extern void AddSC_boss_devourer_of_souls();
 extern void AddSC_boss_bronjahm();
+extern void AddSC_trash_forge_of_souls();
+extern void AddSC_forge_of_souls();
 
 extern void AddSC_instance_pit_of_saron();
 extern void AddSC_boss_forgemaster_gafrost();
@@ -686,6 +689,7 @@ void AddScripts()
     AddSC_silverpine_forest();
     AddSC_stormwind_city();
     AddSC_stranglethorn_vale();
+    AddSC_swamp_of_sorrows();
     AddSC_tirisfal_glades();
     AddSC_undercity();
     AddSC_western_plaguelands();
@@ -892,6 +896,8 @@ void AddScripts()
     AddSC_instance_forge_of_souls();
     AddSC_boss_devourer_of_souls();
     AddSC_boss_bronjahm();
+    AddSC_trash_forge_of_souls();
+    AddSC_forge_of_souls();
 
     AddSC_instance_pit_of_saron();
     AddSC_boss_forgemaster_gafrost();
