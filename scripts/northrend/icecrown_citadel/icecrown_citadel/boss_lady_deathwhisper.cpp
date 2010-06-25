@@ -315,7 +315,7 @@ struct MANGOS_DLL_DECL boss_lady_deathwhisperAI : public ScriptedAI
                     break;}
         }
 
-                    bsw->timedCast(SPELL_DEATH_AND_DECAY, diff);
+                    //bsw->timedCast(SPELL_DEATH_AND_DECAY, diff); Deactivated because it's buged and it does x3 the normal damage :S
 
 
          if (!bsw->hasAura(SPELL_MANA_BARRIER, m_creature) && stage == 3) 
