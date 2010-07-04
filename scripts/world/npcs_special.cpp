@@ -1974,9 +1974,9 @@ enum GargoyleSpells
     SPELL_GARGOYLE_STRIKE = 43802      // Don't know if this is the correct spell, it does about 700-800 damage points
 };
 
-struct MANGOS_DLL_DECL mob_death_knight_gargoyleAI : public ScriptedAI
+struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
 {
-    mob_death_knight_gragoyleAI(Creature* pCreature) : ScriptedAI(pCreature)
+    mob_death_knight_gragoyle(Creature* pCreature) : ScriptedAI(pCreature)
     {
         bLocked = false;
         Reset();
@@ -2041,7 +2041,7 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyleAI : public ScriptedAI
 
 CreatureAI* GetAI_mob_death_knight_gargoyle(Creature* pCreature)
 {
-    return new mob_death_knight_gargoyleAI(pCreature);
+    return new mob_death_knight_gargoyle(pCreature);
 }
 
 void AddSC_npcs_special()
