@@ -1963,6 +1963,87 @@ CreatureAI* GetAI_npc_rune_blade(Creature* pCreature)
     return new npc_rune_blade(pCreature);
 }
 
+/*########
+# mob_death_knight_gargoyle AI
+#########*/
+
+// UPDATE `creature_template` SET `ScriptName` = 'mob_death_knight_gargoyle' WHERE `entry` = '27829';
+
+enum GargoyleSpells
+{
+    SPELL_GARGOYLE_STRIKE = 43802      // Don't know if this is the correct spell, it does about 700-800 damage points
+};
+
+struct MANGOS_DLL_DECL mob_death_knight_gargoyleAI : public ScriptedAI
+{
+    mob_death_knight_gragoyleAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        bLocked = false;
+        Reset();
+    }
+    uint64 m_uiCreatorGUID;
+    uint32 m_uiGargoyleStrikeTimer;
+    float fDist;
+    float fAngle;
+    bool bLocked;
+
+    void Reset();
+    {
+        m_uiGargoyleStrikeTimer = urand(500, 1500);
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!bLocked)
+        {
+            m_uiCreatorGUID = m_creature->GetCreatorGUID();
+            if (Player* pOwner = (Player*)Unit::GetUnit(*m_creature, m_uiCreatorGUID))
+            {
+                fDist = m_creature->GetDistance(pOwner);
+                fAngle = m_creature->GetAngle(pOwner);
+            }
+            bLocked = true;
+        }
+
+        Player* pOwner = (Player*)Unit::GetUnit(*m_creature, m_uiCreatorGUID);
+        if (!pOwner || !pOwner->IsInWorld())
+        {
+            m_creature->ForceDespawn();
+            return;
+        }
+
+        uint64 targetGUID = 0;
+
+        if (pOwner->getVictim())
+            targetGUID = pOwner->getVictim()->GetGUID();
+
+        Unit* pTarget = Unit::GetUnit(*m_creature, targetGUID);
+
+        if (!pTarget || !m_creature->CanInitiateAttack() || !pTarget->isTargetableForAttack() ||
+        !m_creature->IsHostileTo(pTarget) || !pTarget->isInAccessablePlaceFor(m_creature))
+        {
+            if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+            {
+                m_creature->InterruptNonMeleeSpells(false);
+                m_creature->GetMotionMaster()->Clear();
+                m_creature->GetMotionMaster()->MoveFollow(pOwner, fDist, fAngle);
+            }
+            return;
+        }
+
+        if (m_uiGargoyleStrikeTimer <= uiDiff)
+        {
+            m_creature->CastSpell(pTarget, SPELL_GARGOYLE_STRIKE, false, NULL, NULL, pOwner->GetGUID());
+            m_uiGargoyleStrikeTimer = urand(500, 1500);
+        } else m_uiGargoyleStrikeTimer -= uiDiff;
+    }
+};
+
+CreatureAI* GetAI_mob_death_knight_gargoyle(Creature* pCreature)
+{
+    return new mob_death_knight_gargoyleAI(pCreature);
+}
+
 void AddSC_npcs_special()
 {
     Script* newscript;
@@ -2061,7 +2142,7 @@ void AddSC_npcs_special()
 
 	newscript = new Script;
     newscript->Name = "mob_mirror_image";
-    newscript->GetAI = &GetAI_npc_mirror_image;
+    newscript->GetAI = &GetAI_mob_mirror_image;
     newscript->RegisterSelf();
 
     newscript = new Script;
@@ -2074,4 +2155,8 @@ void AddSC_npcs_special()
     newscript->GetAI = &GetAI_npc_rune_blade;
     newscript->RegisterSelf();
 
+    newscript = new Script;
+    newscript->Name = "mob_death_knight_gargoyle";
+    newscript->GetAI = &GetAI_mob_death_knight_gargoyle;
+    newscript->RegisterSelf();
 }
