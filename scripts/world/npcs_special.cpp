@@ -1976,7 +1976,7 @@ enum GargoyleSpells
 
 struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
 {
-    mob_death_knight_gragoyle(Creature* pCreature) : ScriptedAI(pCreature)
+    mob_death_knight_gargoyle(Creature* pCreature) : ScriptedAI(pCreature)
     {
         bLocked = false;
         Reset();
