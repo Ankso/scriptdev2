@@ -1989,7 +1989,7 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
 
     void Reset()
     {
-        m_uiGargoyleStrikeTimer = urand(500, 1500);
+        m_uiGargoyleStrikeTimer = urand(1000, 2000);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -2033,9 +2033,10 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
 
         if (m_uiGargoyleStrikeTimer <= uiDiff)
         {
-            m_creature->CastSpell(pTarget, SPELL_GARGOYLE_STRIKE, false, NULL, NULL, pOwner->GetGUID());
-            m_uiGargoyleStrikeTimer = urand(500, 1500);
-        } else m_uiGargoyleStrikeTimer -= uiDiff;
+            if (m_creature->DoCastSpellIfCan(pTarget, SPELL_GARGOYLE_STRIKE, 0, pOwner->GetGUID()) == CAST_OK)
+                m_uiGargoyleStrikeTimer = urand(1000, 2000);
+        }
+        else m_uiGargoyleStrikeTimer -= uiDiff;
     }
 };
 
