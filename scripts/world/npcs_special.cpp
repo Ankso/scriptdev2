@@ -1987,7 +1987,7 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
     float fAngle;
     bool bLocked;
 
-    void Reset();
+    void Reset()
     {
         m_uiGargoyleStrikeTimer = urand(500, 1500);
     }
@@ -2008,7 +2008,7 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
         Player* pOwner = (Player*)Unit::GetUnit(*m_creature, m_uiCreatorGUID);
         if (!pOwner || !pOwner->IsInWorld())
         {
-            m_creature->ForceDespawn();
+            m_creature->ForcedDespawn();
             return;
         }
 
