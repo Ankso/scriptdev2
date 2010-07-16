@@ -2239,7 +2239,7 @@ void AddSC_npcs_special()
     newscript->RegisterSelf();
 
     newscript = new Script;
-    newscript->Name = "mob_death_knight_gargoyle";
-    newscript->GetAI = &GetAI_mob_death_knight_gargoyle;
+    newscript->Name = "npc_death_knight_gargoyle";
+    newscript->GetAI = &GetAI_npc_death_knight_gargoyle;
     newscript->RegisterSelf();
 }
