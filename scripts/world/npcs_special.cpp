@@ -44,6 +44,7 @@ npc_rogue_trainer        80%    Scripted trainers, so they are able to offer ite
 npc_sayge               100%    Darkmoon event fortune teller, buff player based on answers given
 npc_tabard_vendor        50%    allow recovering quest related tabards, achievement related ones need core support
 npc_locksmith            75%    list of keys needs to be confirmed
+npc_death_knight_gargoyle       AI for summoned gargoyle of deathknights
 EndContentData */
 
 /*########
@@ -1974,9 +1975,9 @@ enum GargoyleSpells
     SPELL_GARGOYLE_STRIKE = 43802      // Don't know if this is the correct spell, it does about 700-800 damage points
 };
 
-struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
+struct MANGOS_DLL_DECL npc_death_knight_gargoyle : public ScriptedAI
 {
-    mob_death_knight_gargoyle(Creature* pCreature) : ScriptedAI(pCreature)
+    npc_death_knight_gargoyle(Creature* pCreature) : ScriptedAI(pCreature)
     {
         bLocked = false;
         Reset();
@@ -2040,9 +2041,9 @@ struct MANGOS_DLL_DECL mob_death_knight_gargoyle : public ScriptedAI
     }
 };
 
-CreatureAI* GetAI_mob_death_knight_gargoyle(Creature* pCreature)
+CreatureAI* GetAI_npc_death_knight_gargoyle(Creature* pCreature)
 {
-    return new mob_death_knight_gargoyle(pCreature);
+    return new npc_death_knight_gargoyle(pCreature);
 }
 
 void AddSC_npcs_special()
