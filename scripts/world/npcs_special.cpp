@@ -2224,8 +2224,8 @@ void AddSC_npcs_special()
 	  newscript->RegisterSelf();
 
 	  newscript = new Script;
-    newscript->Name = "mob_mirror_image";
-    newscript->GetAI = &GetAI_mob_mirror_image;
+    newscript->Name = "npc_mirror_image";
+    newscript->GetAI = &GetAI_npc_mirror_image;
     newscript->RegisterSelf();
 
     newscript = new Script;
