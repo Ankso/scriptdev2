@@ -477,7 +477,7 @@ struct MANGOS_DLL_DECL mob_slime_poolAI : public BSWScriptedAI
                 m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_Size);
                 }
                 // Override especially for clean core
-                   if (m_Size >= 6.0f) m_creature->ForcedDespawn();
+                   if (m_Size >= 3.0f) m_creature->ForcedDespawn();
     }
 
 };
