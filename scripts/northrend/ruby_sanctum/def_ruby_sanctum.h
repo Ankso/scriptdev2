@@ -8,18 +8,22 @@
 
 enum
 {
-    MAX_ENCOUNTERS                 = 5,
+    MAX_ENCOUNTERS                 = 6,
 
-    TYPE_BALTHARUS                 = 0,
-    TYPE_XERESTRASZA               = 1,
-    TYPE_ZARITHIAN                 = 2,
-    TYPE_RAGEFIRE                  = 3,
-    TYPE_HALION                    = 4,
+    TYPE_EVENT                     = 0,
+    TYPE_RAGEFIRE                  = 1,
+    TYPE_BALTHARUS                 = 2,
+    TYPE_XERESTRASZA               = 3,
+    TYPE_ZARITHIAN                 = 4,
+    TYPE_HALION                    = 5,
 
-    TYPE_HALION_LOCK               = 4, //lock inside the fire ring
+    TYPE_HALION_LOCK               = 6, //lock inside the fire ring
 
-    NPC_HALION_P                   = 39863, // Halion Physical Realm NPC
-    NPC_HALION_T                   = 40142, // Halion Twilight Realm NPC
+    TYPE_EVENT_TIMER               = 50,
+    TYPE_EVENT_NPC                 = 51,
+
+    NPC_HALION_REAL                = 39863, // Halion Physical Realm NPC
+    NPC_HALION_TWILIGHT            = 40142, // Halion Twilight Realm NPC
 
     NPC_BALTHARUS                  = 39751,
     NPC_CLONE                      = 39899,
@@ -27,6 +31,8 @@ enum
     NPC_RAGEFIRE                   = 39747,
 
     NPC_XERESTRASZA                = 40429,
+
+    NPC_BALTHARUS_TARGET           = 39900,
 
     NPC_ORB0                       = 40144,
     NPC_ORB1                       = 40145,
@@ -42,8 +48,10 @@ enum
     GO_HALION_FIRE_WALL_L          = 203002, //9485
     GO_HALION_FIRE_WALL_M          = 203003, //9624
 
-    DATA_HEALTH_BALTHARUS          = 201,
-    DATA_HEALTH_CLONE              = 202,
+    GO_FIRE_FIELD                  = 203005,
+    GO_FLAME_WALLS                 = 203006,
+    GO_FLAME_RING                  = 203007,
+
     DATA_HEALTH_HALION_P           = 203,
     DATA_HEALTH_HALION_T           = 204,
 
