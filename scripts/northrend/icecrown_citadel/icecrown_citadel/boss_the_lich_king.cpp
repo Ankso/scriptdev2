@@ -152,7 +152,7 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
         if (oldflag)
             if (GameObject* pGoFloor = pInstance->instance->GetGameObject(pInstance->GetData64(GO_ARTHAS_PLATFORM)))
             {
-               pGoFloor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_10 | GO_FLAG_NODESPAWN);
+               pGoFloor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_DAMAGED | GO_FLAG_NODESPAWN);
                pGoFloor->SetUInt32Value(GAMEOBJECT_BYTES_1,oldflag);
             }
         pInstance->CloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
