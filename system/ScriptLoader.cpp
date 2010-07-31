@@ -276,6 +276,7 @@ extern void AddSC_boss_grand_champions();
 extern void AddSC_instance_trial_of_the_champion();
 
 extern void AddSC_boss_jedoga();                            //ahnkahet
+extern void AddSC_boss_amanitar();
 extern void AddSC_boss_nadox();
 extern void AddSC_boss_taldaram();
 extern void AddSC_boss_volazj();
@@ -322,6 +323,8 @@ extern void AddSC_boss_keristrasza();
 extern void AddSC_boss_ormorok();
 extern void AddSC_boss_telestra();
 extern void AddSC_instance_nexus();
+extern void AddSC_boss_malygos();                           //Eye of eternity
+extern void AddSC_instance_eye_of_eternity();
 extern void AddSC_boss_sartharion();                        //obsidian_sanctum
 extern void AddSC_instance_obsidian_sanctum();
 extern void AddSC_instance_vault_of_archavon();             //vault_of_archavon
@@ -409,6 +412,7 @@ extern void AddSC_trash_forge_of_souls();
 extern void AddSC_forge_of_souls();
 
 extern void AddSC_instance_pit_of_saron();
+extern void AddSC_pit_of_saron();
 extern void AddSC_boss_forgemaster_gafrost();
 extern void AddSC_boss_krick();
 extern void AddSC_boss_scourgelord_tyrannus();
@@ -420,6 +424,7 @@ extern void AddSC_boss_marwyn();
 extern void AddSC_boss_lich_king_hr();
 
 extern void AddSC_instance_ruby_sanctum();                  // Ruby Sanctum
+extern void AddSC_ruby_sanctum();
 extern void AddSC_boss_halion();
 extern void AddSC_boss_ragefire();
 extern void AddSC_boss_zarithian();
@@ -767,6 +772,7 @@ void AddScripts()
     AddSC_instance_trial_of_the_champion();
 
     AddSC_boss_jedoga();                                    //ahnkahet
+    AddSC_boss_amanitar();
     AddSC_boss_nadox();
     AddSC_boss_taldaram();
     AddSC_boss_volazj();
@@ -813,6 +819,8 @@ void AddScripts()
     AddSC_boss_ormorok();
     AddSC_boss_telestra();
     AddSC_instance_nexus();
+    AddSC_boss_malygos();                                   //Eye of eternity
+    AddSC_instance_eye_of_eternity();
     AddSC_boss_sartharion();                                //obsidian_sanctum
     AddSC_instance_obsidian_sanctum();
     AddSC_instance_vault_of_archavon();                     //vault_of_archavon
@@ -901,6 +909,7 @@ void AddScripts()
     AddSC_forge_of_souls();
 
     AddSC_instance_pit_of_saron();
+    AddSC_pit_of_saron();
     AddSC_boss_forgemaster_gafrost();
     AddSC_boss_krick();
     AddSC_boss_scourgelord_tyrannus();
@@ -912,6 +921,7 @@ void AddScripts()
     AddSC_boss_lich_king_hr();
 
     AddSC_instance_ruby_sanctum();                         // Ruby Sanctum
+    AddSC_ruby_sanctum();
     AddSC_boss_halion();
     AddSC_boss_ragefire();
     AddSC_boss_zarithian();

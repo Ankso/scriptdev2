@@ -103,7 +103,6 @@ UPDATE creature_template SET ScriptName='guard_shattrath_scryer' WHERE entry=185
 UPDATE item_template SET ScriptName='item_arcane_charges' WHERE entry=34475;
 UPDATE item_template SET ScriptName='item_flying_machine' WHERE entry IN (34060,34061);
 UPDATE item_template SET ScriptName='item_gor_dreks_ointment' WHERE entry=30175;
-UPDATE item_template SET ScriptName='item_nether_wraith_beacon' WHERE entry=31742;
 UPDATE item_template SET ScriptName='item_tainted_core' WHERE entry=31088;
 UPDATE item_template SET ScriptName='item_petrov_cluster_bombs' WHERE entry=33098;
 
@@ -761,6 +760,7 @@ UPDATE instance_template SET script='instance_naxxramas' WHERE map=533;
 UPDATE creature_template SET ScriptName='boss_anubrekhan' WHERE entry=15956;
 UPDATE creature_template SET ScriptName='boss_faerlina' WHERE entry=15953;
 UPDATE creature_template SET ScriptName='boss_maexxna' WHERE entry=15952;
+UPDATE creature_template SET ScriptName='npc_web_wrap' WHERE entry=16486;
 UPDATE creature_template SET ScriptName='boss_noth' WHERE entry=15954;
 UPDATE creature_template SET ScriptName='boss_heigan' WHERE entry=15936;
 UPDATE creature_template SET ScriptName='boss_loatheb' WHERE entry=16011;
@@ -788,6 +788,7 @@ UPDATE creature_template SET ScriptName='npc_manaforge_control_console' WHERE en
 UPDATE creature_template SET ScriptName='npc_commander_dawnforge' WHERE entry=19831;
 UPDATE creature_template SET ScriptName='npc_protectorate_nether_drake' WHERE entry=20903;
 UPDATE creature_template SET ScriptName='npc_veronia' WHERE entry=20162;
+UPDATE creature_template SET ScriptName='npc_bessy' WHERE entry=20415;
 
 /*  */
 /* THE NEXUS */
@@ -1225,6 +1226,7 @@ UPDATE creature_template SET ScriptName='mob_hatchling' WHERE entry=23598;
 UPDATE creature_template SET ScriptName='npc_forest_frog' WHERE entry=24396;
 
 /* ZUL'DRAK */
+UPDATE creature_template SET ScriptName='npc_gurgthock' WHERE entry=30007;
 
 
 /* ZUL'FARRAK */

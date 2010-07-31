@@ -81,6 +81,10 @@ INSERT INTO `spell_script_target` (`entry`, `type`, `targetEntry`) VALUES ('6950
 UPDATE `creature_template` SET `ScriptName`='boss_festergut', `AIName`=''  WHERE `entry`= 36626;
 UPDATE `gameobject_template` SET `faction` = '114' WHERE `gameobject_template`.`entry` IN (201371);
 UPDATE `gameobject` SET `state` = '0' WHERE `id` IN (201371);
+UPDATE `creature_template` SET `ScriptName`='mob_vile_gas_stalker', `AIName`=''  WHERE `entry`= 38548;
+DELETE FROM `spell_script_target` WHERE `targetEntry` = 38548;
+INSERT INTO `spell_script_target` (`entry`, `type`, `targetEntry`) VALUES ('69248', '1', '38548');
+INSERT INTO `spell_script_target` (`entry`, `type`, `targetEntry`) VALUES ('69240', '1', '38548');
 
 -- Professor putricide
 UPDATE `creature_template` SET `ScriptName`='boss_proffesor_putricide', `AIName`='' WHERE `entry`= 36678;
@@ -89,16 +93,30 @@ UPDATE `gameobject` SET `state` = '1' WHERE `id` IN (201612,201614,201613);
 UPDATE `gameobject` SET `state` = '0' WHERE `id` IN (201372);
 UPDATE `creature_template` SET `ScriptName`='mob_icc_gas_cloud', `AIName`='' WHERE `entry`= 37562;
 UPDATE `creature_template` SET `ScriptName`='mob_icc_volatile_ooze', `AIName`='' WHERE `entry`= 37697;
+UPDATE `creature_template` SET `ScriptName`='mob_choking_gas_bomb', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14, `scale` = 0.5 WHERE `entry`= 38159;
+UPDATE `creature_template` SET `ScriptName`='mob_ooze_puddle', `AIName`='', `minlevel` = 82, `maxlevel` = 82, `modelid_A` = 11686, `modelid_A2` = 11686, `modelid_H` = 11686, `modelid_H2` = 11686, `faction_A` = 14, `faction_H` = 14  WHERE `entry`= 37690;
 UPDATE `gameobject_template` SET `faction` = '0', `ScriptName` = 'go_plague_sigil' WHERE `gameobject_template`.`entry` IN (202182);
 
 -- Blood wing
 UPDATE `gameobject_template` SET `faction` = '0', `ScriptName` = 'go_bloodwing_sigil' WHERE `gameobject_template`.`entry` IN (202181);
+DELETE FROM `spell_script_target` WHERE `entry` IN (70952, 70981, 70982);
+INSERT INTO `spell_script_target` (`entry`, `type`, `targetEntry`) VALUES 
+('70952', '1', '37970'),
+('70981', '1', '37972'),
+('70982', '1', '37973');
+
 -- Taldaram
 UPDATE `creature_template` SET `ScriptName`='boss_taldaram_icc', `AIName`='' WHERE `entry`= 37973;
+UPDATE `creature_template` SET `ScriptName`='mob_ball_of_flames', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14 WHERE `entry` IN (38332,38451);
 -- Valanar
 UPDATE `creature_template` SET `ScriptName`='boss_valanar_icc', `AIName`='' WHERE `entry`= 37970;
+UPDATE `creature_template` SET `ScriptName`='mob_kinetic_bomb', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14 WHERE `entry`= 38454;
+UPDATE `creature_template` SET `ScriptName`='mob_shock_vortex', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14 WHERE `entry`= 38422;
+UPDATE `creature_template` SET `ScriptName`='mob_kinetic_bomb_target', `AIName`='' WHERE `entry`= 38458;
 -- Keleseth
 UPDATE `creature_template` SET `ScriptName`='boss_keleseth_icc', `AIName`='' WHERE `entry`= 37972;
+UPDATE `creature_template` SET `ScriptName`='mob_dark_nucleus', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14 WHERE `entry`= 38369;
+
 
 UPDATE `gameobject_template` SET `faction` = '114',`data0` = '0' WHERE `gameobject_template`.`entry` IN (201920,201377,201378);
 UPDATE `gameobject` SET `state` = '1' WHERE `id` IN (201920,201377,201378);
@@ -108,6 +126,7 @@ UPDATE `gameobject` SET `state` = '0' WHERE `id` IN (201376);
 -- Qween Lana'thel
 UPDATE `creature_template` SET `ScriptName`='boss_blood_queen_lanathel', `AIName`='' WHERE `entry`= 37955;
 UPDATE `creature_template` SET  `minlevel` = 80, `maxlevel` = 80, `AIName` ='', `faction_A`= 14, `faction_H` = 14,`ScriptName`='mob_swarming_shadows' WHERE `entry`= 38163;
+UPDATE `gameobject_template` SET `faction` = '0', `ScriptName` = 'go_frostwing_sigil' WHERE `gameobject_template`.`entry` IN (202181);
 
 -- Valithria dreamwalker
 UPDATE `creature_template` SET `faction_A` = 35, `faction_H` = 35, `ScriptName`='boss_valithria_dreamwalker' WHERE `entry`= 36789;
