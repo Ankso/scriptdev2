@@ -3290,6 +3290,30 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
     void AttackStart(Unit *) {}
     void MoveInLineOfSight(Unit*) {}
 
+    void JustDied(Unit*u)
+    {
+        if(!m_creature || m_creature->GetTypeId() != TYPEID_UNIT)
+            return;
+
+        Unit *target = m_creature->GetCharmer();
+
+        if(!target || target->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        m_creature->SetCharmerGUID(0);
+        target->RemoveAurasDueToSpell(51852);
+        target->SetCharm(NULL);
+
+        ((Player*)target)->GetCamera().ResetView();
+        ((Player*)target)->SetClientControl(m_creature,0);
+        ((Player*)target)->SetMover(NULL);
+
+        m_creature->CleanupsBeforeDelete();
+        m_creature->AddObjectToRemoveList();
+        //m_creature->ForcedDespawn();
+            return;
+    }
+
     void MovementInform(uint32 uiType, uint32 uiPointId)
     {
         if (uiType != POINT_MOTION_TYPE && uiPointId == 0)
@@ -3306,11 +3330,12 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
         {
             if (StartTimer < uiDiff && !Active)
             {
+                m_creature->CastSpell(m_creature, 70889, true);
                 m_creature->CastSpell(m_creature, 51892, true);
                 char * text = "The Eye of Acherus launches towards its destination";
                 m_creature->MonsterTextEmote(text, m_creature->GetGUID(), true);
                 m_creature->SetSpeedRate(MOVE_FLIGHT, 6.4f,true);
-                m_creature->GetMotionMaster()->MovePoint(0, 1711.0f, -5820.0f, 147.0f);
+                m_creature->GetMotionMaster()->MovePoint(0, 1750.8276f, -5873.788f, 147.2266f);
                 Active = true;
             }
             else StartTimer -= uiDiff;
@@ -3327,6 +3352,7 @@ CreatureAI* GetAI_npc_eye_of_acherus(Creature* pCreature)
 {
     return new npc_eye_of_acherusAI(pCreature);
 }
+
 
 /*######
 ## go_eye_of_acherus
