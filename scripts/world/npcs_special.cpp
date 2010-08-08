@@ -2028,6 +2028,10 @@ CreatureAI* GetAI_npc_snake_trap_serpents(Creature* pCreature)
     return new npc_snake_trap_serpentsAI(pCreature);
 }
 
+/*########
+# npc_rune_blade AI
+#########*/
+
 struct MANGOS_DLL_DECL npc_rune_blade : public ScriptedAI
 {
     npc_rune_blade(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -2068,10 +2072,10 @@ CreatureAI* GetAI_npc_rune_blade(Creature* pCreature)
 }
 
 /*########
-# mob_death_knight_gargoyle AI
+# npc_death_knight_gargoyle AI
 #########*/
 
-// UPDATE `creature_template` SET `ScriptName` = 'mob_death_knight_gargoyle' WHERE `entry` = '27829';
+// UPDATE `creature_template` SET `ScriptName` = 'npc_death_knight_gargoyle' WHERE `entry` = '27829';
 
 enum GargoyleSpells
 {
@@ -2284,13 +2288,13 @@ void AddSC_npcs_special()
     newscript->pGossipSelect = &GossipSelect_npc_locksmith;
     newscript->RegisterSelf();
 
-	  newscript = new Script;
-	  newscript->Name = "npc_experience_eliminator";
-	  newscript->pGossipHello = &GossipHello_npc_experience_eliminator;
-	  newscript->pGossipSelect = &GossipSelect_npc_experience_eliminator;
-	  newscript->RegisterSelf();
+	newscript = new Script;
+	newscript->Name = "npc_experience_eliminator";
+	newscript->pGossipHello = &GossipHello_npc_experience_eliminator;
+	newscript->pGossipSelect = &GossipSelect_npc_experience_eliminator;
+	newscript->RegisterSelf();
 
-	  newscript = new Script;
+	newscript = new Script;
     newscript->Name = "npc_mirror_image";
     newscript->GetAI = &GetAI_npc_mirror_image;
     newscript->RegisterSelf();
