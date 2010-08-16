@@ -113,48 +113,48 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
         m_uiPlayerGUID = 0;
     }
 
-    bool MeetQuestCondition(Unit* pPlayer)
+    bool MeetQuestCondition(Player* pPlayer)
     {
         switch(m_creature->GetEntry())
         {
             case 29061:                                     // Ellen Stanbridge
-                if (((Player*)pPlayer)->GetQuestStatus(12742) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12742) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29072:                                     // Kug Ironjaw
-                if (((Player*)pPlayer)->GetQuestStatus(12748) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12748) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29067:                                     // Donovan Pulfrost
-                if (((Player*)pPlayer)->GetQuestStatus(12744) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12744) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29065:                                     // Yazmina Oakenthorn
-                if (((Player*)pPlayer)->GetQuestStatus(12743) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12743) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29071:                                     // Antoine Brack
-                if (((Player*)pPlayer)->GetQuestStatus(12750) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12750) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29032:                                     // Malar Bravehorn
-                if (((Player*)pPlayer)->GetQuestStatus(12739) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12739) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29068:                                     // Goby Blastenheimer
-                if (((Player*)pPlayer)->GetQuestStatus(12745) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12745) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29073:                                     // Iggy Darktusk
-                if (((Player*)pPlayer)->GetQuestStatus(12749) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12749) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29074:                                     // Lady Eonys
-                if (((Player*)pPlayer)->GetQuestStatus(12747) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12747) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
             case 29070:                                     // Valok the Righteous
-                if (((Player*)pPlayer)->GetQuestStatus(12746) == QUEST_STATUS_INCOMPLETE)
+                if (pPlayer->GetQuestStatus(12746) == QUEST_STATUS_INCOMPLETE)
                     return true;
                 break;
         }
@@ -167,7 +167,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
         if (m_uiPlayerGUID || pWho->GetTypeId() != TYPEID_PLAYER || !pWho->IsWithinDist(m_creature, INTERACTION_DISTANCE))
             return;
 
-        if (MeetQuestCondition(pWho))
+        if (MeetQuestCondition((Player*)pWho))
             m_uiPlayerGUID = pWho->GetGUID();
     }
 
@@ -1027,25 +1027,33 @@ struct MANGOS_DLL_DECL npc_unworthy_initiateAI : public ScriptedAI
             {
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_BLOOD_STRIKE);
                 m_uiBloodStrike_Timer = 9000;
-            }else m_uiBloodStrike_Timer -= uiDiff;
+            }
+            else
+                m_uiBloodStrike_Timer -= uiDiff;
 
             if (m_uiDeathCoil_Timer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_DEATH_COIL);
                 m_uiDeathCoil_Timer = 8000;
-            }else m_uiDeathCoil_Timer -= uiDiff;
+            }
+            else
+                m_uiDeathCoil_Timer -= uiDiff;
 
             if (m_uiIcyTouch_Timer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_ICY_TOUCH);
                 m_uiIcyTouch_Timer = 8000;
-            }else m_uiIcyTouch_Timer -= uiDiff;
+            }
+            else
+                m_uiIcyTouch_Timer -= uiDiff;
 
             if (m_uiPlagueStrike_Timer < uiDiff)
             {
                 DoCastSpellIfCan(m_creature->getVictim(),SPELL_PLAGUE_STRIKE);
                 m_uiPlagueStrike_Timer = 8000;
-            }else m_uiPlagueStrike_Timer -= uiDiff;
+            }
+            else
+                m_uiPlagueStrike_Timer -= uiDiff;
 
             DoMeleeAttackIfReady();
         }
