@@ -168,7 +168,7 @@ bool GossipHello_npc_sa_cannon(Player* pPlayer, Creature* pCreature)
          return true;
 }
  
-#define GOSSIP_START_EVENT_1		 "Comienza a contruir el Destructor! Tienes un minuto!"
+#define GOSSIP_START_EVENT_1		 "Comienzar a contruir el Destructor!"
 #define GOSSIP_START_EVENT_2		 "No tienes nada que hacer ahora!"
 
 #define NPC_DEMILISHER		28781
@@ -250,7 +250,11 @@ bool GossipHello_npc_sa_vendor(Player* pPlayer, Creature* pCreature)
         gyd = 1;
     }
  	if (pPlayer->GetMapId() == 607)
- 		pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+ 	{
+        BattleGround *bg = pPlayer->GetBattleGround();
+        if (bg->GetController() != pPlayer->GetTeam())
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    }
  	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
