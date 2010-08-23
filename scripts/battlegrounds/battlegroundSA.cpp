@@ -36,11 +36,21 @@ CreatureAI* GetAI_npc_sa_bomb(Creature* pCreature)
  
 struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
 {
-    npc_sa_demolisherAI(Creature* pCreature) : ScriptedAI(pCreature){Reset();}
+    npc_sa_demolisherAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
  	bool cramer;
- 	uint32 timer;
  	uint32 faction;
- 	void Reset() {	m_creature->SetVisibility(VISIBILITY_ON);	timer = SA_DESPAWN_T;	cramer = false;	faction = 0;	}
+
+ 	void Reset() 
+    {	
+        m_creature->SetVisibility(VISIBILITY_ON);
+        cramer = false;
+        faction = 0;
+    }
+
  	void StartEvent(Player* pPlayer)
     {
         if (BattleGround *bg = pPlayer->GetBattleGround())
@@ -76,17 +86,13 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
             if (!m_creature->GetCharmer())
             {
                 m_creature->setFaction(faction);
- 
-                if (timer > diff)
-                    timer -= diff;
-                else
+                if (Creature *newDemolisher = m_creature->SummonVehicle(m_creature->GetEntry(), m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), m_creature->GetOrientation()))
+                {
+                    newDemolisher->SetHealth(m_creature->GetHealth());
                     m_creature->ForcedDespawn();
- 
+                }
             }
-            else
-                timer = SA_DESPAWN_T;
         }
- 
      }
 };
  
@@ -104,11 +110,21 @@ bool GossipHello_npc_sa_demolisher(Player* pPlayer, Creature* pCreature)
  
 struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
 {
-    npc_sa_cannonAI(Creature* pCreature) : ScriptedAI(pCreature){Reset();}
+    npc_sa_cannonAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
     bool cramer;
-    uint32 timer;
     uint32 faction;
-    void Reset() {	m_creature->SetVisibility(VISIBILITY_ON);	timer = SA_DESPAWN_T;	cramer = false;	faction = 0;	}
+
+    void Reset() 
+    {	
+        m_creature->SetVisibility(VISIBILITY_ON);	
+        cramer = false;
+        faction = 0;
+    }
+
     void StartEvent(Player* pPlayer)
     {
          if (BattleGround *bg = pPlayer->GetBattleGround())
@@ -132,27 +148,24 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
          }
     }
  
-     void UpdateAI(const uint32 diff)
-     {
-         if (!cramer)
-             if (Unit* Charmer = m_creature->GetCharmer())
-                 cramer = true;
+    void UpdateAI(const uint32 diff)
+    {
+        if (!cramer)
+            if (Unit* Charmer = m_creature->GetCharmer())
+                cramer = true;
  
-         if (cramer)
-         {
-             if (!m_creature->GetCharmer())
-             {
-                   m_creature->setFaction(faction);
- 
-                   if (timer > diff)
-                       timer -= diff;
-                   else
-                       m_creature->ForcedDespawn();
- 
-             }
-             else
-                 timer = SA_DESPAWN_T;
-         }
+        if (cramer)
+        {
+            if (!m_creature->GetCharmer())
+            {
+                m_creature->setFaction(faction);
+                if (Creature *newCannon = m_creature->SummonVehicle(m_creature->GetEntry(), m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), m_creature->GetOrientation()))
+                {
+                    newCannon->SetHealth(m_creature->GetHealth());
+                    m_creature->ForcedDespawn();
+                }
+            }
+        }
      }
 };
  
@@ -168,8 +181,9 @@ bool GossipHello_npc_sa_cannon(Player* pPlayer, Creature* pCreature)
          return true;
 }
  
-#define GOSSIP_START_EVENT_1		 "Comienzar a contruir el Destructor!"
+#define GOSSIP_START_EVENT_1		 "Comienza a contruir el Destructor! Tienes un minuto!"
 #define GOSSIP_START_EVENT_2		 "No tienes nada que hacer ahora!"
+#define GOSSIP_EVENT_STARTED         "Ya estoy trabajando en ello!"
 
 #define NPC_DEMILISHER		28781
 
@@ -191,18 +205,19 @@ static float SummonLocations[2][4]=
      {1353.24f, 223.91f, 35.2535f, 4.366f},
 };
 
+bool build;
+
 struct MANGOS_DLL_DECL npc_sa_vendorAI : public ScriptedAI
 {
     npc_sa_vendorAI(Creature* pCreature) : ScriptedAI(pCreature){Reset();}
     uint32 build_time;
  	uint8 gydId;
- 	bool build;
     void Reset(){build=false;}
  	void StartEvent(Player* pPlayer, uint8 gyd)
     {
  		build_time = 60000;
  		gydId = gyd;
- 		build=true;
+ 		build = true;
  		m_creature->MonsterSay(SA_MESSAGE_0,LANG_UNIVERSAL,0);
  		m_creature->MonsterSay(SA_MESSAGE_1,LANG_UNIVERSAL,0);
     }
@@ -220,14 +235,8 @@ struct MANGOS_DLL_DECL npc_sa_vendorAI : public ScriptedAI
  
  			switch(build_time/2)
  			{
- 				case 40000: m_creature->MonsterSay(SA_MESSAGE_1_1,LANG_UNIVERSAL,0); break;
- 				case 35000: m_creature->MonsterSay(SA_MESSAGE_1_2,LANG_UNIVERSAL,0); break;
- 				case 30000: m_creature->MonsterSay(SA_MESSAGE_2,LANG_UNIVERSAL,0); break;
- 				case 25000: m_creature->MonsterSay(SA_MESSAGE_3,LANG_UNIVERSAL,0); break;
- 				case 20000: m_creature->MonsterSay(SA_MESSAGE_4,LANG_UNIVERSAL,0); break;
- 				case 15000: m_creature->MonsterSay(SA_MESSAGE_5,LANG_UNIVERSAL,0); break;
- 				case 10000: m_creature->MonsterSay(SA_MESSAGE_6,LANG_UNIVERSAL,0); break;
- 				case 5000: m_creature->MonsterSay(SA_MESSAGE_7,LANG_UNIVERSAL,0); break;
+ 				case 15000: m_creature->MonsterSay(SA_MESSAGE_2,LANG_UNIVERSAL,0); break;
+ 				case 7500: m_creature->MonsterSay(SA_MESSAGE_5,LANG_UNIVERSAL,0); break;
  			}
         }
     }
@@ -249,14 +258,19 @@ bool GossipHello_npc_sa_vendor(Player* pPlayer, Creature* pCreature)
  	{	
         gyd = 1;
     }
- 	if (pPlayer->GetMapId() == 607)
- 	{
-        BattleGround *bg = pPlayer->GetBattleGround();
-        if (bg->GetController() != pPlayer->GetTeam())
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    if (!build)
+    {
+ 	    if (pPlayer->GetMapId() == 607)
+            if (BattleGround *bg = pPlayer->GetBattleGround())
+                if (bg->GetController() != pPlayer->GetTeam())
+ 		            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+ 	    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
     }
- 	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+    else
+        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_EVENT_STARTED, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
+    
     return true;
 }
  
