@@ -2071,7 +2071,7 @@ struct MANGOS_DLL_DECL npc_rune_blade : public ScriptedAI
 
         // Start Chasing victim
         if (uint64 guid = ((Player*)owner)->GetSelection())
-            if (Unit *target = m_creature->GetUnit(*owner,guid))
+            if (Unit *target = m_creature->GetMap()->GetUnit(guid))
                 if (!target->IsFriendlyTo(owner))
                     m_creature->Attack(target,true);
 
