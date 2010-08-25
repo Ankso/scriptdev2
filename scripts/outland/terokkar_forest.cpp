@@ -768,7 +768,7 @@ struct MANGOS_DLL_DECL npc_mana_bomb_exp_triggerAI : public ScriptedAI
 
         m_bIsActivated = true;
 
-        pPlayer->KilledMonsterCredit(NPC_MANA_BOMB_KILL_TRIGGER);
+        pPlayer->KilledMonsterCredit(NPC_MANA_BOMB_KILL_TRIGGER, pGo->GetObjectGuid());
 
         pManaBomb = pGo;
     }
