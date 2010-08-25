@@ -93,7 +93,7 @@ struct MANGOS_DLL_DECL npc_kalecgosAI : public ScriptedAI
             if (Player* pPlayer = i->getSource())
             {
                 if (pSpell && pSpell->EffectMiscValue[0])
-                    pPlayer->KilledMonsterCredit(pSpell->EffectMiscValue[0]);
+                    pPlayer->KilledMonsterCredit(uint32(pSpell->EffectMiscValue[0]));
             }
         }
     }

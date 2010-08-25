@@ -205,7 +205,7 @@ void instance_old_hillsbrad::UpdateLodgeQuestCredit()
         for(Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
         {
             if (Player* pPlayer = itr->getSource())
-                pPlayer->KilledMonsterCredit(NPC_LODGE_QUEST_TRIGGER);
+                pPlayer->KilledMonsterCredit(uint32(NPC_LODGE_QUEST_TRIGGER));
         }
     }
 }

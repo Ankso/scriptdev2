@@ -468,7 +468,7 @@ bool GOHello_go_beacon_torch(Player* pPlayer, GameObject* pGo)
         {
             if (GetClosestCreatureWithEntry(pPlayer, m_aTowerDummies[i], 2*INTERACTION_DISTANCE))
             {
-                pPlayer->KilledMonsterCredit(m_aTowerDummies[i]);
+                pPlayer->KilledMonsterCredit(uint32(m_aTowerDummies[i]));
                 break;
             }
         }
@@ -498,7 +498,7 @@ bool GOHello_go_scourge_enclosure(Player* pPlayer, GameObject* pGo)
             (*itr)->CastSpell((*itr),SPELL_GYMER_LOCK_EXPLOSION,true);
         }
     }
-    pPlayer->KilledMonsterCredit(NPC_GYMER_LOCK_DUMMY);
+    pPlayer->KilledMonsterCredit(uint32(NPC_GYMER_LOCK_DUMMY));
     return true;
 }
 
