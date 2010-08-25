@@ -1393,7 +1393,7 @@ bool GOHello_go_focusing_iris(Player* pPlayer, GameObject* pGo)
     if(!hasItem)        
         return false;
 
-    Creature *pMalygos = ((Creature*)Unit::GetUnit(*pGo, pGo->GetInstanceData()->GetData64(NPC_MALYGOS)));
+    Creature *pMalygos = ((Creature*)m_creature->GetMap()->GetCreature(pGo->GetInstanceData()->GetData64(NPC_MALYGOS)));
     if(!pMalygos)
        Creature *pMalygos = GetClosestCreatureWithEntry(pGo, NPC_MALYGOS, 150.0f);
     if(pMalygos)
