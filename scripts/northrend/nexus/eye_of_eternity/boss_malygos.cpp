@@ -617,7 +617,7 @@ struct MANGOS_DLL_DECL boss_malygosAI : public ScriptedAI
 
             for(std::list<uint64>::iterator itr = m_lSparkGUIDList.begin(); itr != m_lSparkGUIDList.end(); ++itr)
             {
-                if (Creature* pTemp = (Creature*)Unit::GetUnit(*m_creature, *itr))
+                if (Creature* pTemp = (Creature*)m_creature->GetMap()->GetCreature(*itr))
                 {
                     if (pTemp->isAlive())
                     {
@@ -1011,7 +1011,7 @@ struct MANGOS_DLL_DECL boss_malygosAI : public ScriptedAI
                     SetCombatMovement(false);
                     m_creature->GetMotionMaster()->Clear(false, true);        // No moving!
                     m_creature->GetMotionMaster()->MoveIdle();
-                    if(Unit *pVehicle = ((Unit*)Unit::GetUnit(*m_creature, m_creature->getVictim()->GetVehicleGUID())))
+                    if(Unit *pVehicle = ((Unit*)m_creature->GetMap()->GetCreature(m_creature->getVictim()->GetVehicleGUID()))
                     {
                         float victim_threat = m_creature->getThreatManager().getThreat(m_creature->getVictim());
                         DoResetThreat();
