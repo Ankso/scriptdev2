@@ -2229,6 +2229,16 @@ struct MANGOS_DLL_DECL npc_highlord_darion_mograineAI : public npc_escortAI
                     case 3: // rise
                         DoScriptText(SAY_LIGHT_OF_DAWN05, m_creature);
                         JumpToNextStep(3000);
+                        // Sometimes quest gets bugged and players can't continue with it, so complete quest now,
+                        // and lets player chose if he/she continues the quest or if he ignores the event.
+                        Map *map = m_creature->GetMap(); // search players with in 50 yards for quest credit
+                        Map::PlayerList const &PlayerList = map->GetPlayers();
+                        if (!PlayerList.isEmpty())
+                        {
+                            for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+                                 if (i->getSource()->isAlive() && m_creature->IsWithinDistInMap(i->getSource(), 50))
+                                     i->getSource()->CastSpell(i->getSource(), SPELL_THE_LIGHT_OF_DAWN_Q, false);
+                        }
                         break;
 
                     case 4: // summon ghoul
