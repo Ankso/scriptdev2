@@ -71,7 +71,7 @@ bool GOGossipHello_go_icecrown_teleporter(Player *pPlayer, GameObject* pGo)
     ScriptedInstance *pInstance = (ScriptedInstance *) pGo->GetInstanceData();
 
     if (!pInstance || !pPlayer) return false;
-    if (pPlayer->isInCombat()) return true;
+    // if (pPlayer->isInCombat()) return true;
 
     for(uint8 i = 0; i < PORTALS_COUNT; i++) {
     if (PortalLoc[i].active == true && (PortalLoc[i].state == true || pInstance->GetData(PortalLoc[i].encounter) == DONE || pPlayer->isGameMaster()))
