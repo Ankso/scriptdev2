@@ -43,68 +43,28 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
         Reset();
     }
 
-    bool control;
-
  	void Reset() 
-    {	
-        control = true;
+    {
     }
-    
-    void Aggro(Unit* who) {}
-    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) {}
-    void EnterCombat(Unit* who) {}
-    void KilledUnit(Unit *victim){}
 
  	void StartEvent(Player* pPlayer)
     {
-        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE))
-            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
         if (BattleGround *bg = pPlayer->GetBattleGround())
         {
             if (bg->GetController() == pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
                 return;
 
-            if (Vehicle *vech = pPlayer->SummonVehicle(m_creature->GetEntry(), m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), m_creature->GetOrientation()))
+            if (VehicleKit *vehicle = m_creature->GetVehicleKit())
             {
-                m_creature->SetVisibility(VISIBILITY_OFF);
-                vech->SetHealth(m_creature->GetHealth());
-                pPlayer->EnterVehicle(vech, 0);
+                pPlayer->EnterVehicle(vehicle);
             }
         }
     }
  
    void UpdateAI(const uint32 diff)
    {
-       if (!m_creature->isCharmed())
-           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
-       if (!m_creature->isCharmed())
-       {
-            Map* pMap = m_creature->GetMap();
-
-            if (!pMap || !pMap->IsBattleGround())
-                return;
-
-            Map::PlayerList const &PlayerList = pMap->GetPlayers();
-
-            Map::PlayerList::const_iterator itr = PlayerList.begin();  // Any player is valid, it's only to get the BG
-            if (Player* player = itr->getSource())
-            {
-                BattleGround *bg = player->GetBattleGround();
-                if (bg->GetStatus() == STATUS_WAIT_JOIN)
-                {
-                    if (bg->GetController() == ALLIANCE && m_creature->getFaction() != 35)
-                        m_creature->ForcedDespawn();
-                    else if (bg->GetController() == ALLIANCE && control)
-                    {
-                        control = false;
-                        m_creature->SetVisibility(VISIBILITY_ON);
-                    }
-                }
-            }
-       }
-    }
+       m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+   }
 };
  
 CreatureAI* GetAI_npc_sa_demolisher(Creature* pCreature)
@@ -123,66 +83,29 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
 {
     npc_sa_cannonAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        Reset();
     }
-
-    bool control;
 
     void Reset()
     {
-        control = true;
     }
 
     void StartEvent(Player* pPlayer)
     {
-         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
-         if (BattleGround *bg = pPlayer->GetBattleGround())
-         {
-            if (m_creature->isInCombat())
-                 m_creature->CombatStop();
-
+        if (BattleGround *bg = pPlayer->GetBattleGround())
+        {
             if (bg->GetController() != pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
                 return;
 
-            if (Vehicle *vech = pPlayer->SummonVehicle(m_creature->GetEntry(), m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), m_creature->GetOrientation()))
+            if (VehicleKit *vehicle = m_creature->GetVehicleKit())
             {
-                m_creature->SetVisibility(VISIBILITY_OFF);
-                vech->SetHealth(m_creature->GetHealth());
-                pPlayer->EnterVehicle(vech, 0);
+                pPlayer->EnterVehicle(vehicle, 0);
             }
         }
     }
  
     void UpdateAI(const uint32 diff)
     {
-       if (!m_creature->isCharmed())
-           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
-
-       if (!m_creature->isCharmed())
-       {
-            Map* pMap = m_creature->GetMap();
-
-            if (!pMap || !pMap->IsBattleGround())
-                return;
-
-            Map::PlayerList const &PlayerList = pMap->GetPlayers();
-
-            Map::PlayerList::const_iterator itr = PlayerList.begin();  // Any player is valid, it's only to get the BG
-            if (Player* player = itr->getSource())
-            {
-                BattleGround *bg = player->GetBattleGround();
-                if (bg->GetStatus() == STATUS_WAIT_JOIN)
-                {
-                    if (bg->GetController() == ALLIANCE && m_creature->getFaction() != 35)
-                        m_creature->ForcedDespawn();
-                    else if (bg->GetController() == ALLIANCE && control)
-                    {
-                        control = false;
-                        m_creature->SetVisibility(VISIBILITY_ON);
-                    }
-                }
-            }
-       }
+       m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
     }
 };
  
