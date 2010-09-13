@@ -40,12 +40,18 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
 {
     npc_sa_demolisherAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        SetCombatMovement(false);
         Reset();
     }
 
+    bool done;
+
  	void Reset() 
     {
+        done = false;
     }
+
+    void Aggro(Unit* who){ m_creature->CombatStop(); }
 
  	void StartEvent(Player* pPlayer)
     {
@@ -57,13 +63,33 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
             if (VehicleKit *vehicle = m_creature->GetVehicleKit())
             {
                 pPlayer->EnterVehicle(vehicle);
+                m_creature->setFaction(pPlayer->getFaction());
             }
         }
     }
  
    void UpdateAI(const uint32 diff)
    {
-       m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+       if (!m_creature->isCharmed())
+           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+
+       Map* pMap = m_creature->GetMap();
+
+       if (!pMap || !pMap->IsBattleGround())
+           return;
+
+       Map::PlayerList const &PlayerList = pMap->GetPlayers();
+       Map::PlayerList::const_iterator itr = PlayerList.begin();
+       Player *player = itr->getSource();
+       if (player)
+       {
+           BattleGround *bg = player->GetBattleGround();
+           if (bg->GetController() == ALLIANCE && !done)
+           {
+               m_creature->setFaction(35);
+               done = true;
+           }
+       }
    }
 };
  
@@ -83,11 +109,15 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
 {
     npc_sa_cannonAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        SetCombatMovement(false);
+        Reset();
     }
 
     void Reset()
     {
     }
+
+    void Aggro(Unit* who){ m_creature->CombatStop(); }
 
     void StartEvent(Player* pPlayer)
     {
@@ -98,14 +128,31 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
 
             if (VehicleKit *vehicle = m_creature->GetVehicleKit())
             {
-                pPlayer->EnterVehicle(vehicle, 0);
+                pPlayer->EnterVehicle(vehicle);
+                m_creature->setFaction(pPlayer->getFaction());
             }
         }
     }
  
     void UpdateAI(const uint32 diff)
     {
-       m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+       if (!m_creature->isCharmed())
+           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+
+       Map* pMap = m_creature->GetMap();
+
+       if (!pMap || !pMap->IsBattleGround())
+           return;
+
+       Map::PlayerList const &PlayerList = pMap->GetPlayers();
+       Map::PlayerList::const_iterator itr = PlayerList.begin();
+       Player *player = itr->getSource();
+       if (player)
+       {
+           BattleGround *bg = player->GetBattleGround();
+           if (bg->GetStatus() == STATUS_WAIT_JOIN && bg->GetController() == ALLIANCE)
+               m_creature->setFaction(35);
+       }
     }
 };
  
