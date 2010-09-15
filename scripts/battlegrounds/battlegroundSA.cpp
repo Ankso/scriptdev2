@@ -3,7 +3,10 @@
 #include "BattleGroundSA.h"
 #include "Vehicle.h"
  
-#define Spell_Boom 52408
+#define Spell_Boom        52408
+#define FACTION_ALLIANCE  3
+#define FACTION_HORDE     6
+#define FACTION_NEUTRAL   35
 
 struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
 {
@@ -12,7 +15,7 @@ struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
  	float fx, fy, fz;
     void Reset() { m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE); event_bomb = 10000; }
     void Aggro(Unit* who){}
-    void JustDied(Unit* Killer){m_creature->ForcedDespawn();}
+    void JustDied(Unit* Killer){ m_creature->ForcedDespawn(); }
     void KilledUnit(Unit *victim){}
     void UpdateAI(const uint32 diff)
     {
@@ -44,11 +47,8 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
         Reset();
     }
 
-    bool done;
-
  	void Reset() 
     {
-        done = false;
     }
 
     void Aggro(Unit* who){ m_creature->CombatStop(); }
@@ -67,30 +67,38 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
             }
         }
     }
+
+    uint32 GetCorrectFactionSA()
+    {
+        Map* pMap = m_creature->GetMap();
+
+        if (!pMap || !pMap->IsBattleGround())
+            return FACTION_NEUTRAL;
+
+        Map::PlayerList const &PlayerList = pMap->GetPlayers();
+        Map::PlayerList::const_iterator itr = PlayerList.begin();
+        Player *player = itr->getSource();
+        if (player)
+        {
+            BattleGround *bg = player->GetBattleGround();
+            if (bg->GetController() == HORDE)
+                return FACTION_ALLIANCE;
+            else if (bg->GetController() == ALLIANCE)
+                return FACTION_HORDE;
+        }
+
+        return FACTION_NEUTRAL;
+    }
  
-   void UpdateAI(const uint32 diff)
-   {
-       if (!m_creature->isCharmed())
-           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
-       Map* pMap = m_creature->GetMap();
-
-       if (!pMap || !pMap->IsBattleGround())
-           return;
-
-       Map::PlayerList const &PlayerList = pMap->GetPlayers();
-       Map::PlayerList::const_iterator itr = PlayerList.begin();
-       Player *player = itr->getSource();
-       if (player)
-       {
-           BattleGround *bg = player->GetBattleGround();
-           if (bg->GetController() == ALLIANCE && !done)
-           {
-               m_creature->setFaction(35);
-               done = true;
-           }
-       }
-   }
+    void UpdateAI(const uint32 diff)
+    {
+        if (!m_creature->isCharmed())
+        {
+            m_creature->CombatStop();
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+            m_creature->setFaction(GetCorrectFactionSA());
+        }
+    }
 };
  
 CreatureAI* GetAI_npc_sa_demolisher(Creature* pCreature)
@@ -134,25 +142,36 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
         }
     }
  
+    uint32 GetCorrectFactionSA()
+    {
+        Map* pMap = m_creature->GetMap();
+
+        if (!pMap || !pMap->IsBattleGround())
+            return FACTION_NEUTRAL;
+
+        Map::PlayerList const &PlayerList = pMap->GetPlayers();
+        Map::PlayerList::const_iterator itr = PlayerList.begin();
+        Player *player = itr->getSource();
+        if (player)
+        {
+            BattleGround *bg = player->GetBattleGround();
+            if (bg->GetController() == HORDE)
+                return FACTION_HORDE;
+            else if (bg->GetController() == ALLIANCE)
+                return FACTION_ALLIANCE;
+        }
+
+        return FACTION_NEUTRAL;
+    }
+ 
     void UpdateAI(const uint32 diff)
     {
-       if (!m_creature->isCharmed())
-           m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
-       Map* pMap = m_creature->GetMap();
-
-       if (!pMap || !pMap->IsBattleGround())
-           return;
-
-       Map::PlayerList const &PlayerList = pMap->GetPlayers();
-       Map::PlayerList::const_iterator itr = PlayerList.begin();
-       Player *player = itr->getSource();
-       if (player)
-       {
-           BattleGround *bg = player->GetBattleGround();
-           if (bg->GetStatus() == STATUS_WAIT_JOIN && bg->GetController() == ALLIANCE)
-               m_creature->setFaction(35);
-       }
+        if (!m_creature->isCharmed())
+        {
+            m_creature->CombatStop();
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+            m_creature->setFaction(GetCorrectFactionSA());
+        }
     }
 };
  
@@ -168,7 +187,7 @@ bool GossipHello_npc_sa_cannon(Player* pPlayer, Creature* pCreature)
          return true;
 }
  
-#define GOSSIP_START_EVENT_1		 "Comienza a contruir el Destructor! Tienes un minuto!"
+#define GOSSIP_START_EVENT_1		 "Comenzar a construir el Demoledor."
 #define GOSSIP_START_EVENT_2		 "No tienes nada que hacer ahora!"
 #define GOSSIP_EVENT_STARTED         "Ya estoy trabajando en ello!"
 
