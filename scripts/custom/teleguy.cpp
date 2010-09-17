@@ -140,6 +140,11 @@ player->ADD_GOSSIP_ITEM( 5, "Utgarde Pinnacle"                    , GOSSIP_SENDE
 player->ADD_GOSSIP_ITEM( 5, "Ulduar"                              , GOSSIP_SENDER_MAIN, 4027);
 player->ADD_GOSSIP_ITEM( 5, "The Obsidian Sanctum"                , GOSSIP_SENDER_MAIN, 4028);
 player->ADD_GOSSIP_ITEM( 5, "Naxxramas"                           , GOSSIP_SENDER_MAIN, 4029);
+player->ADD_GOSSIP_ITEM( 5, "Trial of Champion"                           , GOSSIP_SENDER_MAIN, 4030);
+player->ADD_GOSSIP_ITEM( 5, "Trial of the Crusade"                           , GOSSIP_SENDER_MAIN, 4031);
+player->ADD_GOSSIP_ITEM( 5, "The Frozen Halls"                           , GOSSIP_SENDER_MAIN, 4032);
+player->ADD_GOSSIP_ITEM( 5, "Icecrown Citadel"                           , GOSSIP_SENDER_MAIN, 4033);
+player->ADD_GOSSIP_ITEM( 5, "Ruby Sanctum"                           , GOSSIP_SENDER_MAIN, 4034);
 player->ADD_GOSSIP_ITEM( 7, "<- [Main Menu]"					   , GOSSIP_SENDER_MAIN, 5552);
 
 
@@ -740,6 +745,66 @@ case 4029:// Naxxramas
     {
         player->CLOSE_GOSSIP_MENU();
         player->TeleportTo(571, 3668.719f, -1262.460f, 243.63f, 5.03f);
+        } else {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+    }
+break;
+
+case 4030:// Trial of Champion
+
+    if (player->getLevel() >= 80)
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(571, 8591.561523f, 792.388367f, 558.234863f, 3.164313f);
+        } else {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+    }
+break;
+
+case 4031:// Trial of the Crusade
+
+    if (player->getLevel() >= 80)
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(571, 8516.334961f, 709.969543f, 558.247131f, 1.562100f);
+        } else {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+    }
+break;
+
+case 4032:// The Frozen Halls
+
+    if (player->getLevel() >= 80)
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(571, 5635.972656f, 2059.427734f, 798.053589f, 4.636934f);
+        } else {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+    }
+break;
+
+case 4033:// Icecrown Citadel
+
+    if (player->getLevel() >= 80)
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(571, 5873.359863f, 2110.779541f, 636.041199f, 3.552300f);
+        } else {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+    }
+break;
+
+case 4034:// Ruby Sanctum
+
+    if (player->getLevel() >= 80)
+    {
+        player->CLOSE_GOSSIP_MENU();
+        player->TeleportTo(571, 3585.626465f, 218.790176f, -120.054359f, 5.323445f);
         } else {
         player->CLOSE_GOSSIP_MENU();
         _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
