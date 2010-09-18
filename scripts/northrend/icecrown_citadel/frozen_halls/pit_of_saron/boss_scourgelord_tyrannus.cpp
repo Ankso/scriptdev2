@@ -29,9 +29,39 @@ enum
         //common
         SPELL_BERSERK                           = 47008,
         //yells
+	SAY_AMBUSH_1                                = -1658050,
+	SAY_AMBUSH_2                                = -1658051,
+	SAY_GAUNTLET_START                          = -1658052,
+	SAY_INTRO_1                                 = -1658053,
+	SAY_INTRO_2                                 = -1658054,
+	SAY_AGGRO                                   = -1658055,
+	SAY_SLAY_1                                  = -1658056,
+	SAY_SLAY_2                                  = -1658057,
+	SAY_DEATH                                   = -1658058,
+	SAY_MARK_RIMEFANG_1                         = -1658059,
+	SAY_MARK_RIMEFANG_2                         = -1658060,
+	SAY_DARK_MIGHT_1                            = -1658061,
+	SAY_DARK_MIGHT_2                            = -1658062,
+	SAY_GORKUN_OUTRO_1                          = -1658063,
+	SAY_GORKUN_OUTRO_2                          = -1658064,
+	SAY_JAYNA_OUTRO_3                           = -1658065,
+	SAY_SYLVANAS_OUTRO_3                        = -1658066,
+	SAY_JAYNA_OUTRO_4                           = -1658067,
+	SAY_SYLVANAS_OUTRO_4                        = -1658068,
+	SAY_JAYNA_OUTRO_5                           = -1658069,
         //summons
         //Abilities
-        SPELL_FEAR                              = 68950
+	SPELL_FORCEFUL_SMASH                        = 69155,
+	SPELL_FORCEFUL_SMASH_H                      = 69627,
+	SPELL_OVERLORDS_BRAND                       = 69172,
+	SPELL_DARK_MIGHT                            = 69167,
+	SPELL_DARK_MIGHT_H                          = 69629,
+	SPELL_HOARFROST                             = 69246,
+	SPELL_MARK_OF_RIMEFANG                      = 69275,
+	SPELL_ICY_BLAST                             = 69233,
+	SPELL_ICY_BLAST_H                           = 69646,
+	SPELL_ICY_BLAST_2                           = 69238,
+	SPELL_ICY_BLAST_2_H                         = 69628
 };
 
 struct MANGOS_DLL_DECL boss_scourgelord_tyrannusAI : public ScriptedAI

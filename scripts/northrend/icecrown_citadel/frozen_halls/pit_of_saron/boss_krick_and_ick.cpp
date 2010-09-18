@@ -28,6 +28,29 @@ enum
     //common
     SPELL_BERSERK                         = 47008,
     //yells
+    SAY_KRICK_AGGRO                             = -1658010,
+    SAY_KRICK_SLAY_1                            = -1658011,
+    SAY_KRICK_SLAY_2                            = -1658012,
+    SAY_KRICK_BARRAGE_1                         = -1658013,
+    SAY_KRICK_BARRAGE_2                         = -1658014,
+    SAY_KRICK_POISON_NOVA                       = -1658015,
+    SAY_KRICK_CHASE_1                           = -1658016,
+    SAY_KRICK_CHASE_2                           = -1658017,
+    SAY_KRICK_CHASE_3                           = -1658018,
+    SAY_ICK_POISON_NOVA                         = -1658020,
+    SAY_ICK_CHASE_1                             = -1658021,
+    SAY_KRICK_OUTRO_1                           = -1658030,
+    SAY_JAYNA_OUTRO_2                           = -1658031,
+    SAY_SYLVANAS_OUTRO_2                        = -1658032,
+    SAY_KRICK_OUTRO_3                           = -1658033,
+    SAY_JAYNA_OUTRO_4                           = -1658034,
+    SAY_SYLVANAS_OUTRO_4                        = -1658035,
+    SAY_KRICK_OUTRO_5                           = -1658036,
+    SAY_TYRANNUS_OUTRO_7                        = -1658037,
+    SAY_KRICK_OUTRO_8                           = -1658038,
+    SAY_TYRANNUS_OUTRO_9                        = -1658039,
+    SAY_JAYNA_OUTRO_10                          = -1658040,
+    SAY_SYLVANAS_OUTRO_10                       = -1658041,
     //summons
     NPC_EXPLODING_ORB                     = 36610,
     //Abilities
@@ -37,12 +60,14 @@ enum
     SPELL_SHADOWBOLT                      = 69028,
     SPELL_STRANGULATE                     = 69413,
     SPELL_TOXIC                           = 69024,
+    SPELL_TOXIC_H                         = 70436
     SPELL_KICK                            = 69021,
     SPELL_POISON                          = 68989,
     SPELL_POISON_H                        = 70434,
     SPELL_PURSUIT                         = 68987,
     SPELL_PUSTULANT                       = 69581,
     SPELL_CONFUSION                       = 69029,
+    SPELL_EXPLOSIVE_BARRAGE               = 69263
 };
 
 struct MANGOS_DLL_DECL boss_krickAI : public ScriptedAI
