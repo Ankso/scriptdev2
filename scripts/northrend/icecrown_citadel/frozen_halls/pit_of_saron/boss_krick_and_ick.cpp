@@ -16,7 +16,7 @@
 
 /* ScriptData
 SDName: boss_ick && boss_krick
-SD%Complete: 1%
+SD%Complete: 60%
 SDComment: by ..., modified by /dev/rsa
 SDCategory: Pit of Saron
 EndScriptData */
@@ -73,98 +73,200 @@ enum
     SPELL_EXPLOSIVE_BARRAGE               = 69263
 };
 
-struct MANGOS_DLL_DECL boss_krickAI : public ScriptedAI
-{
-    boss_krickAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Regular = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool Regular;
-    ScriptedInstance *pInstance;
-
-    void Reset()
-    {
-        if(pInstance) pInstance->SetData(TYPE_KRICK, NOT_STARTED);
-    }
-
-    void Aggro(Unit *who) 
-    {
-        if(pInstance) pInstance->SetData(TYPE_KRICK, IN_PROGRESS);
-    }
-
-    void JustDied(Unit *killer)
-    {
-        if(pInstance) pInstance->SetData(TYPE_KRICK, DONE);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        DoMeleeAttackIfReady();
-    }
-};
+bool Outro;
 
 struct MANGOS_DLL_DECL boss_ickAI : public ScriptedAI
 {
     boss_ickAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Regular = pCreature->GetMap()->IsRegularDifficulty();
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+		RegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    bool Regular;
-    ScriptedInstance *pInstance;
+    ScriptedInstance* m_pInstance;
+	Creature *Krick;
+
+    bool RegularMode;
+	
+	uint32 ToxicWastTimer;
+	uint32 PoisonNovaTimer;
+	uint32 ShadowBoltTimer;
+	uint32 MightyKickTimer;
+	uint32 ExplosiveBarrageTimer;
+	uint32 PursuedTimer;
 
     void Reset()
     {
-        if(pInstance) pInstance->SetData(TYPE_ICK, NOT_STARTED);
+		ToxicWastTimer = 5000;
+		PoisonNovaTimer = 30000;
+		ShadowBoltTimer = 15000;
+		MightyKickTimer = 20000;
+		ExplosiveBarrageTimer = 35000;
+		PursuedTimer = 25000;
+		Outro = false;
+	if(!m_pInstance) return;
+            m_pInstance->SetData(TYPE_KRICK, NOT_STARTED);
+		Krick = GetClosestCreatureWithEntry(m_creature, NPC_KRICK, 300.0f);
+
     }
 
     void Aggro(Unit *who) 
     {
-        if(pInstance) pInstance->SetData(TYPE_ICK, IN_PROGRESS);
+        DoScriptText(SAY_KRICK_AGGRO, Krick);
+	if(!m_pInstance) return;
+            m_pInstance->SetData(TYPE_KRICK, IN_PROGRESS);
     }
 
     void JustDied(Unit *killer)
     {
-        if(pInstance) pInstance->SetData(TYPE_ICK, DONE);
+	if(!m_pInstance) return;
+            m_pInstance->SetData(TYPE_KRICK, DONE); 
+		Outro = true;
     }
 
     void UpdateAI(const uint32 diff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
-
+				
+		if (ToxicWastTimer < diff)
+		{
+			DoCast(m_creature, RegularMode ? SPELL_TOXIC : SPELL_TOXIC_H);
+			ToxicWastTimer = 5000;
+        }
+		else 
+			ToxicWastTimer -= diff;
+			
+		if (PoisonNovaTimer < diff)
+		{
+			DoCast(m_creature, RegularMode ? SPELL_POISON : SPELL_POISON_H);
+			PoisonNovaTimer = 30000;
+        }
+		else 
+			PoisonNovaTimer -= diff;
+			
+		if (ShadowBoltTimer < diff)
+		{
+			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+				DoCast(Target, SPELL_SHADOWBOLT);
+			ShadowBoltTimer = 15000;
+        }
+		else 
+			ShadowBoltTimer -= diff;
+			
+		if (MightyKickTimer < diff)
+		{
+			Map *map = m_creature->GetMap();
+			Map::PlayerList const &PlayerList = map->GetPlayers();
+            for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+			{
+				if (m_creature->IsWithinDistInMap(i->getSource(), 5.0f))
+					DoCast(i->getSource(), SPELL_KICK);
+			}
+			MightyKickTimer = 22000;
+        }
+		else 
+			MightyKickTimer -= diff;
+			
+		if (ExplosiveBarrageTimer < diff)
+		{
+			if (Krick)
+			{
+				DoCast(Krick, SPELL_EXPLOSIVE_BARRAGE);
+				Krick->SummonCreature(36879 , 831.567, 177.040, 509.52, 0.125028, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 180000);
+				DoScriptText(SAY_KRICK_BARRAGE_1, Krick);
+			}
+			ExplosiveBarrageTimer = 35000;
+        }
+		else 
+			ExplosiveBarrageTimer -= diff;
+		
+		if (PursuedTimer < diff)
+		{
+			DoCast(m_creature->getVictim(), SPELL_PURSUIT);
+			DoCast(m_creature->getVictim(), SPELL_CONFUSION);
+			PursuedTimer = (RegularMode ? 22000 : 18000);
+        }
+		else 
+			PursuedTimer -= diff;
+ 
         DoMeleeAttackIfReady();
     }
 };
 
-CreatureAI* GetAI_boss_krick(Creature* pCreature)
+struct MANGOS_DLL_DECL boss_krickAI : public ScriptedAI
 {
-    return new boss_krickAI(pCreature);
-}
+    boss_krickAI(Creature *pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+		RegularMode = pCreature->GetMap()->IsRegularDifficulty();
+		Reset();
+    }
+	
+	ScriptedInstance* m_pInstance;
+
+    bool RegularMode;
+
+    void Reset()
+    {
+		m_creature->setFaction(35);
+		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
+    }
+
+    void Aggro(Unit* who)
+    {
+        
+    }
+
+    void JustDied(Unit* killer)
+    {
+
+    }
+
+    void UpdateAI(const uint32 diff)
+    {		
+		if (Outro)
+		{
+			Outro = false;
+			DoScriptText(SAY_KRICK_OUTRO_1, m_creature);
+				
+			Map* pMap = m_creature->GetMap();
+
+			if (pMap && pMap->IsDungeon())
+			{
+				Map::PlayerList const &players = pMap->GetPlayers();
+				for(Map::PlayerList::const_iterator i = players.begin(); i != players.end(); ++i)
+		
+				if (i->getSource()->GetTeam() == ALLIANCE)
+					m_creature->SummonCreature(NPC_VICTUS, 801.455, 113.913, 509.002, 0.125028, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 180000);
+				else
+					m_creature->SummonCreature(NPC_GORKUN, 801.455, 113.913, 509.002, 0.125028, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 180000);
+			}
+		}
+    }
+};
 
 CreatureAI* GetAI_boss_ick(Creature* pCreature)
 {
     return new boss_ickAI(pCreature);
 }
 
+CreatureAI* GetAI_boss_krick(Creature* pCreature)
+{
+    return new boss_krickAI(pCreature);
+}
+
 struct MANGOS_DLL_DECL mob_exploding_orbAI : public ScriptedAI
 {
    mob_exploding_orbAI(Creature *pCreature) : ScriptedAI(pCreature)
    {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_creature->SetActiveObjectState(true);
         Reset();
    }
 
-   ScriptedInstance* pInstance;
+    ScriptedInstance* m_pInstance;
    uint32 ExplodeTimer;
 
     void Reset()
@@ -179,7 +281,7 @@ struct MANGOS_DLL_DECL mob_exploding_orbAI : public ScriptedAI
 
     void UpdateAI(const uint32 diff)
     {
-        if(!pInstance) return;
+        if(!m_pInstance) return;
 
         if (ExplodeTimer < diff)
         {

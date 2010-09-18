@@ -22,6 +22,8 @@ enum
     NPC_SYLVANAS_PART2           = 38189,
     NPC_JAINA_PART1              = 36993,
     NPC_JAINA_PART2              = 38188,
+    NPC_VICTUS					= 37591,
+    NPC_GORKUN					= 37592,
     NPC_KILARA                   = 37583,
     NPC_ELANDRA                  = 37774,
     NPC_KORALEN                  = 37779,
