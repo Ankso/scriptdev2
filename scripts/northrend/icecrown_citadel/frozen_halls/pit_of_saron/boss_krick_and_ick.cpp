@@ -60,7 +60,7 @@ enum
     SPELL_SHADOWBOLT                      = 69028,
     SPELL_STRANGULATE                     = 69413,
     SPELL_TOXIC                           = 69024,
-    SPELL_TOXIC_H                         = 70436
+    SPELL_TOXIC_H                         = 70436,
     SPELL_KICK                            = 69021,
     SPELL_POISON                          = 68989,
     SPELL_POISON_H                        = 70434,
