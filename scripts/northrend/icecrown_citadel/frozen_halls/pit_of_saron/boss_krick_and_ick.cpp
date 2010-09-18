@@ -21,6 +21,9 @@ SDComment: by ..., modified by /dev/rsa
 SDCategory: Pit of Saron
 EndScriptData */
 
+// Scripted by Tacx/Chris - http://www.blood-wow.com (if you use this script, do not remove this seal, no matter what other modification you apply to script).
+// Need full implementation of spells
+
 #include "precompiled.h"
 #include "def_pit.h"
 enum
