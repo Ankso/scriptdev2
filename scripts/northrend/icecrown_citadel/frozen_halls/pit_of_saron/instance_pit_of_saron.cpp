@@ -36,6 +36,8 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     uint64 m_uiIckGUID;
     uint64 m_uiTirannusGUID;
     uint64 m_uiRimefangGUID;
+    uint64 m_uiDoorTyranusGUID;
+    uint64 m_uiDoorExitGUID;
 
     void OpenDoor(uint64 guid)
     {
@@ -94,6 +96,16 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     {
         switch(pGo->GetEntry())
         {
+            case DOOR_TYRANUS:
+                m_uiDoorTyranusGUID = pGo->GetGUID();
+                if (m_auiEncounter[1] == DONE)
+                    pGo->SetGoState(GO_STATE_ACTIVE);
+                break;
+			case DOOR_EXIT:
+                m_uiDoorExitGUID = pGo->GetGUID();
+                if (m_auiEncounter[2] == DONE)
+                    pGo->SetGoState(GO_STATE_ACTIVE);
+                break;
         }
     }
     void SetData(uint32 uiType, uint32 uiData)
@@ -102,8 +114,9 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
         {
             case TYPE_GAFROST: m_auiEncounter[0] = uiData; break;
             case TYPE_KRICK: m_auiEncounter[1] = uiData; break;
-            case TYPE_ICK: m_auiEncounter[2] = uiData; break;
-            case TYPE_TYRANNUS: m_auiEncounter[3] = uiData; break;
+            case TYPE_ICK: m_auiEncounter[2] = uiData; DoUseDoorOrButton(m_uiDoorTyranusGUID);
+ break;
+            case TYPE_TYRANNUS: m_auiEncounter[3] = uiData; DoUseDoorOrButton(m_uiDoorExitGUID); break;
         }
 
         if (uiData == DONE)
@@ -148,6 +161,8 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
             case NPC_ICK: return m_uiIckGUID;
             case NPC_TYRANNUS: return m_uiTirannusGUID;
             case NPC_RIMEFANG: return m_uiRimefangGUID;
+            case DOOR_TYRANUS: return m_uiDoorTyranusGUID;
+            case DOOR_EXIT: return m_uiDoorExitGUID;
         }
         return 0;
     }
