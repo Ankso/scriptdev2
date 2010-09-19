@@ -17,12 +17,9 @@
 /* ScriptData
 SDName: boss_forgemaster_gafrost
 SD%Complete: 80%
-SDComment: by /dev/rsa
+SDComment: Need to implement Achievement
 SDCategory: Pit of Saron
 EndScriptData */
-
-// Scripted by Tacx/Chris - http://www.blood-wow.com (if you use this script, do not remove this seal, no matter what other modification you apply to script).
-// Need to implement Achievement
 
 #include "precompiled.h"
 #include "def_pit.h"
@@ -64,32 +61,33 @@ struct MANGOS_DLL_DECL boss_forgemaster_gafrostAI : public ScriptedAI
     boss_forgemaster_gafrostAI(Creature *pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+	m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
     ScriptedInstance* m_pInstance;
 
-	bool RegularMode;
-	bool phase2;
-	bool phase3;
-	bool Achievement;
+	bool m_bIsRegularMode;
+	bool m_bIsPhase2;
+	bool m_bIsPhase3;
+	bool m_bIsAchievement;
    
-	uint32 ThrowSaroniteTimer;
-	uint32 ChillingWaveTimer;
-	uint32 DeepFreezeTimer;
-	uint32 BladeReturnTimer;
-	uint32 MaceReturnTimer;
+	uint32 m_uiThrowSaronite_Timer;
+	uint32 m_uiChillingWave_Timer;
+	uint32 m_uiDeepFreeze_Timer;
+	uint32 m_uiBladeReturn_Timer;
+	uint32 m_uiMaceReturn_Timer;
 
     void Reset()
     {
-        phase2 = false;
-        phase3 = false;
-        Achievement = true;
-		ThrowSaroniteTimer = 20000;
-		ChillingWaveTimer = 9990000;
-		DeepFreezeTimer = 9990000;
-		BladeReturnTimer = 4500;
-		MaceReturnTimer = 6000;
+        m_bIsPhase2 = false;
+        m_bIsPhase3 = false;
+        m_bIsAchievement = true;
+		m_uiThrowSaronite_Timer = 20000;
+		m_uiChillingWave_Timer = 9990000;
+		m_uiDeepFreeze_Timer = 9990000;
+		m_uiBladeReturn_Timer = 4500;
+		m_uiMaceReturn_Timer = 6000;
 	if(!m_pInstance) return;
             m_pInstance->SetData(TYPE_GAFROST, NOT_STARTED);
     }
@@ -123,9 +121,9 @@ struct MANGOS_DLL_DECL boss_forgemaster_gafrostAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 			
-		if (((m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) < 66) && !phase2)
+		if (((m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) < 66) && !m_bIsPhase2)
         {
-            phase2 = true;
+            m_bIsPhase2 = true;
 			DoScriptText(SAY_PHASE2, m_creature);
             DoCast(m_creature, SPELL_THUNDERING_STOMP);	
 			m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
@@ -133,9 +131,9 @@ struct MANGOS_DLL_DECL boss_forgemaster_gafrostAI : public ScriptedAI
             m_creature->GetMotionMaster()->MovePoint(0, 654.021, -201.438, 526.699); 
         }
 
-        if (((m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) < 33) && !phase3)
+        if (((m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) < 33) && !m_bIsPhase3)
         {
-            phase3 = true;
+            m_bIsPhase3 = true;
 			DoScriptText(SAY_PHASE3, m_creature);
             DoCast(m_creature, SPELL_THUNDERING_STOMP);
 			m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
@@ -143,68 +141,68 @@ struct MANGOS_DLL_DECL boss_forgemaster_gafrostAI : public ScriptedAI
             m_creature->GetMotionMaster()->MovePoint(0, 718.009, -229.447, 526.847);
         }
 		
-		if (phase2)
+		if (m_bIsPhase2)
 		{
-			if (BladeReturnTimer < diff)
+			if (m_uiBladeReturn_Timer < diff)
 			{
-				DoCast(m_creature, RegularMode ? SPELL_FORGE_BLADE : SPELL_FORGE_BLADE_H);
+				DoCast(m_creature, m_bIsRegularMode ? SPELL_FORGE_BLADE : SPELL_FORGE_BLADE_H);
 				SetEquipmentSlots(false, EQUIP_ID_SWORD, -1, -1);
 				m_creature->SetByteValue(UNIT_FIELD_BYTES_2, 0, SHEATH_STATE_MELEE);
 				m_creature->GetMotionMaster()->Clear();
 				m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
 				m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
-				BladeReturnTimer = 9900000;
+				m_uiBladeReturn_Timer = 9900000;
 			}
 			else
-				BladeReturnTimer -= diff;
+				m_uiBladeReturn_Timer -= diff;
 				
-			ChillingWaveTimer = 10000;
+			m_uiChillingWave_Timer = 10000;
 		}
 		
-		if (phase3)
+		if (m_bIsPhase3)
 		{
-			if (MaceReturnTimer < diff)
+			if (m_uiMaceReturn_Timer < diff)
 			{
-                m_creature->RemoveAurasDueToSpell(RegularMode ? SPELL_FORGE_BLADE : SPELL_FORGE_BLADE_H);
-				DoCast(m_creature, RegularMode ? SPELL_FORGE_MACE : SPELL_FORGE_MACE_H);
+                m_creature->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_FORGE_BLADE : SPELL_FORGE_BLADE_H);
+				DoCast(m_creature, m_bIsRegularMode ? SPELL_FORGE_MACE : SPELL_FORGE_MACE_H);
 				SetEquipmentSlots(false, EQUIP_ID_MACE, -1, -1);
 				m_creature->SetByteValue(UNIT_FIELD_BYTES_2, 0, SHEATH_STATE_MELEE);
 				m_creature->GetMotionMaster()->Clear();
 				m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
 				m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
-				MaceReturnTimer = 9900000;
+				m_uiMaceReturn_Timer = 9900000;
 			}
 			else
-				MaceReturnTimer -= diff;
-            ChillingWaveTimer = 999000;
-            DeepFreezeTimer = 10000;
+				m_uiMaceReturn_Timer -= diff;
+            m_uiChillingWave_Timer = 999000;
+            m_uiDeepFreeze_Timer = 10000;
 		}
 
-		if (ThrowSaroniteTimer < diff)
+		if (m_uiThrowSaronite_Timer < diff)
         {
             if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCast(Target, SPELL_THROW_SARONITE);
-            ThrowSaroniteTimer = (RegularMode ? 20000 : 25000);
+            m_uiThrowSaronite_Timer = (m_bIsRegularMode ? 20000 : 25000);
         }
 		else 
-			ThrowSaroniteTimer -= diff;
+			m_uiThrowSaronite_Timer -= diff;
 				
-		if (ChillingWaveTimer < diff)
+		if (m_uiChillingWave_Timer < diff)
         {
-            DoCast(m_creature, RegularMode ? SPELL_CHILLING_WAVE : SPELL_CHILLING_WAVE_H);
-            ChillingWaveTimer = (RegularMode ? 40000 : 30000);
+            DoCast(m_creature, m_bIsRegularMode ? SPELL_CHILLING_WAVE : SPELL_CHILLING_WAVE_H);
+            m_uiChillingWave_Timer = (m_bIsRegularMode ? 40000 : 30000);
         }
 		else 
-			ChillingWaveTimer -= diff;
+			m_uiChillingWave_Timer -= diff;
 				
-		if (DeepFreezeTimer < diff)
+		if (m_uiDeepFreeze_Timer < diff)
 		{
             if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCast(Target, RegularMode ? SPELL_DEEP_FREEZE : SPELL_DEEP_FREEZE_H);
-            DeepFreezeTimer = (RegularMode ? 27500 : 25000);
+                DoCast(Target, m_bIsRegularMode ? SPELL_DEEP_FREEZE : SPELL_DEEP_FREEZE_H);
+            m_uiDeepFreeze_Timer = (m_bIsRegularMode ? 27500 : 25000);
         }
 		else 
-			DeepFreezeTimer -= diff;
+			m_uiDeepFreeze_Timer -= diff;
  
         DoMeleeAttackIfReady();
     }

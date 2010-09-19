@@ -16,13 +16,11 @@
 
 /* ScriptData
 SDName: boss_scourgelord_tyrannus
-SD%Complete: 0%
+SD%Complete: 90%
 SDComment:
 SDCategory: Pit of Saron
 EndScriptData */
 
-// Scripted by Tacx/Chris - http://www.blood-wow.com (if you use this script, do not remove this seal, no matter what other modification you apply to script).
-// Need to make the fly moves for Rimefang
 #include "precompiled.h"
 #include "def_pit.h"
 
@@ -84,30 +82,30 @@ struct MANGOS_DLL_DECL boss_scourgelord_tyrannusAI : public ScriptedAI
     boss_scourgelord_tyrannusAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
-		RegularMode = pCreature->GetMap()->IsRegularDifficulty();
+		m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
 		Reset();
     }
 	
 	ScriptedInstance* m_pInstance;
 
-    bool RegularMode;
+    bool m_bIsRegularMode;
 
-	uint32 ForcefulSmashTimer;
-	uint32 OverlordsBrandTimer;
-	uint32 DarkMighttimer;
-	uint8 Phase;
-	uint32 PhaseTimer;
+	uint32 m_uiForcefulSmash_Timer;
+	uint32 m_uiOverlordsBrand_Timer;
+	uint32 m_uiDarkMight_Timer;
+	uint8  m_uiPhase;
+	uint32 m_uiPhase_Timer;
 
     void Reset()
 
     {
- 		ForcefulSmashTimer = 10000;
-		OverlordsBrandTimer = 35000;
-		DarkMighttimer = 40000;
-		Phase = 1;
-		PhaseTimer = 7500;
+ 		m_uiForcefulSmash_Timer = 10000;
+		m_uiOverlordsBrand_Timer = 35000;
+		m_uiDarkMight_Timer = 40000;
+		m_uiPhase = 1;
+		m_uiPhase_Timer = 7500;
 		if (m_pInstance)
-            m_pInstance->SetData(TYPE_TYRANNUS, NOT_STARTED);
+            	m_pInstance->SetData(TYPE_TYRANNUS, NOT_STARTED);
 		m_creature->Mount(27982);
     }
 
@@ -155,31 +153,31 @@ struct MANGOS_DLL_DECL boss_scourgelord_tyrannusAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-		if (ForcefulSmashTimer < diff)
+		if (m_uiForcefulSmash_Timer < diff)
 		{
-			DoCast(m_creature->getVictim(), RegularMode ? SPELL_FORCEFUL_SMASH : SPELL_FORCEFUL_SMASH_H);
-			ForcefulSmashTimer = 10000;
+			DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_FORCEFUL_SMASH : SPELL_FORCEFUL_SMASH_H);
+			m_uiForcefulSmash_Timer = 10000;
 		}
 		else 
-			ForcefulSmashTimer -= diff;
+			m_uiForcefulSmash_Timer -= diff;
 		
-		if (OverlordsBrandTimer < diff)
+		if (m_uiOverlordsBrand_Timer < diff)
 		{
 			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
 				DoCast(Target, SPELL_OVERLORDS_BRAND);
-			OverlordsBrandTimer = 45000;
+			m_uiOverlordsBrand_Timer = 45000;
 		}
 		else 
-			OverlordsBrandTimer -= diff;
+			m_uiOverlordsBrand_Timer -= diff;
 			
-		if (DarkMighttimer < diff)
+		if (m_uiDarkMight_Timer < diff)
 		{
 			//DoScriptText(SAY_DARK_MIGHT_1, m_creature);
-			DoCast(m_creature, RegularMode ? SPELL_DARK_MIGHT : SPELL_DARK_MIGHT_H);
-			DarkMighttimer = 60000;
+			DoCast(m_creature, m_bIsRegularMode ? SPELL_DARK_MIGHT : SPELL_DARK_MIGHT_H);
+			m_uiDarkMight_Timer = 60000;
 		}
 		else 
-			DarkMighttimer -= diff;
+			m_uiDarkMight_Timer -= diff;
  
 		DoMeleeAttackIfReady();
     }
@@ -190,7 +188,7 @@ struct MANGOS_DLL_DECL mob_rimefang_posAI : public ScriptedAI
     mob_rimefang_posAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-	RegularMode = pCreature->GetMap()->IsRegularDifficulty();
+	m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
 	m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0x3);
 	m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
         Reset();
@@ -198,21 +196,21 @@ struct MANGOS_DLL_DECL mob_rimefang_posAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    bool RegularMode;
+    bool m_bIsRegularMode;
 	
-	uint32 MarkRimefangTimer;
-	uint32 HoarfrostTimer;
-	uint32 IcyBlastTimer;
-	uint32 IcyBlast2Timer;
-	uint32 MovementTimer;
+	uint32 m_uiMarkRimefang_Timer;
+	uint32 m_uiHoarfrost_Timer;
+	uint32 m_uiIcyBlast_Timer;
+	uint32 m_uiIcyBlast2_Timer;
+	uint32 m_uiMovement_Timer;
 
     void Reset()
     {
-		MarkRimefangTimer = 25000;
-		HoarfrostTimer = 999999;
-		IcyBlastTimer = 35000;
-		IcyBlast2Timer = 999999;
-		MovementTimer = 1000;
+		m_uiMarkRimefang_Timer = 25000;
+		m_uiHoarfrost_Timer = 999999;
+		m_uiIcyBlast_Timer = 35000;
+		m_uiIcyBlast2_Timer = 999999;
+		m_uiMovement_Timer = 1000;
     }
 
     void Aggro(Unit *who) 
@@ -220,7 +218,8 @@ struct MANGOS_DLL_DECL mob_rimefang_posAI : public ScriptedAI
  		SetCombatMovement(false);
 		m_creature->GetMotionMaster()->Clear(false);
         	m_creature->GetMotionMaster()->MoveIdle();
-
+		m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0x3);
+		m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
 		if (!m_creature->isHover())
         {
             m_creature->HandleEmoteCommand(EMOTE_ONESHOT_LIFTOFF);
@@ -238,45 +237,56 @@ struct MANGOS_DLL_DECL mob_rimefang_posAI : public ScriptedAI
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 			
-		if (MarkRimefangTimer < diff)
+		if (m_uiMovement_Timer < diff)
+        {			
+			uint32 random = rand()%8;
+
+			m_creature->GetMap()->CreatureRelocation(m_creature, FlyLocations[random][0], FlyLocations[random][1], FlyLocations[random][2], 0.0f);
+			m_creature->SendMonsterMove(FlyLocations[random][0], FlyLocations[random][1], FlyLocations[random][2], SPLINETYPE_NORMAL, SPLINEFLAG_UNKNOWN7, 1);
+
+			m_uiMovement_Timer = 13000;
+        }
+
+
+		if (m_uiMarkRimefang_Timer < diff)
 		{
 			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
 				DoCast(Target, SPELL_MARK_OF_RIMEFANG);
-			MarkRimefangTimer = 20000;
-			HoarfrostTimer = 5000;
+			m_uiMarkRimefang_Timer = 20000;
+			m_uiHoarfrost_Timer = 5000;
 		}
 		else 
-			MarkRimefangTimer -= diff;
+			m_uiMarkRimefang_Timer -= diff;
 			
-		if (HoarfrostTimer < diff)
+		if (m_uiHoarfrost_Timer < diff)
 		{
 			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
 				DoCast(Target, SPELL_HOARFROST);
-			MarkRimefangTimer = 22000;
-			HoarfrostTimer = 99999;
+			m_uiMarkRimefang_Timer = 22000;
+			m_uiHoarfrost_Timer = 99999;
 		}
 		else 
-			HoarfrostTimer -= diff;
+			m_uiHoarfrost_Timer -= diff;
 			
-		if (IcyBlastTimer < diff)
+		if (m_uiIcyBlast_Timer < diff)
 		{
 			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-				DoCast(Target, RegularMode ? SPELL_ICY_BLAST : SPELL_ICY_BLAST_H);
-			IcyBlastTimer = 29000;
-			IcyBlast2Timer = 5000;
+				DoCast(Target, m_bIsRegularMode ? SPELL_ICY_BLAST : SPELL_ICY_BLAST_H);
+			m_uiIcyBlast_Timer = 29000;
+			m_uiIcyBlast2_Timer = 5000;
 		}
 		else 
-			IcyBlastTimer -= diff;
+			m_uiIcyBlast_Timer -= diff;
 		
-		if (IcyBlast2Timer < diff)
+		if (m_uiIcyBlast2_Timer < diff)
 		{
 			if (Unit* Target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-				DoCast(Target, RegularMode ? SPELL_ICY_BLAST_2 : SPELL_ICY_BLAST_2_H);
-			IcyBlastTimer = 30500;
-			IcyBlast2Timer = 99999;
+				DoCast(Target, m_bIsRegularMode ? SPELL_ICY_BLAST_2 : SPELL_ICY_BLAST_2_H);
+			m_uiIcyBlast_Timer = 30500;
+			m_uiIcyBlast2_Timer = 99999;
 		}
 		else 
-			IcyBlast2Timer -= diff;
+			m_uiIcyBlast2_Timer -= diff;
     }
 };
 

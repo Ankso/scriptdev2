@@ -6,12 +6,12 @@
 *
 * This program is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "precompiled.h"
@@ -19,14 +19,14 @@
 
 struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
 {
-    instance_pit_of_saron(Map* pMap) : ScriptedInstance(pMap) 
+    instance_pit_of_saron(Map* pMap) : ScriptedInstance(pMap)
     {
-        Regular = pMap->IsRegularDifficulty();
         Initialize();
     }
 
-    bool Regular;
-    bool needSave;
+	bool m_bIsNeedSave;
+	bool m_bIsNpcSpawned;
+
     std::string strSaveData;
 
     //Creatures GUID
@@ -65,13 +65,26 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
         return false;
     }
 
+	void OnPlayerEnter(Player *player)
+    {
+		if (!m_bIsNpcSpawned)
+		{
+			if (player->GetTeam() == ALLIANCE)
+				player->SummonCreature(NPC_JAINA_PART1, 438.244, 245.688, 528.708, 5.08458, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 180000);
+			else
+				player->SummonCreature(NPC_SYLVANAS_PART1, 438.244, 245.688, 528.708, 5.08458, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 180000);
+				
+			m_bIsNpcSpawned = true;
+		}
+    }
+
     void OnCreatureCreate(Creature* pCreature)
     {
         switch(pCreature->GetEntry())
         {
-            case NPC_GAFROST:  m_uiGafrostGUID = pCreature->GetGUID(); break;
-            case NPC_KRICK:    m_uiKrickGUID = pCreature->GetGUID(); break;
-            case NPC_ICK:      m_uiIckGUID = pCreature->GetGUID(); break;
+            case NPC_GAFROST: m_uiGafrostGUID = pCreature->GetGUID(); break;
+            case NPC_KRICK: m_uiKrickGUID = pCreature->GetGUID(); break;
+            case NPC_ICK: m_uiIckGUID = pCreature->GetGUID(); break;
             case NPC_TYRANNUS: m_uiTirannusGUID = pCreature->GetGUID(); break;
             case NPC_RIMEFANG: m_uiRimefangGUID = pCreature->GetGUID(); break;
         }
@@ -87,9 +100,9 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     {
         switch(uiType)
         {
-            case TYPE_GAFROST:  m_auiEncounter[0] = uiData; break;
-            case TYPE_KRICK:    m_auiEncounter[1] = uiData; break;
-            case TYPE_ICK:      m_auiEncounter[2] = uiData; break;
+            case TYPE_GAFROST: m_auiEncounter[0] = uiData; break;
+            case TYPE_KRICK: m_auiEncounter[1] = uiData; break;
+            case TYPE_ICK: m_auiEncounter[2] = uiData; break;
             case TYPE_TYRANNUS: m_auiEncounter[3] = uiData; break;
         }
 
@@ -118,10 +131,10 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     {
         switch(uiType)
         {
-            case TYPE_GAFROST:   return m_auiEncounter[0];
-            case TYPE_KRICK:     return m_auiEncounter[1];
-            case TYPE_ICK:       return m_auiEncounter[2];
-            case TYPE_TYRANNUS:  return m_auiEncounter[3];
+            case TYPE_GAFROST: return m_auiEncounter[0];
+            case TYPE_KRICK: return m_auiEncounter[1];
+            case TYPE_ICK: return m_auiEncounter[2];
+            case TYPE_TYRANNUS: return m_auiEncounter[3];
         }
         return 0;
     }
@@ -130,9 +143,9 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     {
         switch(uiData)
         {
-            case NPC_GAFROST:  return m_uiGafrostGUID;
-            case NPC_KRICK:    return m_uiKrickGUID;
-            case NPC_ICK:      return m_uiIckGUID;
+            case NPC_GAFROST: return m_uiGafrostGUID;
+            case NPC_KRICK: return m_uiKrickGUID;
+            case NPC_ICK: return m_uiIckGUID;
             case NPC_TYRANNUS: return m_uiTirannusGUID;
             case NPC_RIMEFANG: return m_uiRimefangGUID;
         }
@@ -177,3 +190,5 @@ void AddSC_instance_pit_of_saron()
     pNewScript->GetInstanceData = &GetInstanceData_instance_pit_of_saron;
     pNewScript->RegisterSelf();
 }
+
+

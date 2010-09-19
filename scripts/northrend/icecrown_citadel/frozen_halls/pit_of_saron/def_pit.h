@@ -4,7 +4,13 @@
 
 enum
 {
-    MAX_ENCOUNTERS               = 3,
+	MAX_ENCOUNTERS               = 3,
+
+    DATA_GARFROST				= 6,
+    DATA_KRICK					= 7,
+    DATA_ICK					= 8,
+    DATA_TYRANNUS				= 9,
+    DATA_RIMEFANG				= 10,
 
     TYPE_GAFROST                 = 0,
     TYPE_KRICK                   = 1,
@@ -32,6 +38,10 @@ enum
     NPC_CHAMPION_2_HORDE         = 37587,
     NPC_CHAMPION_1_ALLIANCE      = 37496,
     NPC_CHAMPION_2_ALLIANCE      = 37497,
+
+	DOOR_TYRANUS				= 201885,
+	DOOR_EXIT					= 201848
+
 
 };
 
