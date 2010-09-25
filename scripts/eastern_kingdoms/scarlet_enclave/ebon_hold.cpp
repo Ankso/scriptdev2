@@ -3375,8 +3375,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
         if (uiType != POINT_MOTION_TYPE && uiPointId == 0)
             return;
 
-            char * text = "The Eye of Acherus is in your control";
-            m_creature->MonsterTextEmote(text, m_creature->GetGUID(), true);
+            DoScriptText(-1666452, m_creature);
             m_creature->CastSpell(m_creature, 51890, true);
     }
 
@@ -3388,8 +3387,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
             {
                 m_creature->CastSpell(m_creature, 70889, true);
                 m_creature->CastSpell(m_creature, 51892, true);
-                char * text = "The Eye of Acherus launches towards its destination";
-                m_creature->MonsterTextEmote(text, m_creature->GetGUID(), true);
+                DoScriptText(-1666451, m_creature);
                 m_creature->SetSpeedRate(MOVE_FLIGHT, 6.4f,true);
                 m_creature->GetMotionMaster()->MovePoint(0, 1750.8276f, -5873.788f, 147.2266f);
                 Active = true;
