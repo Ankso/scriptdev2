@@ -36,8 +36,6 @@ base/follower_ai.cpp \
 base/follower_ai.h \
 base/guard_ai.cpp \
 base/guard_ai.h \
-base/simple_ai.cpp \
-base/simple_ai.h \
 base/BSW_instance.cpp \
 base/BSW_instance.h \
 base/BSW_ai.cpp \
@@ -376,7 +374,7 @@ scripts/northrend/icecrown_citadel/icecrown_citadel/boss_lord_marrowgar.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/blood_prince_council.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/boss_blood_queen_lanathel.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/boss_festergut.cpp \
-scripts/northrend/icecrown_citadel/icecrown_citadel/boss_proffesor_putricide.cpp \
+scripts/northrend/icecrown_citadel/icecrown_citadel/boss_professor_putricide.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/boss_rotface.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/boss_sindragosa.cpp \
 scripts/northrend/icecrown_citadel/icecrown_citadel/boss_the_lich_king.cpp \
