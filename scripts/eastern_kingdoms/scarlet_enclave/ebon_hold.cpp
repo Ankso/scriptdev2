@@ -3551,7 +3551,6 @@ bool GOHello_go_eye_of_acherus(Player *player, GameObject* _GO)
 
 void AddSC_ebon_hold()
 {
-<<<<<<< HEAD
     Script *newscript;
 
     newscript = new Script;
@@ -3644,50 +3643,4 @@ void AddSC_ebon_hold()
     newscript->Name = "go_eye_of_acherus";
     newscript->pGOHello = &GOHello_go_eye_of_acherus;
     newscript->RegisterSelf();
-=======
-    Script* pNewScript;
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_a_special_surprise";
-    pNewScript->GetAI = &GetAI_npc_a_special_surprise;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_death_knight_initiate";
-    pNewScript->GetAI = &GetAI_npc_death_knight_initiate;
-    pNewScript->pGossipHello = &GossipHello_npc_death_knight_initiate;
-    pNewScript->pGossipSelect = &GossipSelect_npc_death_knight_initiate;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_koltira_deathweaver";
-    pNewScript->GetAI = &GetAI_npc_koltira_deathweaver;
-    pNewScript->pQuestAccept = &QuestAccept_npc_koltira_deathweaver;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_unworthy_initiate";
-    pNewScript->GetAI = &GetAI_npc_unworthy_initiate;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_unworthy_initiate_anchor";
-    pNewScript->GetAI = &GetAI_npc_unworthy_initiate_anchor;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "go_acherus_soul_prison";
-    pNewScript->pGOHello = &GOHello_go_acherus_soul_prison;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_eye_of_acherus";
-    pNewScript->GetAI = &GetAI_npc_eye_of_acherus;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "mob_scarlet_ghoul";
-    pNewScript->GetAI = &GetAI_mob_scarlet_ghoul;
-    pNewScript->RegisterSelf();
->>>>>>> a883a8a19c910e23eefb4072af8278c2467e5970
 }
