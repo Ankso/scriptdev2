@@ -89,6 +89,7 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
             case NPC_ICK: m_uiIckGUID = pCreature->GetGUID(); break;
             case NPC_TYRANNUS: m_uiTirannusGUID = pCreature->GetGUID(); break;
             case NPC_RIMEFANG: m_uiRimefangGUID = pCreature->GetGUID(); break;
+            default: break;
         }
     }
 
@@ -112,11 +113,11 @@ struct MANGOS_DLL_DECL instance_pit_of_saron : public ScriptedInstance
     {
         switch(uiType)
         {
-            case TYPE_GAFROST: m_auiEncounter[0] = uiData; break;
-            case TYPE_KRICK: m_auiEncounter[1] = uiData; break;
-            case TYPE_ICK: m_auiEncounter[2] = uiData; DoUseDoorOrButton(m_uiDoorTyranusGUID);
- break;
-            case TYPE_TYRANNUS: m_auiEncounter[3] = uiData; DoUseDoorOrButton(m_uiDoorExitGUID); break;
+            case TYPE_GAFROST:  m_auiEncounter[0] = uiData; break;
+            case TYPE_KRICK:    m_auiEncounter[1] = uiData; break;
+            case TYPE_ICK:      m_auiEncounter[2] = uiData; break;
+            case TYPE_TYRANNUS: m_auiEncounter[3] = uiData; break;
+            default: break;
         }
 
         if (uiData == DONE)
