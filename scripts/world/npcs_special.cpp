@@ -2011,8 +2011,8 @@ struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
                         spell = SPELL_MIND_NUMBING_POISON;
                     else
                         spell = SPELL_CRIPPLING_POISON;
-
-                    m_creature->CastSpell(m_creature->getVictim(), spell, true);
+                    if (!m_creature->GetVictim()->HasAura(spell))                        // Don't allow stacking
+                        m_creature->CastSpell(m_creature->getVictim(), spell, true);
                 }
 
                 SpellTimer = urand(3000, 5000);
@@ -2020,7 +2020,8 @@ struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
             else //Venomous Snake - 19833
             {
                 if (urand(0,1) == 0) //80% chance to cast
-                    m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
+                    if (!m_creature->GetVictim()->HasAura(SPELL_DEADLY_POISON))          // Don't allow stacking
+                        m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
                 SpellTimer = urand(2500, 4500);
             }
         } 
@@ -2045,15 +2046,21 @@ CreatureAI* GetAI_npc_snake_trap_serpents(Creature* pCreature)
 struct MANGOS_DLL_DECL npc_rune_blade : public ScriptedAI
 {
     npc_rune_blade(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+
+    Unit* owner;
+
     void Reset()
     {
-        Unit * owner = m_creature->GetOwner();
+        owner = m_creature->GetOwner();
         if (!owner || owner->GetTypeId() != TYPEID_PLAYER)
             return;
 
         // Cannot be Selected or Attacked
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+
+        m_creature->SetLevel(owner->getLevel());
+        m_creature->setFaction(owner->getFaction());
 
         // Add visible weapon
         if (Item const * item = ((Player *)owner)->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND))
@@ -2067,12 +2074,20 @@ struct MANGOS_DLL_DECL npc_rune_blade : public ScriptedAI
         // Visual Glow
         m_creature->CastSpell(m_creature, 53160, true);
 
-        // Start Chasing victim
-        if (uint64 guid = ((Player*)owner)->GetSelection())
-            if (Unit *target = m_creature->GetMap()->GetUnit(guid))
-                if (!target->IsFriendlyTo(owner))
-                    m_creature->Attack(target,true);
+        SetCombatMovement(true);
+    }
 
+    void UpdateAI(const uint32 diff)
+    {
+        if (!owner) return;
+
+        if (!m_creature->getVictim())
+        {
+            if (owner->getVictim())
+                AttackStart(owner->getVictim());
+        }
+
+        DoMeleeAttackIfReady();
     }
 };
 
@@ -2242,7 +2257,7 @@ struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
         if (m_creature->GetHealthPercent() < 10.0f) // allow players using finishers
         m_creature->ModifyHealth(m_creature->GetMaxHealth());
 
-        m_creature->SetTargetGUID(0); // prevent from rotating
+        m_creature->SetTargetGuid(0); // prevent from rotating
         combat_timer += diff;
 
         if (combat_timer > OUT_OF_COMBAT_TIME)
