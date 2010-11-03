@@ -1924,7 +1924,7 @@ struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
 
             if (m_uiFireblastTimer <= diff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIREBLAST);
+                DoCastSpellIfCan(m_creature->getVictim(),SPELL_FROSTBOLT);
                 m_uiFireblastTimer = urand(4000,8000);
             } else m_uiFireblastTimer -= diff;
 
