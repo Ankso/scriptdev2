@@ -24,9 +24,9 @@ struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
  			m_creature->GetPosition(fx, fy, fz);
  			m_creature->CastSpell(m_creature, 34602, true);
  			m_creature->CastSpell(m_creature, 71495, true);
- 			m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGUID());
-            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGUID());
-            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGUID());
+ 			m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
+            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
+            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
  			m_creature->ForcedDespawn();
  		} else event_bomb -= diff;
  	}
