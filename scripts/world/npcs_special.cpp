@@ -2011,18 +2011,16 @@ struct MANGOS_DLL_DECL npc_snake_trap_serpentsAI : public ScriptedAI
                         spell = SPELL_MIND_NUMBING_POISON;
                     else
                         spell = SPELL_CRIPPLING_POISON;
-                    if (!m_creature->getVictim()->HasAura(spell))                        // Don't allow stacking
-                        m_creature->CastSpell(m_creature->getVictim(), spell, true);
+                    m_creature->CastSpell(m_creature->getVictim(), spell, true);
                 }
 
-                SpellTimer = urand(3000, 5000);
+                SpellTimer = urand(4000, 7000);
             }
             else //Venomous Snake - 19833
             {
                 if (urand(0,1) == 0) //80% chance to cast
-                    if (!m_creature->getVictim()->HasAura(SPELL_DEADLY_POISON))          // Don't allow stacking
-                        m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
-                SpellTimer = urand(2500, 4500);
+                    m_creature->CastSpell(m_creature->getVictim(), SPELL_DEADLY_POISON, true);
+                SpellTimer = urand(3500, 7500);
             }
         } 
         else 
