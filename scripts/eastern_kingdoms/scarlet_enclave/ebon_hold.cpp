@@ -3334,6 +3334,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
 {
     npc_eye_of_acherusAI(Creature *pCreature) : ScriptedAI(pCreature)
     {
+        Reset();
     }
 
     int32 StartTimer;
@@ -3341,7 +3342,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
 
     void Reset()
     {
-        m_creature->SetLevel(55);
+        m_creature->SetDisplayId(26320);
         StartTimer = 2000;
         Active = false;
     }
@@ -3354,7 +3355,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
         if(!m_creature || m_creature->GetTypeId() != TYPEID_UNIT)
             return;
 
-        Unit* owner = m_creature->GetCharmer();
+        Unit* owner = m_creature->GetCharmerOrOwner();
 
         if(!owner || owner->GetTypeId() != TYPEID_PLAYER)
             return;
@@ -3369,8 +3370,10 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
             return;
 
             DoScriptText(-1666452, m_creature);
+            m_creature->SetDisplayId(25499);
+//            m_creature->SetDisplayId(26320);
+            m_creature->RemoveAurasDueToSpell(51923);
             m_creature->CastSpell(m_creature, 51890, true);
-//            m_creature->RemoveAurasDueToSpell(51923);
     }
 
     void UpdateAI(const uint32 uiDiff)
@@ -3381,7 +3384,7 @@ struct MANGOS_DLL_DECL npc_eye_of_acherusAI : public ScriptedAI
             {
                 m_creature->CastSpell(m_creature, 70889, true);
                 m_creature->CastSpell(m_creature, 51892, true);
-//                m_creature->CastSpell(m_creature, 51923, true);
+                m_creature->CastSpell(m_creature, 51923, true);
                 m_creature->SetSpeedRate(MOVE_FLIGHT, 4.0f,true);
                 DoScriptText(-1666451, m_creature);
                 m_creature->GetMotionMaster()->MovePoint(0, 1750.8276f, -5873.788f, 147.2266f);
@@ -3430,8 +3433,8 @@ struct MANGOS_DLL_DECL mob_scarlet_ghoulAI : public ScriptedAI
     {
         m_bIsSpawned = false;
         fDist = (float)urand(1, 5);
-        m_uiCreatorGUID = m_creature->GetCreatorGUID();
-        if (Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGUID) )
+        m_uiCreatorGuid = m_creature->GetCreatorGuid();
+        if (Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGuid) )
             fAngle = m_creature->GetAngle(pOwner);
 
         Reset();
@@ -3440,7 +3443,7 @@ struct MANGOS_DLL_DECL mob_scarlet_ghoulAI : public ScriptedAI
 
     Unit* pTarget;
 
-    uint64 m_uiCreatorGUID;
+    ObjectGuid m_uiCreatorGuid;
     uint64 m_uiTargetGUID;
     uint64 m_uiHarvesterGUID;
 
@@ -3467,7 +3470,7 @@ struct MANGOS_DLL_DECL mob_scarlet_ghoulAI : public ScriptedAI
         {
             m_uiHarvesterGUID = pWho->GetGUID();
 
-            if (Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGUID) )
+            if (Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGuid) )
             {
                 pOwner->KilledMonsterCredit(m_creature->GetEntry(), m_creature->GetGUID() );
                 // this will execute if m_creature survived Harvester's wrath
@@ -3509,7 +3512,7 @@ struct MANGOS_DLL_DECL mob_scarlet_ghoulAI : public ScriptedAI
             return;
         }
 
-        Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGUID);
+        Player* pOwner = m_creature->GetMap()->GetPlayer(m_uiCreatorGuid);
         if (!pOwner || !pOwner->IsInWorld())
         {
             m_creature->DealDamage(m_creature, m_creature->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NONE, NULL, false);

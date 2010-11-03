@@ -146,7 +146,6 @@ extern void AddSC_boss_brutallus();                         //sunwell_plateau
 extern void AddSC_boss_kalecgos();
 extern void AddSC_instance_sunwell_plateau();
 extern void AddSC_boss_archaedas();                         //uldaman
-extern void AddSC_boss_ironaya();
 extern void AddSC_instance_uldaman();
 extern void AddSC_uldaman();
 extern void AddSC_boss_akilzon();                           //zulaman
@@ -304,7 +303,9 @@ extern void AddSC_boss_novos();                             //draktharon_keep
 extern void AddSC_boss_dred();
 extern void AddSC_boss_tharonja();
 extern void AddSC_boss_trollgore();
+extern void AddSC_instance_draktharon_keep();
 extern void AddSC_boss_colossus();                          //gundrak
+extern void AddSC_boss_eck();
 extern void AddSC_boss_galdarah();
 extern void AddSC_boss_moorabi();
 extern void AddSC_boss_sladran();
@@ -324,6 +325,7 @@ extern void AddSC_boss_patchwerk();
 extern void AddSC_boss_razuvious();
 extern void AddSC_boss_sapphiron();
 extern void AddSC_instance_naxxramas();
+
 extern void AddSC_boss_anomalus();                          //nexus
 extern void AddSC_boss_keristrasza();
 extern void AddSC_boss_ormorok();
@@ -331,6 +333,9 @@ extern void AddSC_boss_telestra();
 extern void AddSC_instance_nexus();
 extern void AddSC_boss_malygos();                           //Eye of eternity
 extern void AddSC_instance_eye_of_eternity();
+
+extern void AddSC_oculus();                                 //Oculus
+
 extern void AddSC_boss_sartharion();                        //obsidian_sanctum
 extern void AddSC_instance_obsidian_sanctum();
 extern void AddSC_instance_vault_of_archavon();             //vault_of_archavon
@@ -658,7 +663,6 @@ void AddScripts()
     AddSC_boss_kalecgos();
     AddSC_instance_sunwell_plateau();
     AddSC_boss_archaedas();                                 //uldaman
-    AddSC_boss_ironaya();
     AddSC_instance_uldaman();
     AddSC_uldaman();
     AddSC_boss_akilzon();                                   //zulaman
@@ -805,7 +809,9 @@ void AddScripts()
     AddSC_boss_dred();
     AddSC_boss_tharonja();
     AddSC_boss_trollgore();
+    AddSC_instance_draktharon_keep();
     AddSC_boss_colossus();                                  //gundrak
+    AddSC_boss_eck();
     AddSC_boss_galdarah();
     AddSC_boss_moorabi();
     AddSC_boss_sladran();
@@ -825,6 +831,7 @@ void AddScripts()
     AddSC_boss_razuvious();
     AddSC_boss_sapphiron();
     AddSC_instance_naxxramas();
+
     AddSC_boss_anomalus();                                  //nexus
     AddSC_boss_keristrasza();
     AddSC_boss_ormorok();
@@ -832,6 +839,9 @@ void AddScripts()
     AddSC_instance_nexus();
     AddSC_boss_malygos();                                   //Eye of eternity
     AddSC_instance_eye_of_eternity();
+
+    AddSC_oculus();                                         //Oculus
+
     AddSC_boss_sartharion();                                //obsidian_sanctum
     AddSC_instance_obsidian_sanctum();
     AddSC_instance_vault_of_archavon();                     //vault_of_archavon
