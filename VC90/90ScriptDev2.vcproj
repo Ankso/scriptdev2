@@ -380,6 +380,14 @@
 				RelativePath="..\base\guard_ai.h"
 				>
 			</File>
+			<File
+				RelativePath="..\base\pet_ai.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\pet_ai.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="scripts"
@@ -1071,7 +1079,23 @@
 						>
 					</File>
 					<File
+						RelativePath="..\scripts\eastern_kingdoms\sunwell_plateau\boss_eredar_twins.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\scripts\eastern_kingdoms\sunwell_plateau\boss_felmyst.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\scripts\eastern_kingdoms\sunwell_plateau\boss_kalecgos.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\scripts\eastern_kingdoms\sunwell_plateau\boss_kiljaeden.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\scripts\eastern_kingdoms\sunwell_plateau\boss_muru.cpp"
 						>
 					</File>
 					<File

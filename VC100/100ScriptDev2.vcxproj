@@ -215,6 +215,7 @@
     <ClCompile Include="..\base\escort_ai.cpp" />
     <ClCompile Include="..\base\follower_ai.cpp" />
     <ClCompile Include="..\base\guard_ai.cpp" />
+    <ClCompile Include="..\base\pet_ai.cpp" />
     <ClCompile Include="..\scripts\battlegrounds\battleground.cpp" />
     <ClCompile Include="..\scripts\custom\npc_arena_honor.cpp" />
     <ClCompile Include="..\scripts\custom\teleguy.cpp" />
@@ -356,7 +357,11 @@
     <ClCompile Include="..\scripts\eastern_kingdoms\sunken_temple\instance_sunken_temple.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\sunken_temple\sunken_temple.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_brutallus.cpp" />
+    <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_eredar_twins.cpp" />
+    <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_felmyst.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_kalecgos.cpp" />
+    <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_kiljaeden.cpp" />
+    <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\boss_muru.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\sunwell_plateau\instance_sunwell_plateau.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\uldaman\boss_archaedas.cpp" />
     <ClCompile Include="..\scripts\eastern_kingdoms\uldaman\uldaman.cpp" />
@@ -729,6 +734,7 @@
     <ClInclude Include="..\base\escort_ai.h" />
     <ClInclude Include="..\base\follower_ai.h" />
     <ClInclude Include="..\base\guard_ai.h" />
+    <ClInclude Include="..\base\pet_ai.h" />
     <ClInclude Include="..\scripts\eastern_kingdoms\blackrock_depths\blackrock_depths.h" />
     <ClInclude Include="..\scripts\eastern_kingdoms\blackrock_spire\blackrock_spire.h" />
     <ClInclude Include="..\scripts\eastern_kingdoms\deadmines\deadmines.h" />

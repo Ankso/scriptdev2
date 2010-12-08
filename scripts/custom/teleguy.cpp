@@ -33,14 +33,24 @@ void SendDefaultMenu_mob_teleguy(Player *player, Creature *_Creature, uint32 act
     if(!player->getAttackers().empty())
     {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You are in combat!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You are in combat!", LANG_UNIVERSAL);
         return;
     }
 
     if( player->getLevel() < 8  ) 
     {
          player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be lvl 8+", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be lvl 8+", LANG_UNIVERSAL);
+        return;
+    }
+
+    money = player->GetMoney();
+    costo = 500;
+
+    if (money < costo ) 
+    {
+        player->CLOSE_GOSSIP_MENU();
+        _Creature->MonsterSay("You haven't enough money", LANG_UNIVERSAL);
         return;
     }
 
@@ -262,7 +272,7 @@ if( player->getLevel() >= 8)
 		player->TeleportTo(1, 1800.53f,-4394.68f,-17.93f,5.49f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 8!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 8!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -276,7 +286,7 @@ if (player->getLevel() >= 10)
 		
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 10!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 10!", LANG_UNIVERSAL);
 	}
 	
 break;
@@ -289,7 +299,7 @@ if (player->getLevel() >= 10)
 		player->TeleportTo(0, -11212.04f,1658.58f,25.67f,1.45f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 10!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 10!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -301,7 +311,7 @@ case 1251://teleport player to Shadowfang Keep
 		player->TeleportTo(0, -254.47f,1524.68f,76.89f,1.56f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 15!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 15!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -313,7 +323,7 @@ case 1252://teleport player to Blackfathom Deeps
 		player->TeleportTo(1, 4254.58f,664.74f,-29.04f,1.97f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 15!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 15!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -325,7 +335,7 @@ case 1253://teleport player to the Stockade
 		player->TeleportTo(0, -8769.76f,813.08f,97.63f,2.26f);	
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 20!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 20!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -337,7 +347,7 @@ case 1254://teleport player to Razorfen Kraul
 		player->TeleportTo(1, -4484.04f,-1739.40f,86.47f,1.23f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 24!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 24!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -349,7 +359,7 @@ case 1255://teleport player to Gnomeregan
 		player->TeleportTo(0, -5162.62f,667.81f,248.05f,1.48f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 20!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 20!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -361,7 +371,7 @@ case 1256://teleport player to Razorfen Downs
 		player->TeleportTo(1, -4645.08f,-2470.85f,85.53f,4.39f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 25!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 25!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -373,7 +383,7 @@ case 1257://teleport player to the Scarlet Monastery
 		player->TeleportTo(0, 2843.89f,-693.74f,139.32f,5.11f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 25!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 25!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -385,7 +395,7 @@ case 1258://teleport player to Uldaman
 		player->TeleportTo(0, -6119.70f,-2957.30f,204.11f,0.03f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 35!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 35!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -397,7 +407,7 @@ case 1259://teleport player to Zul'Farrak
 		player->TeleportTo(1, -6839.39f,-2911.03f,8.87f,0.41f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 35!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 35!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -410,7 +420,7 @@ case 1260://teleport player to Maraudon
 		player->TeleportTo(1, -1433.33f,2955.34f,96.21f,4.82f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 40!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 40!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -422,7 +432,7 @@ case 1261://teleport player to the Sunken Temple
 		player->TeleportTo(0, -10346.92f,-3851.90f,-43.41f,6.09f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 45!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 45!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -434,7 +444,7 @@ case 1262://teleport player to Blackrock Depths
 		player->TeleportTo(0, -7301.03f,-913.19f,165.37f,0.08f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 45!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 45!", LANG_UNIVERSAL);
 	}
 break;
 	
@@ -446,7 +456,7 @@ case 1263://teleport player to Dire Maul
 		player->TeleportTo(1, -3982.47f,1127.79f,161.02f,0.05f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -458,7 +468,7 @@ case 1264://teleport player to Blackrock Spire
 		player->TeleportTo(0, -7535.43f,-1212.04f,285.45f,5.29f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -470,7 +480,7 @@ case 1265://teleport player to Stratholme
 		player->TeleportTo(0, 3263.54f,-3379.46f,143.59f,0.00f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -482,7 +492,7 @@ case 1266://teleport player to Scholomance
 		player->TeleportTo(0, 1219.01f,-2604.66f,85.61f,0.50f);
 	} else {
 		player->CLOSE_GOSSIP_MENU();
-		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL, NULL);
+		_Creature->MonsterSay("You must be at least level 50!", LANG_UNIVERSAL);
 	}
 break;
 
@@ -494,7 +504,7 @@ if( player->getLevel() >= 58)
         player->TeleportTo(530, -1850.209961f, 5435.821777f, -10.961435f, 3.403913f);
  } else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 58!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 58!", LANG_UNIVERSAL);
     }
 break;
 
@@ -506,7 +516,7 @@ case 1288://teleport player to Isle Of Quel'Danas
         player->TeleportTo(530, 12947.4f,-6893.31f,5.68398f,3.09154f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 65!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 65!", LANG_UNIVERSAL);
     }
 break;
 
@@ -519,7 +529,7 @@ case 4007:// Karazhan
 
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
     
 break;
@@ -533,7 +543,7 @@ case 4008:// Gruul's Lair
         
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 65!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 65!", LANG_UNIVERSAL);
     }
 break;
 
@@ -555,7 +565,7 @@ case 4011:// Tempest Keep
         player->TeleportTo(530, 3089.579346f, 1399.046509f, 187.653458f, 4.794070f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
 break;
 
@@ -567,7 +577,7 @@ case 4012:// Caverns of Time
         player->TeleportTo(1, -8173.66f, -4746.36f, 33.8423f, 4.93989f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 66!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 66!", LANG_UNIVERSAL);
     }
 break;
 
@@ -579,7 +589,7 @@ case 4016:// Zul'Aman
         player->TeleportTo(530, 6846.95f, -7954.5f, 170.028f, 4.61501f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
 break;
 
@@ -591,7 +601,7 @@ case 4013:// Black Temple
         player->TeleportTo(530, -3610.719482f, 324.987579f, 37.400028f, 3.282981f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
 break;
 
@@ -603,7 +613,7 @@ case 4017:// magistrate
         player->TeleportTo(530, 12884.6f, -7317.69f, 65.5023f, 4.799f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
 break;
 
@@ -615,7 +625,7 @@ case 4018:// sunwell
         player->TeleportTo(530, 12574.1f, -6774.81f, 15.0904f, 3.13788f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 70!", LANG_UNIVERSAL);
     }
 break;
 
@@ -627,7 +637,7 @@ case 4019:// Utgarde Keep
         player->TeleportTo(571, 1219.720f, -4865.28f, 41.25f, 0.31f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -639,7 +649,7 @@ case 4020:// The Nexus
         player->TeleportTo(571, 3776.950f, 6953.80f, 105.05f, 0.345f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -651,7 +661,7 @@ case 4021:// Azjol-Nerub
         player->TeleportTo(571, 3675.430f, 2169.00f, 35.90f, 2.29f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -663,7 +673,7 @@ case 4022:// Ahn'kahet: The Old Kingdom
         player->TeleportTo(571, 3646.760f, 2045.17f, 1.79f, 4.37f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -675,7 +685,7 @@ case 4023:// Drak'Tharon Keep
         player->TeleportTo(571, 4450.860f, -2045.25f, 162.83f, 0.00f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -687,7 +697,7 @@ case 4024:// The Violet Hold
         player->TeleportTo(571, 5679.820f, 486.80f, 652.40f, 4.08f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -699,7 +709,7 @@ case 4025:// Gun' Drak
         player->TeleportTo(571, 6937.540f, -4455.98f, 450.68f, 1.00f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -711,7 +721,7 @@ case 4026:// Utgarde Pinnacle
         player->TeleportTo(571, 1245.690f, -4856.59f, 216.86f, 3.45f);
 	} else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -723,7 +733,7 @@ case 4027:// Ulduar
         player->TeleportTo(571, 8976.240f, -1281.33f, 1059.01f, 0.58f);
         } else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -735,7 +745,7 @@ case 4028:// The Obsidian Sanctum
         player->TeleportTo(571, 3625.780f, 280.40f, -120.14f, 3.25f);
         } else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 
@@ -747,7 +757,7 @@ case 4029:// Naxxramas
         player->TeleportTo(571, 3668.719f, -1262.460f, 243.63f, 5.03f);
         } else {
         player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL, NULL);
+        _Creature->MonsterSay("You must be at least level 80!", LANG_UNIVERSAL);
     }
 break;
 

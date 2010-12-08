@@ -40,6 +40,8 @@ base/BSW_instance.cpp \
 base/BSW_instance.h \
 base/BSW_ai.cpp \
 base/BSW_ai.h \
+base/pet_ai.cpp \
+base/pet_ai.h \
 include/precompiled.cpp \
 include/precompiled.h \
 include/sc_creature.cpp \
@@ -203,7 +205,11 @@ scripts/eastern_kingdoms/sunken_temple/instance_sunken_temple.cpp \
 scripts/eastern_kingdoms/sunken_temple/sunken_temple.h \
 scripts/eastern_kingdoms/sunken_temple/sunken_temple.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/boss_brutallus.cpp \
+scripts/eastern_kingdoms/sunwell_plateau/boss_eredar_twins.cpp \
+scripts/eastern_kingdoms/sunwell_plateau/boss_felmyst.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/boss_kalecgos.cpp \
+scripts/eastern_kingdoms/sunwell_plateau/boss_kiljaeden.cpp \
+scripts/eastern_kingdoms/sunwell_plateau/boss_muru.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/instance_sunwell_plateau.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/sunwell_plateau.h \
 scripts/eastern_kingdoms/uldaman/boss_archaedas.cpp \

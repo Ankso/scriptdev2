@@ -99,7 +99,7 @@ UPDATE `gameobject` SET `state` = '0' WHERE `id` IN (201372);
 UPDATE `creature_template` SET `ScriptName`='mob_icc_gas_cloud', `AIName`='' WHERE `entry`= 37562;
 UPDATE `creature_template` SET `ScriptName`='mob_icc_volatile_ooze', `AIName`='' WHERE `entry`= 37697;
 UPDATE `creature_template` SET `ScriptName`='mob_choking_gas_bomb', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14, `scale` = 0.5 WHERE `entry`= 38159;
-UPDATE `creature_template` SET `ScriptName`='mob_ooze_puddle', `AIName`='', `minlevel` = 82, `maxlevel` = 82, `modelid_1` = 11686, `modelid_2` = 11686, `modelid_3` = 11686, `modelid_4` = 11686, `faction_A` = 14, `faction_H` = 14  WHERE `entry`= 37690;
+UPDATE `creature_template` SET `ScriptName`='mob_ooze_puddle',`scale` = '1.0', `AIName`='', `minlevel` = 82, `maxlevel` = 82, `modelid_1` = 11686, `modelid_2` = 11686, `modelid_3` = 11686, `modelid_4` = 11686, `faction_A` = 14, `faction_H` = 14  WHERE `entry`= 37690;
 UPDATE `gameobject_template` SET `faction` = '0', `ScriptName` = 'go_plague_sigil' WHERE `gameobject_template`.`entry` IN (202182);
 
 -- Blood wing
@@ -124,10 +124,10 @@ UPDATE `creature_template` SET `ScriptName`='mob_kinetic_bomb_target', `AIName`=
 -- Keleseth
 UPDATE `creature_template` SET `ScriptName`='boss_keleseth_icc', `AIName`='' WHERE `entry`= 37972;
 UPDATE `creature_template` SET `ScriptName`='mob_dark_nucleus', `AIName`='',`minlevel` = 82, `maxlevel` = 82, `faction_A` = 14, `faction_H` = 14 WHERE `entry`= 38369;
-REPLACE INTO `creature_template_addon` (`entry`, `mount`, `bytes1`, `bytes2`, `emote`, `moveflags`, `auras`) VALUES
-(37970, 0, 0, 0, 0, 0, '71598 0 71598 1'),
-(37972, 0, 0, 0, 0, 0, '71598 0 71598 1'),
-(37973, 0, 0, 0, 0, 0, '71598 0 71598 1');
+REPLACE INTO `creature_template_addon` (`entry`, `mount`, `bytes1`, `emote`, `moveflags`, `auras`) VALUES
+(37970, 0, 0, 0, 0, '71598 0 71598 1'),
+(37972, 0, 0, 0, 0, '71598 0 71598 1'),
+(37973, 0, 0, 0, 0, '71598 0 71598 1');
 
 
 UPDATE `gameobject_template` SET `faction` = '114',`data0` = '0' WHERE `gameobject_template`.`entry` IN (201920,201377,201378);
@@ -163,6 +163,10 @@ UPDATE `creature_template` SET `ScriptName`='mob_ice_tomb', `AIName`='' WHERE `e
 UPDATE `creature_template` SET `ScriptName`='mob_frost_bomb', `AIName`='' WHERE `entry`= 37186;
 UPDATE `gameobject_template` SET `faction` = '114',`data0` = '0' WHERE `gameobject_template`.`entry` IN (201369,201379);
 UPDATE `gameobject` SET `state` = '1' WHERE `id` IN (201369,201379);
+-- frost bomb target from Lordronn
+DELETE FROM `creature_template_addon` WHERE `entry` = 37186;
+INSERT INTO `creature_template_addon` (`entry`, `auras`) VALUES (37186, '70022 0');
+
 
 -- Lich King
 UPDATE `creature_template` SET `ScriptName`='boss_the_lich_king_icc', `AIName`='' WHERE `entry`= 36597;
