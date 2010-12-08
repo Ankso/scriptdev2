@@ -2237,6 +2237,8 @@ CreatureAI* GetAI_npc_death_knight_gargoyle(Creature* pCreature)
 ######*/
 
 #define OUT_OF_COMBAT_TIME 5000
+#define STUN_DURATION      55000
+#define SPELL_STUN_4EVER   36887
 
 struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
 {
@@ -2246,10 +2248,12 @@ struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
     }
 
     uint32 combat_timer;
+    uint32 stun_timer;
 
     void Reset()
     {
-        //m_creature->addUnitState(UNIT_STAT_STUNNED);
+        m_creature->CastSpell(m_creature, SPELL_STUN_4EVER, true);
+        stun_timer = 0;
         combat_timer = 0;
     }
 
@@ -2261,16 +2265,22 @@ struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
     void UpdateAI(const uint32 diff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-        return;
+            return;
       
-        if (m_creature->GetHealthPercent() < 10.0f) // allow players using finishers
-        m_creature->ModifyHealth(m_creature->GetMaxHealth());
+        if (m_creature->GetHealthPercent() < 1.0f) // allow players using finishers
+            m_creature->ModifyHealth(m_creature->GetMaxHealth());
 
-        m_creature->SetTargetGuid(0); // prevent from rotating
         combat_timer += diff;
+        if (stun_timer >= STUN_DURATION)
+        {
+            m_creature->CastSpell(m_creature, SPELL_STUN_4EVER, true);
+            stun_timer = 0;
+        }
+        else
+            stun_timer += diff;
 
         if (combat_timer > OUT_OF_COMBAT_TIME)
-        EnterEvadeMode();
+            EnterEvadeMode();
     }
 };
 

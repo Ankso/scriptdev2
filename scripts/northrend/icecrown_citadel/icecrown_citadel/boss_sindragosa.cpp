@@ -181,7 +181,8 @@ struct MANGOS_DLL_DECL boss_sindragosaAI : public BSWScriptedAI
                     float fPosX, fPosY, fPosZ;
                     m_creature->GetPosition(fPosX, fPosY, fPosZ);
                     m_creature->GetRandomPoint(fPosX, fPosY, fPosZ, 1.0f, fPosX, fPosY, fPosZ);
-                    player->NearTeleportTo(fPosX, fPosY, fPosZ+1.0f, (float)(urand(0,6)), true);
+                    player->SendMonsterMoveJump(fPosX, fPosY, fPosZ, 1.0, SPLINEFLAG_TRAJECTORY, 3);
+                    //player->NearTeleportTo(fPosX, fPosY, fPosZ+1.0f, (float)(urand(0,6)), true);
                 }
         doCast(SPELL_BLISTERING_COLD);
     }
