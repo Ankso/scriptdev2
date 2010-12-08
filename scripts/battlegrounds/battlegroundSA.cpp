@@ -383,7 +383,7 @@ bool GOHello_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
  						return true;
  					}
  				}
- 			} else pPlayer->MonsterSay("No puedo usar eso!",LANG_UNIVERSAL,pPlayer->GetGUID());
+ 			} else pPlayer->MonsterSay("No puedo usar eso!",LANG_UNIVERSAL, pPlayer);
  		}
  	}
  	return false;
