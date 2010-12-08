@@ -44,16 +44,6 @@ void SendDefaultMenu_mob_teleguy(Player *player, Creature *_Creature, uint32 act
         return;
     }
 
-    money = player->GetMoney();
-    costo = 500;
-
-    if (money < costo ) 
-    {
-        player->CLOSE_GOSSIP_MENU();
-        _Creature->MonsterSay("You haven't enough money", LANG_UNIVERSAL);
-        return;
-    }
-
     switch(action)
     {	
 		case 1200: //Alliance Zones
