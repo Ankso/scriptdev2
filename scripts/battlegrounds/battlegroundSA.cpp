@@ -25,8 +25,6 @@ struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
  			m_creature->CastSpell(m_creature, 34602, true);
  			m_creature->CastSpell(m_creature, 71495, true);
  			m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
-            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
-            m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
  			m_creature->ForcedDespawn();
  		} else event_bomb -= diff;
  	}
@@ -36,9 +34,7 @@ CreatureAI* GetAI_npc_sa_bomb(Creature* pCreature)
 {
     return new npc_sa_bombAI (pCreature);
 }
- 
-#define SA_DESPAWN_T 30000
- 
+
 struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
 {
     npc_sa_demolisherAI(Creature* pCreature) : ScriptedAI(pCreature)
