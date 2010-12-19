@@ -2253,7 +2253,7 @@ struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
     void Reset()
     {
         m_creature->CastSpell(m_creature, SPELL_STUN_4EVER, true);
-        stun_timer = 0;
+        stun_timer = STUN_DURATION;
         combat_timer = 0;
     }
 
@@ -2271,13 +2271,13 @@ struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
             m_creature->ModifyHealth(m_creature->GetMaxHealth());
 
         combat_timer += diff;
-        if (stun_timer >= STUN_DURATION)
+        if (stun_timer <= diff)
         {
             m_creature->CastSpell(m_creature, SPELL_STUN_4EVER, true);
             stun_timer = 0;
         }
         else
-            stun_timer += diff;
+            stun_timer -= diff;
 
         if (combat_timer > OUT_OF_COMBAT_TIME)
             EnterEvadeMode();
