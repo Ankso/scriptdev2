@@ -2238,7 +2238,7 @@ CreatureAI* GetAI_npc_death_knight_gargoyle(Creature* pCreature)
 
 #define OUT_OF_COMBAT_TIME 5000
 #define STUN_DURATION      55000
-#define SPELL_STUN_4EVER   36887
+#define SPELL_STUN_4EVER   36877
 
 struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
 {
