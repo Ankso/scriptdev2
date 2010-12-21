@@ -488,8 +488,6 @@ struct MANGOS_DLL_DECL mob_icc_gas_cloudAI : public BSWScriptedAI
 
         if (!pTarget)
             Aggro(m_creature->getVictim());
-        else
-            DoStartMovement(pTarget);
 
         if (timedQuery(SPELL_SOUL_FEAST, uiDiff))
         {
@@ -578,8 +576,6 @@ struct MANGOS_DLL_DECL mob_icc_volatile_oozeAI : public BSWScriptedAI
 
         if (!pTarget)
             Aggro(m_creature->getVictim());
-        else
-            DoStartMovement(pTarget);
 
         if (timedQuery(SPELL_SOUL_FEAST, uiDiff))
         {
