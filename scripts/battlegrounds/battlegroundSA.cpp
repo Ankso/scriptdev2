@@ -1,12 +1,31 @@
-﻿
+﻿/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+/* ScriptData
+SDName: battlegroundSA
+SD%Complete: 80%
+SDComment: completely rewriten by Ankso
+SDCategory: Battleground Strand of the Ancients - vehicles and Seaforium charges handling.
+EndScriptData */
+
 #include "precompiled.h"
 #include "BattleGroundSA.h"
 #include "Vehicle.h"
  
 #define Spell_Boom        52408
-#define FACTION_ALLIANCE  3
-#define FACTION_HORDE     6
-#define FACTION_NEUTRAL   35
 
 struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
 {
@@ -24,7 +43,7 @@ struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
  			m_creature->GetPosition(fx, fy, fz);
  			m_creature->CastSpell(m_creature, 34602, true);
  			m_creature->CastSpell(m_creature, 71495, true);
- 			m_creature->CastSpell(fx,fy,fz,Spell_Boom,true,0,0,m_creature->GetCharmerGuid());
+ 			m_creature->CastSpell(fx, fy, fz, Spell_Boom, true, 0, 0, m_creature->GetCharmerGuid());
  			m_creature->ForcedDespawn();
  		} else event_bomb -= diff;
  	}
@@ -57,38 +76,23 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
     {
         if (BattleGround *bg = pPlayer->GetBattleGround())
         {
-            if (bg->GetController() == pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
+            if (((BattleGroundSA*)bg)->GetController() == pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
                 return;
 
             if (VehicleKit *vehicle = m_creature->GetVehicleKit())
-            {
                 pPlayer->EnterVehicle(vehicle);
-                m_creature->setFaction(pPlayer->getFaction());
-            }
         }
     }
 
     bool mustDespawn(BattleGround *bg)
     {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN && bg->GetController() == ALLIANCE)
+        if (bg->GetStatus() == STATUS_WAIT_JOIN && ((BattleGroundSA*)bg)->GetController() == ALLIANCE)
         {
             float x = m_creature->GetPositionX();
             if (x < 1400.0f)
                 return true;
         }
         return false;
-    }
-
-    uint32 GetCorrectFactionSA(BattleGround *bg)
-    {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN)
-            return FACTION_NEUTRAL;
-        else if (bg->GetController() == HORDE)
-            return FACTION_ALLIANCE;
-        else if (bg->GetController() == ALLIANCE)
-            return FACTION_HORDE;
-
-        return FACTION_NEUTRAL;
     }
  
     void UpdateAI(const uint32 diff)
@@ -119,7 +123,7 @@ struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
 
             if (bg)
             {
-                m_creature->setFaction(GetCorrectFactionSA(bg));
+                m_creature->setFaction(bg->GetVehicleFaction(VEHICLE_SA_DEMOLISHER));
                 if (mustDespawn(bg))
                     m_creature->ForcedDespawn();
             }
@@ -165,27 +169,15 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
                 return;
 
             if (VehicleKit *vehicle = m_creature->GetVehicleKit())
-            {
                 pPlayer->EnterVehicle(vehicle);
-                m_creature->setFaction(pPlayer->getFaction());
-            }
         }
-    }
- 
-    uint32 GetCorrectFactionSA(BattleGround *bg)
-    {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN)
-            return FACTION_NEUTRAL;
-        else if (bg->GetController() == HORDE)
-            return FACTION_HORDE;
-        else if (bg->GetController() == ALLIANCE)
-            return FACTION_ALLIANCE;
-
-        return FACTION_NEUTRAL;
     }
  
     void UpdateAI(const uint32 diff)
     {
+        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
+            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
         if (!m_creature->isCharmed())
         {
             if (m_creature->isInCombat())
@@ -211,7 +203,7 @@ struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
             }
 
             if (bg)
-                m_creature->setFaction(GetCorrectFactionSA(bg));
+                m_creature->setFaction(bg->GetVehicleFaction(VEHICLE_SA_CANNON));
         }
     }
 };
@@ -259,7 +251,7 @@ struct MANGOS_DLL_DECL npc_sa_vendorAI : public ScriptedAI
     npc_sa_vendorAI(Creature* pCreature) : ScriptedAI(pCreature){Reset();}
     uint32 build_time;
  	uint8 gydId;
-    void Reset(){build=false;}
+    void Reset(){ build=false; }
  	void StartEvent(Player* pPlayer, uint8 gyd)
     {
  		build_time = 60000;
@@ -297,19 +289,15 @@ CreatureAI* GetAI_npc_sa_vendor(Creature* pCreature)
 bool GossipHello_npc_sa_vendor(Player* pPlayer, Creature* pCreature)
 {
  	uint8 gyd = NULL;
- 	if (pCreature->GetEntry() == 29260) 
- 	{	
+ 	if (pCreature->GetEntry() == 29260) 	
         gyd = 0;	
-    }
  	if (pCreature->GetEntry() == 29262) 
- 	{	
         gyd = 1;
-    }
     if (!build)
     {
  	    if (pPlayer->GetMapId() == 607)
             if (BattleGround *bg = pPlayer->GetBattleGround())
-                if (bg->GetController() != pPlayer->GetTeam())
+                if (((BattleGroundSA*)bg)->GetController() != pPlayer->GetTeam() && ((BattleGroundSA*)bg)->GetGydController(gyd) == pPlayer->GetTeam())
  		            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
  	    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
     }
@@ -326,12 +314,15 @@ bool GossipSelect_npc_sa_vendor(Player* pPlayer, Creature* pCreature, uint32 uiS
     if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
     {
         uint8 gyd = NULL;
- 		if (pCreature->GetEntry() == 29260) {	gyd = 0;	}
- 		if (pCreature->GetEntry() == 29262) {	gyd = 1;	}
+ 		if (pCreature->GetEntry() == 29260)
+            gyd = 0;
+ 		if (pCreature->GetEntry() == 29262)
+            gyd = 1;
          pPlayer->CLOSE_GOSSIP_MENU();
- 		((npc_sa_vendorAI*)pCreature->AI())->StartEvent(pPlayer,gyd);
+ 		((npc_sa_vendorAI*)pCreature->AI())->StartEvent(pPlayer, gyd);
      }
-     if (uiAction == GOSSIP_ACTION_INFO_DEF+2) {	pPlayer->CLOSE_GOSSIP_MENU(); }
+     if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
+         pPlayer->CLOSE_GOSSIP_MENU();
      return true;
 }
  
