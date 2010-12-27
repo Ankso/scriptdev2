@@ -339,7 +339,6 @@ struct MANGOS_DLL_DECL mob_ice_tombAI : public BSWScriptedAI
 
     void Reset()
     {
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         SetCombatMovement(false);
         victimGUID = 0;
         m_creature->SetRespawnDelay(7*DAY);
@@ -361,7 +360,6 @@ struct MANGOS_DLL_DECL mob_ice_tombAI : public BSWScriptedAI
              }
 
         }
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
     }
 
     void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
