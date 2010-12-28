@@ -473,10 +473,7 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                         summon_timer = urand(60000, 75000);
                     }
                     else
-                    {
-                        //DEBUG_LOG("Summon timer: %u, diff: %u", summon_timer, diff);
                         summon_timer -= diff;
-                    }
 
                     timedCast(SPELL_NECROTIC_PLAGUE, diff);
 

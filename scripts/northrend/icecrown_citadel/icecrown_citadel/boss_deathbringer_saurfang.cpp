@@ -72,6 +72,7 @@ struct MANGOS_DLL_DECL boss_deathbringer_saurfangAI : public BSWScriptedAI
     ScriptedInstance *pInstance;
     uint8 beasts;
     int32 oldPower;
+    uint32 enrage_timer;
 
     void Reset()
     {
@@ -86,6 +87,7 @@ struct MANGOS_DLL_DECL boss_deathbringer_saurfangAI : public BSWScriptedAI
         m_creature->SetPower(m_creature->getPowerType(), 0);
         doCast(SPELL_ZERO_REGEN);
         oldPower = 0;
+        enrage_timer = 480000;
     }
 
     void MoveInLineOfSight(Unit* pWho)
@@ -233,11 +235,16 @@ struct MANGOS_DLL_DECL boss_deathbringer_saurfangAI : public BSWScriptedAI
                 };
             };
 
-        if (timedQuery(SPELL_BERSERK, diff))
+        if (enrage_timer <= diff)
+            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
+        else
+            enrage_timer -= diff;
+
+        /*if (timedQuery(SPELL_BERSERK, diff))
         {
             doCast(SPELL_BERSERK);
             DoScriptText(-1631108,m_creature);
-        };
+        };*/
 
         DoMeleeAttackIfReady();
     }

@@ -54,6 +54,7 @@ struct MANGOS_DLL_DECL boss_lord_marrowgarAI : public BSWScriptedAI
 
     ScriptedInstance *pInstance;
     bool intro;
+    uint32 enrage_timer;
 
     void Reset()
     {
@@ -62,6 +63,7 @@ struct MANGOS_DLL_DECL boss_lord_marrowgarAI : public BSWScriptedAI
         resetTimers();
         m_creature->SetSpeedRate(MOVE_RUN, 1);
         m_creature->SetSpeedRate(MOVE_WALK, 1);
+        enrage_timer = 600000;
 //        m_creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
     }
 
@@ -213,11 +215,16 @@ struct MANGOS_DLL_DECL boss_lord_marrowgarAI : public BSWScriptedAI
                     break;
             }
 
-        if (timedQuery(SPELL_BERSERK, diff))
+        if (enrage_timer <= diff)
+            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
+        else
+            enrage_timer -= diff;
+
+        /*if (timedQuery(SPELL_BERSERK, diff))
             {
                 doCast(SPELL_BERSERK);
                 DoScriptText(-1631008,m_creature);
-            }
+            }*/
 
 
     }

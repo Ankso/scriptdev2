@@ -87,6 +87,7 @@ struct MANGOS_DLL_DECL boss_lady_deathwhisperAI : public BSWScriptedAI
     uint8 stage;
     bool MovementStarted;
     bool intro;
+    uint32 enrage_timer;
 
     void Reset()
     {
@@ -96,6 +97,7 @@ struct MANGOS_DLL_DECL boss_lady_deathwhisperAI : public BSWScriptedAI
         MovementStarted = false;
         intro = false;
         resetTimers();
+        enrage_timer = 600000;
     }
 
     void MoveInLineOfSight(Unit* pWho) 
@@ -359,11 +361,16 @@ struct MANGOS_DLL_DECL boss_lady_deathwhisperAI : public BSWScriptedAI
                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
                }
 
-         if (timedQuery(SPELL_BERSERK, diff))
+        if (enrage_timer <= diff)
+            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
+        else
+            enrage_timer -= diff;
+
+         /*if (timedQuery(SPELL_BERSERK, diff))
                 {
                 doCast(SPELL_BERSERK);
                 DoScriptText(-1631031,m_creature);
-                };
+                };*/
 
          DoMeleeAttackIfReady();
     }

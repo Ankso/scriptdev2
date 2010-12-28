@@ -76,6 +76,7 @@ struct MANGOS_DLL_DECL boss_festergutAI : public BSWScriptedAI
     bool intro;
     bool pet;
     uint64 blightTargetGUID;
+    uint32 enrage_timer;
 //    uint64 pPuddleStalkerGUID[3];
 
     void Reset()
@@ -111,6 +112,7 @@ struct MANGOS_DLL_DECL boss_festergutAI : public BSWScriptedAI
              doCast(SPELL_BLIGHT_VISUAL_2,pBlightTarget);
              doCast(SPELL_BLIGHT_VISUAL_3,pBlightTarget);
         }
+        enrage_timer = 300000;
 
     }
 
@@ -357,11 +359,16 @@ struct MANGOS_DLL_DECL boss_festergutAI : public BSWScriptedAI
                        DoScriptText(-1631213,m_creature);
         };
 
-        if (timedQuery(SPELL_BERSERK, diff))
+        if (enrage_timer <= diff)
+            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
+        else
+            enrage_timer -= diff;
+
+        /*if (timedQuery(SPELL_BERSERK, diff))
         {
             doCast(SPELL_BERSERK);
             DoScriptText(-1631207,m_creature);
-        };
+        };*/
 
         DoMeleeAttackIfReady();
     }

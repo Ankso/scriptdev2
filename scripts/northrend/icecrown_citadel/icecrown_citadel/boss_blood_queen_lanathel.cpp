@@ -73,6 +73,7 @@ struct MANGOS_DLL_DECL boss_blood_queen_lanathelAI : public BSWScriptedAI
     Unit* Darkfallen[5];
     uint8 darkfallened;
     uint32 MirrorDamage;
+    uint32 enrage_timer;
 
     void Reset()
     {
@@ -91,6 +92,7 @@ struct MANGOS_DLL_DECL boss_blood_queen_lanathelAI : public BSWScriptedAI
         MirrorDamage = 0;
         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 0);
         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
+        enrage_timer = 360000;
     }
 
     void JustReachedHome()
@@ -153,8 +155,27 @@ struct MANGOS_DLL_DECL boss_blood_queen_lanathelAI : public BSWScriptedAI
         DoScriptText(-1631333,m_creature,killer);
         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 0);
         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
-        doRemoveFromAll(SPELL_ESSENCE_OF_BLOOD_QWEEN);
-        doRemoveFromAll(SPELL_PACT_OF_DARKFALLEN);
+        // doRemoveFromAll(SPELL_ESSENCE_OF_BLOOD_QWEEN);
+        // doRemoveFromAll(SPELL_PACT_OF_DARKFALLEN);
+        Map* pMap = m_creature->GetMap();
+        Map::PlayerList const& pPlayers = pMap->GetPlayers();
+        if (!pPlayers.isEmpty())
+        {
+            for (Map::PlayerList::const_iterator itr = pPlayers.begin(); itr != pPlayers.end(); ++itr)
+            {
+                Unit* pTarget = itr->getSource();
+                if (pTarget && pTarget->IsInWorld())
+                {
+                    pTarget->RemoveAurasDueToSpell(SPELL_ESSENCE_OF_BLOOD_QWEEN);
+                    pTarget->RemoveAurasDueToSpell(SPELL_PACT_OF_DARKFALLEN);
+                    if (Pet* pPet = pTarget->GetPet())
+                    {
+                        pPet->RemoveAurasDueToSpell(SPELL_ESSENCE_OF_BLOOD_QWEEN);
+                        pPet->RemoveAurasDueToSpell(SPELL_PACT_OF_DARKFALLEN);
+                    }
+                }
+            }
+        }
     }
 
     void doPactOfDarkfallen(bool command)
@@ -364,11 +385,16 @@ struct MANGOS_DLL_DECL boss_blood_queen_lanathelAI : public BSWScriptedAI
             --bloodbolts;
         };
 
-        if (timedQuery(SPELL_BERSERK, diff))
+        if (enrage_timer <= diff)
+            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
+        else
+            enrage_timer -= diff;
+
+        /*if (timedQuery(SPELL_BERSERK, diff))
         {
              doCast(SPELL_BERSERK);
              DoScriptText(-1631332,m_creature);
-        };
+        };*/
 
     }
 };
