@@ -297,7 +297,7 @@ bool GossipHello_npc_sa_vendor(Player* pPlayer, Creature* pCreature)
     {
  	    if (pPlayer->GetMapId() == 607)
             if (BattleGround *bg = pPlayer->GetBattleGround())
-                if (((BattleGroundSA*)bg)->GetController() != pPlayer->GetTeam() && ((BattleGroundSA*)bg)->GetGydController(gyd) == pPlayer->GetTeam())
+                if (bg->GetController() != pPlayer->GetTeam())
  		            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
  	    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_START_EVENT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
     }
