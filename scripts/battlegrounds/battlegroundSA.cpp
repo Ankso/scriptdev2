@@ -352,7 +352,7 @@ static float TeleLocation[7][3]=
     {808.447f, -109.192f, 109.835f},
 };
  
-bool GOHello_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
 {
  	if (pPlayer->GetMapId() == 607)
  	{
@@ -406,6 +406,6 @@ void AddSC_battlegroundSA()
  
     newscript = new Script;
     newscript->Name = "go_sa_def_portal";
-    newscript->pGOHello = &GOHello_go_wintergrasp_def_portal;
+    newscript->pGOUse = &GOUse_go_wintergrasp_def_portal;
     newscript->RegisterSelf();
 }
