@@ -1798,8 +1798,6 @@ enum MirrorImageSpells
     SPELL_FROSTBOLT       = 59638,
     SPELL_FROSTSHIELD     = 43008,
     SPELL_FIRESHIELD      = 43046,
-    SPELL_ICEBLOCK        = 65802,
-    SPELL_ICERING         = 42917,
 };
 
 struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
@@ -1807,7 +1805,6 @@ struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
     npc_mirror_imageAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
     uint32 m_uiFrostboltTimer;
-    uint32 m_uiFrostringTimer;
     uint32 m_uiFireblastTimer;
     bool inCombat;
     Unit *owner;
@@ -1832,8 +1829,7 @@ struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID+2, owner->GetUInt32Value(PLAYER_VISIBLE_ITEM_18_ENTRYID));
         m_creature->SetSpeedRate(MOVE_RUN, owner->GetSpeedRate(MOVE_RUN), true);
 
-        m_uiFrostboltTimer = urand(0,3000);
-        m_uiFrostringTimer = urand(2000,6000);
+        m_uiFrostboltTimer = 500;
         m_uiFireblastTimer = urand(0,3000);
         inCombat = false;
         blocked = false;
@@ -1932,21 +1928,9 @@ struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
 
             if (m_uiFireblastTimer <= diff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_FROSTBOLT);
+                DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIREBLAST);
                 m_uiFireblastTimer = urand(4000,8000);
             } else m_uiFireblastTimer -= diff;
-
-            if (m_uiFrostringTimer <= diff && m_creature->IsWithinDistInMap(m_creature->getVictim(),5.0f))
-            {
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_ICERING);
-                m_uiFrostringTimer = urand(4000,8000);
-            } else m_uiFrostringTimer -= diff;
-
-            if (!blocked && m_creature->GetHealthPercent() < 10.0f)
-            {
-                DoCastSpellIfCan(m_creature,SPELL_ICEBLOCK);
-                blocked = true;
-            }
         }
         else
             if (!movement) 
