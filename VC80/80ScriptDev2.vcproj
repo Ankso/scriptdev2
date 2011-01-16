@@ -1656,6 +1656,10 @@
 						>
 					</File>
 					<File
+						RelativePath="..\scripts\kalimdor\wailing_caverns\wailing_caverns.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\scripts\kalimdor\wailing_caverns\wailing_caverns.h"
 						>
 					</File>
@@ -2524,7 +2528,7 @@
 							>
 						</File>
 						<File
-							RelativePath="..\scripts\outland\auchindoun\sethekk_halls\boss_tailonking_ikiss.cpp"
+							RelativePath="..\scripts\outland\auchindoun\sethekk_halls\boss_talon_king_ikiss.cpp"
 							>
 						</File>
 						<File
