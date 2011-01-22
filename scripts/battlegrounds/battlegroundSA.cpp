@@ -225,16 +225,6 @@ void AddSC_battlegroundSA()
     newscript->RegisterSelf();
  
     newscript = new Script;
-    newscript->Name = "npc_sa_demolisher";
-    newscript->pGossipHello = &GossipHello_npc_sa_demolisher;
-    newscript->RegisterSelf();
- 
-    newscript = new Script;
-    newscript->Name = "npc_sa_cannon";
-    newscript->pGossipHello = &GossipHello_npc_sa_cannon;
-    newscript->RegisterSelf();
- 
-    newscript = new Script;
     newscript->Name = "npc_sa_vendor";
     newscript->GetAI = &GetAI_npc_sa_vendor;
     newscript->pGossipHello = &GossipHello_npc_sa_vendor;
