@@ -53,172 +53,6 @@ CreatureAI* GetAI_npc_sa_bomb(Creature* pCreature)
 {
     return new npc_sa_bombAI (pCreature);
 }
-
-struct MANGOS_DLL_DECL npc_sa_demolisherAI : public ScriptedAI
-{
-    npc_sa_demolisherAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        SetCombatMovement(false);
-        Reset();
-    }
-
- 	void Reset() 
-    {
-        done = false;
-    }
-
-    bool done;
-    BattleGround *bg;
-
-    void Aggro(Unit* who){ m_creature->CombatStop(); }
-
- 	void StartEvent(Player* pPlayer)
-    {
-        if (BattleGround *bg = pPlayer->GetBattleGround())
-        {
-            if (((BattleGroundSA*)bg)->GetController() == pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
-                return;
-
-            if (VehicleKit *vehicle = m_creature->GetVehicleKit())
-                pPlayer->EnterVehicle(vehicle);
-        }
-    }
-
-    bool mustDespawn(BattleGround *bg)
-    {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN && ((BattleGroundSA*)bg)->GetController() == ALLIANCE)
-        {
-            float x = m_creature->GetPositionX();
-            if (x < 1400.0f)
-                return true;
-        }
-        return false;
-    }
- 
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->isCharmed())
-        {
-            if (m_creature->isInCombat())
-                m_creature->CombatStop();
-
-            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
-            if (!done)  // Get the BattleGround only once
-            {
-                Map* pMap = m_creature->GetMap();
-
-                if (!pMap || !pMap->IsBattleGround())
-                    return;
-
-                Map::PlayerList const &PlayerList = pMap->GetPlayers();
-                Map::PlayerList::const_iterator itr = PlayerList.begin();
-                Player *player = itr->getSource();
-                if (player)
-                {
-                    bg = player->GetBattleGround();
-                    done = true;
-                }
-            }
-
-            if (bg)
-            {
-                m_creature->setFaction(bg->GetVehicleFaction(VEHICLE_SA_DEMOLISHER));
-                if (mustDespawn(bg))
-                    m_creature->ForcedDespawn();
-            }
-        }
-    }
-};
- 
-CreatureAI* GetAI_npc_sa_demolisher(Creature* pCreature)
-{
-    return new npc_sa_demolisherAI(pCreature);
-}
- 
-bool GossipHello_npc_sa_demolisher(Player* pPlayer, Creature* pCreature)
-{
-     pPlayer->CLOSE_GOSSIP_MENU();
-     ((npc_sa_demolisherAI*)pCreature->AI())->StartEvent(pPlayer);
-         return true;
-}
- 
-struct MANGOS_DLL_DECL npc_sa_cannonAI : public ScriptedAI
-{
-    npc_sa_cannonAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        SetCombatMovement(false);
-        Reset();
-    }
-
-    void Reset()
-    {
-        done = false;
-    }
-
-    bool done;
-    BattleGround *bg;
-
-    void Aggro(Unit* who){ m_creature->CombatStop(); }
-
-    void StartEvent(Player* pPlayer)
-    {
-        if (BattleGround *bg = pPlayer->GetBattleGround())
-        {
-            if (bg->GetController() != pPlayer->GetTeam() || bg->GetStatus() == STATUS_WAIT_JOIN)
-                return;
-
-            if (VehicleKit *vehicle = m_creature->GetVehicleKit())
-                pPlayer->EnterVehicle(vehicle);
-        }
-    }
- 
-    void UpdateAI(const uint32 diff)
-    {
-        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE))
-            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-
-        if (!m_creature->isCharmed())
-        {
-            if (m_creature->isInCombat())
-                m_creature->CombatStop();
-
-            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-
-            if (!done)  // Get the BattleGround only once
-            {
-                Map* pMap = m_creature->GetMap();
-
-                if (!pMap || !pMap->IsBattleGround())
-                    return;
-
-                Map::PlayerList const &PlayerList = pMap->GetPlayers();
-                Map::PlayerList::const_iterator itr = PlayerList.begin();
-                Player *player = itr->getSource();
-                if (player)
-                {
-                    bg = player->GetBattleGround();
-                    done = true;
-                }
-            }
-
-            if (bg)
-                m_creature->setFaction(bg->GetVehicleFaction(VEHICLE_SA_CANNON));
-        }
-    }
-};
- 
-CreatureAI* GetAI_npc_sa_cannon(Creature* pCreature)
-{
-    return new npc_sa_cannonAI(pCreature);
-}
- 
-bool GossipHello_npc_sa_cannon(Player* pPlayer, Creature* pCreature)
-{
-     pPlayer->CLOSE_GOSSIP_MENU();
-     ((npc_sa_cannonAI*)pCreature->AI())->StartEvent(pPlayer);
-         return true;
-}
  
 #define GOSSIP_START_EVENT_1		 "Comenzar a construir el Demoledor."
 #define GOSSIP_START_EVENT_2		 "No tienes nada que hacer ahora!"
@@ -248,10 +82,10 @@ bool build;
 
 struct MANGOS_DLL_DECL npc_sa_vendorAI : public ScriptedAI
 {
-    npc_sa_vendorAI(Creature* pCreature) : ScriptedAI(pCreature){Reset();}
+    npc_sa_vendorAI(Creature* pCreature) : ScriptedAI(pCreature){ Reset(); }
     uint32 build_time;
  	uint8 gydId;
-    void Reset(){ build=false; }
+    void Reset(){}
  	void StartEvent(Player* pPlayer, uint8 gyd)
     {
  		build_time = 60000;
@@ -332,11 +166,11 @@ bool GossipSelect_npc_sa_vendor(Player* pPlayer, Creature* pCreature, uint32 uiS
  
 static float SpawnLocation[7][3]=
 {
-    {1468.12f, -225.7f, 30.8969f},
-    {1394.07f, 72.3632f, 31.0541f},
-    {1216.12f, 47.7665f, 54.2785f},
-    {1255.73f, -233.153f, 56.4357f},
-    {1065.02f, -89.9522f, 81.0758f},
+    {1468.380005f, -225.798996f, 30.896200f}, //blue
+    {1394.270020f, 72.551399f, 31.054300f},   //green
+    {1216.069946f, 47.904301f, 54.278198f},   //purple
+    {1255.569946f, -233.548996f, 56.43699f},  //red
+    {1065.260010f, -89.79501f, 81.073402f},   //yellow
     {880.162f, -95.979f, 109.835f},
     {880.68f, -120.799f, 109.835f},
 };
@@ -354,23 +188,28 @@ static float TeleLocation[7][3]=
  
 bool GOUse_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
 {
- 	if (pPlayer->GetMapId() == 607)
+    float x, y, z;
+    pGo->GetPosition(x, y, z);
+ 	
+    if (pPlayer->GetMapId() == 607)
  	{
  		if (BattleGround *bg = pPlayer->GetBattleGround())
  		{
  			if (pPlayer->GetTeam() == bg->GetController())
  			{
- 				for (uint32 i=0; i<7; ++i)
+ 				for (uint8 i = 0; i < 7; ++i)
  				{
- 					if ((pGo->GetPositionX() == SpawnLocation[i][0]) && 
- 						(pGo->GetPositionY() == SpawnLocation[i][1]) &&
- 						(pGo->GetPositionZ() == SpawnLocation[i][2]))
+ 					if ((x == SpawnLocation[i][0]) && 
+ 						(y == SpawnLocation[i][1]) &&
+ 						(z == SpawnLocation[i][2]))
  					{
  						pPlayer->TeleportTo(bg->GetMapId(),TeleLocation[i][0],TeleLocation[i][1],TeleLocation[i][2],0);
  						return true;
  					}
  				}
- 			} else pPlayer->MonsterSay("No puedo usar eso!",LANG_UNIVERSAL, pPlayer);
+ 			} 
+            else 
+                pPlayer->MonsterSay("No puedo usar eso!", LANG_UNIVERSAL, pPlayer);
  		}
  	}
  	return false;
@@ -387,13 +226,11 @@ void AddSC_battlegroundSA()
  
     newscript = new Script;
     newscript->Name = "npc_sa_demolisher";
-    newscript->GetAI = &GetAI_npc_sa_demolisher;
     newscript->pGossipHello = &GossipHello_npc_sa_demolisher;
     newscript->RegisterSelf();
  
     newscript = new Script;
     newscript->Name = "npc_sa_cannon";
-    newscript->GetAI = &GetAI_npc_sa_cannon;
     newscript->pGossipHello = &GossipHello_npc_sa_cannon;
     newscript->RegisterSelf();
  
