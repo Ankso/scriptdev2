@@ -198,6 +198,9 @@ bool GOUse_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
     if (!pPlayer)
         return false;
 
+    if (pPlayer->HasAura(54643))
+        return false;
+
     if (pPlayer->GetMapId() == 607)
  	{
  		if (BattleGround *bg = pPlayer->GetBattleGround())
