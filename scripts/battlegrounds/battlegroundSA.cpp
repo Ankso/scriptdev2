@@ -25,7 +25,9 @@ EndScriptData */
 #include "BattleGroundSA.h"
 #include "Vehicle.h"
  
-#define Spell_Boom        52408
+#define SPELL_SEFORIUM_DAMAGE   52408
+#define SPELL_SEFORIUM_VISUAL_1 34602
+#define SPELL_SEFORIUM_VISUAL_2 71495
 
 struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
 {
@@ -41,9 +43,9 @@ struct MANGOS_DLL_DECL npc_sa_bombAI : public ScriptedAI
  		if (event_bomb < diff)
  		{
  			m_creature->GetPosition(fx, fy, fz);
- 			m_creature->CastSpell(m_creature, 34602, true);
- 			m_creature->CastSpell(m_creature, 71495, true);
- 			m_creature->CastSpell(fx, fy, fz, Spell_Boom, true, 0, 0, m_creature->GetCharmerGuid());
+ 			m_creature->CastSpell(m_creature, SPELL_SEFORIUM_VISUAL_1, true);
+ 			m_creature->CastSpell(m_creature, SPELL_SEFORIUM_VISUAL_2, true);
+ 			m_creature->CastSpell(fx, fy, fz, SPELL_SEFORIUM_DAMAGE, true, 0, 0, m_creature->GetCharmerGuid());
  			m_creature->ForcedDespawn();
  		} else event_bomb -= diff;
  	}
@@ -186,24 +188,30 @@ static float TeleLocation[7][3]=
     {808.447f, -109.192f, 109.835f},
 };
  
+#define SPELL_JUST_TELEPORTED 54640
+
 bool GOUse_go_wintergrasp_def_portal(Player* pPlayer, GameObject* pGo)
 {
     float x, y, z;
     pGo->GetPosition(x, y, z);
- 	
+
+    if (!pPlayer)
+        return false;
+
     if (pPlayer->GetMapId() == 607)
  	{
  		if (BattleGround *bg = pPlayer->GetBattleGround())
  		{
- 			if (pPlayer->GetTeam() == bg->GetController())
+ 			if (pPlayer->GetTeam() == ((BattleGroundSA*)bg)->GetController() || pPlayer->isGameMaster())
  			{
  				for (uint8 i = 0; i < 7; ++i)
  				{
- 					if ((x == SpawnLocation[i][0]) && 
- 						(y == SpawnLocation[i][1]) &&
- 						(z == SpawnLocation[i][2]))
+ 					if ((int32(x) == int32(SpawnLocation[i][0])) && 
+ 						(int32(y) == int32(SpawnLocation[i][1])) &&
+ 						(int32(z) == int32(SpawnLocation[i][2])))
  					{
- 						pPlayer->TeleportTo(bg->GetMapId(),TeleLocation[i][0],TeleLocation[i][1],TeleLocation[i][2],0);
+ 						pPlayer->TeleportTo(bg->GetMapId(), TeleLocation[i][0], TeleLocation[i][1], TeleLocation[i][2], 0);
+                        pPlayer->CastSpell(pPlayer, SPELL_JUST_TELEPORTED, true);
  						return true;
  					}
  				}
