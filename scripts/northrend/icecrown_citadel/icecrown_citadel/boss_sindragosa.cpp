@@ -185,6 +185,12 @@ struct MANGOS_DLL_DECL boss_sindragosaAI : public BSWScriptedAI
 
         if (type != POINT_MOTION_TYPE || !MovementStarted)
             return;
+
+        if (id == 1)
+        {
+            m_creature->GetMotionMaster()->MovementExpired();
+            MovementStarted = false;
+        }
     }
 
     void IceMark()
