@@ -31,7 +31,12 @@ enum Spells
         //yells
         //summons
         //Abilities
-        SPELL_FEAR                              = 68950
+        SPELL_FEAR                              = 68950,
+        SPELL_FORCEFUL_SMASH                    = 69155,
+        SPELL_FORCEFUL_SMASH_H                  = 69627,
+        SPELL_OVERLORDS_BRAND                   = 69172,
+        SPELL_UNHOLY_POWER                      = 69167,
+        SPELL_UNHOLY_POWER_H                    = 69629,
 };
 
 enum
@@ -50,6 +55,19 @@ enum
     EMOTE_SMASH                         = -1658060,
 };
 
+enum phases
+{
+    PHASE_STAND_BY  = 0,
+    PHASE_DIALOGUE  = 1,
+    PHASE_IN_COMBAT = 2,
+};
+
+enum timers
+{
+    TIMER_DIALOGUE = 5*IN_MILLISECONDS,
+    TIMER_SPELL_SMASH = 30*IN_MILLISECONDS,
+    TIMER_SPELL_OVERLORDS_BRAND = 30*IN_MILLISECONDS,
+};
 
 struct MANGOS_DLL_DECL boss_scourgelord_tyrannusAI : public ScriptedAI
 {
@@ -60,26 +78,105 @@ struct MANGOS_DLL_DECL boss_scourgelord_tyrannusAI : public ScriptedAI
     }
 
     ScriptedInstance *pInstance;
+    uint8 phase;
+    uint32 dialogueTimer;
+    uint32 smashTimer;
+    uint32 overlordsBrandTimer;
 
     void Reset()
     {
         if(pInstance) pInstance->SetData(TYPE_TYRANNUS, NOT_STARTED);
+        // m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+        phase = PHASE_STAND_BY;
+        // Timers
+        uint32 dialogueTimer = 0;
+        uint32 smashTimer = TIMER_SPELL_SMASH;
+        uint32 overlordsBrandTimer = TIMER_SPELL_OVERLORDS_BRAND + 15*IN_MILLISECONDS;
     }
 
-    void Aggro(Unit *who) 
+    void Aggro(Unit *who)
     {
         if(pInstance) pInstance->SetData(TYPE_TYRANNUS, IN_PROGRESS);
+        DoScriptText(SAY_AGGRO, m_creature);
+        phase = PHASE_DIALOGUE;
     }
 
     void JustDied(Unit *killer)
     {
         if(pInstance) pInstance->SetData(TYPE_TYRANNUS, DONE);
+        m_creature->SetRespawnDelay(7*DAY);
+        phase = PHASE_STAND_BY;
+    }
+
+    void KilledUnit(Unit* pVictim)
+    {
+        switch (urand(0,1)) 
+        {
+            case 0:
+               DoScriptText(SAY_SLAY_1, m_creature, pVictim);
+               break;
+            case 1:
+               DoScriptText(SAY_SLAY_2, m_creature, pVictim);
+               break;
+        };
     }
 
     void UpdateAI(const uint32 diff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
+        switch (phase)
+        {
+            case PHASE_STAND_BY:
+                return;
+            case PHASE_DIALOGUE:
+            {
+                /*m_creature->GetMotionMaster()->MovementExpired();
+                if (dialogueTimer == 0)
+                {
+                    DoScriptText(SAY_PREFIGHT_1, m_creature);
+                    dialogueTimer = TIMER_DIALOGUE;
+                    return;
+                }
+                else if (dialogueTimer < diff)
+                {
+                    DoScriptText(SAY_PREFIGHT_2, m_creature);
+                    m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                    phase = PHASE_IN_COMBAT;
+                }
+                else
+                {
+                    dialogueTimer -= diff;
+                    return;
+                }*/
+                phase = PHASE_IN_COMBAT;
+                break;
+            }
+            case PHASE_IN_COMBAT:
+            {
+                if (smashTimer < diff)
+                {
+                    DoScriptText(SAY_SMASH, m_creature);
+                    DoScriptText(EMOTE_SMASH, m_creature);
+                    DoCast(m_creature->getVictim(), pInstance->instance->GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL ? SPELL_FORCEFUL_SMASH : SPELL_FORCEFUL_SMASH_H);
+                    DoCast(m_creature, pInstance->instance->GetDifficulty() == DUNGEON_DIFFICULTY_NORMAL ? SPELL_UNHOLY_POWER : SPELL_UNHOLY_POWER_H);
+                    smashTimer = TIMER_SPELL_SMASH;
+                }
+                else
+                    smashTimer -= diff;
+
+                if (overlordsBrandTimer < diff)
+                {
+                    DoCast(m_creature->getVictim(), SPELL_OVERLORDS_BRAND);
+                    overlordsBrandTimer = TIMER_SPELL_OVERLORDS_BRAND;
+                }
+                else
+                    overlordsBrandTimer -= diff;
+
+                break;
+            }
+        }
 
         DoMeleeAttackIfReady();
     }
@@ -97,10 +194,12 @@ struct MANGOS_DLL_DECL mob_rimefang_posAI : public ScriptedAI
 
     void Reset()
     {
+        m_creature->SetVisibility(VISIBILITY_OFF);
     }
 
     void Aggro(Unit *who) 
     {
+        return;
     }
 
     void JustDied(Unit *killer)
