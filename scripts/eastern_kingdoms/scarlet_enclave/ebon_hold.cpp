@@ -214,6 +214,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12742, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -242,6 +243,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12748, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -270,6 +272,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12744, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -298,6 +301,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12743, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -326,6 +330,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12750, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -354,6 +359,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12739, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -382,6 +388,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12745, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -410,6 +417,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12749, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -438,6 +446,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12747, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
@@ -466,6 +475,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                                 DoScriptText(EMOTE_DIES, m_creature);
                                 m_creature->SetDeathState(JUST_DIED);
                                 m_creature->SetHealth(0);
+								pPlayer->SetQuestStatus(12746, QUEST_STATUS_COMPLETE);
                                 return;
                         }
                         break;
