@@ -491,6 +491,36 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
             else
                 m_uiExecuteSpeech_Timer -= uiDiff;
         }
+        else if (!m_uiPlayerGUID)
+        {
+            Map *map = m_creature->GetMap();
+
+            if (!map)
+                return;
+
+            Map::PlayerList const& pPlayers = map->GetPlayers();
+
+            if (pPlayers.isEmpty())
+                return;
+
+            for (Map::PlayerList::const_iterator itr = pPlayers.begin(); itr != pPlayers.end(); ++itr)
+            {
+                Player *pPlayer = itr->getSource();
+                if (!pPlayer)
+                    break;
+                       
+                if (MeetQuestCondition(pPlayer))
+                {
+                    float distance = m_creature->GetDistance(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ());
+                    if (distance <= 10.0f)
+                        if (MeetQuestCondition(pPlayer))
+                        {
+                            m_uiPlayerGUID = pPlayer->GetGUID();
+                            break;
+                        }
+                }
+            }
+        }
     }
 };
 
