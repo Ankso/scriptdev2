@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2010 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -157,10 +157,10 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
         battlestarted = false;
         finalphase = false;
         m_creature->SetOrientation(0.0f);
-        pInstance->CloseDoor(pInstance->GetData64(GO_ICESHARD_1));
-        pInstance->CloseDoor(pInstance->GetData64(GO_ICESHARD_2));
-        pInstance->CloseDoor(pInstance->GetData64(GO_ICESHARD_3));
-        pInstance->CloseDoor(pInstance->GetData64(GO_ICESHARD_4));
+        pInstance->DoCloseDoor(pInstance->GetData64(GO_ICESHARD_1));
+        pInstance->DoCloseDoor(pInstance->GetData64(GO_ICESHARD_2));
+        pInstance->DoCloseDoor(pInstance->GetData64(GO_ICESHARD_3));
+        pInstance->DoCloseDoor(pInstance->GetData64(GO_ICESHARD_4));
         if (oldflag)
             if (GameObject* pGoFloor = pInstance->instance->GetGameObject(pInstance->GetData64(GO_ARTHAS_PLATFORM)))
             {
@@ -518,24 +518,24 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                             doCast(SPELL_QUAKE);
                             stage = 4;
                             DoScriptText(-1631524, m_creature);
-                            pInstance->OpenDoor(pInstance->GetData64(GO_SNOW_EDGE));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_SNOW_EDGE));
                        };
                     break;
             case 4:           // Platform destruct
                     if (timedQuery(SPELL_QUAKE, diff))
                        {
-                            pInstance->OpenDoor(pInstance->GetData64(GO_ICESHARD_1));
-                            pInstance->OpenDoor(pInstance->GetData64(GO_ICESHARD_2));
-                            pInstance->OpenDoor(pInstance->GetData64(GO_ICESHARD_3));
-                            pInstance->OpenDoor(pInstance->GetData64(GO_ICESHARD_4));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_ICESHARD_1));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_ICESHARD_2));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_ICESHARD_3));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_ICESHARD_4));
                             if (GameObject* pGoFloor = pInstance->instance->GetGameObject(pInstance->GetData64(GO_ARTHAS_PLATFORM)))
                             {
                                  pGoFloor->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_DAMAGED | GO_FLAG_NODESPAWN);
                                  oldflag = pGoFloor->GetUInt32Value(GAMEOBJECT_BYTES_1);
                                  pGoFloor->SetUInt32Value(GAMEOBJECT_BYTES_1,8449);
                             }
-                            pInstance->CloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
-                            pInstance->CloseDoor(pInstance->GetData64(GO_SNOW_EDGE));
+                            pInstance->DoCloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
+                            pInstance->DoCloseDoor(pInstance->GetData64(GO_SNOW_EDGE));
                             m_creature->GetMotionMaster()->Clear();
                             m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
                             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
@@ -587,7 +587,7 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                         pGoFloor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DAMAGED | GO_FLAG_NODESPAWN);
                         pGoFloor->SetUInt32Value(GAMEOBJECT_BYTES_1,oldflag);
                     }
-                    pInstance->OpenDoor(pInstance->GetData64(GO_FROSTY_WIND));
+                    pInstance->DoOpenDoor(pInstance->GetData64(GO_FROSTY_WIND));
                     doCast(SPELL_REMORSELESS_WINTER);
                     stage = 8;
                     break;
@@ -610,7 +610,7 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                                  doCast(NPC_VILE_SPIRIT);
                             doCast(SPELL_QUAKE);
                             stage = 9;
-                            pInstance->OpenDoor(pInstance->GetData64(GO_SNOW_EDGE));
+                            pInstance->DoOpenDoor(pInstance->GetData64(GO_SNOW_EDGE));
                        };
 
                     break;
@@ -623,8 +623,8 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                                  oldflag = pGoFloor->GetUInt32Value(GAMEOBJECT_BYTES_1);
                                  pGoFloor->SetUInt32Value(GAMEOBJECT_BYTES_1,8449);
                             }
-                            pInstance->CloseDoor(pInstance->GetData64(GO_SNOW_EDGE));
-                            pInstance->CloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
+                            pInstance->DoCloseDoor(pInstance->GetData64(GO_SNOW_EDGE));
+                            pInstance->DoCloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
                             m_creature->GetMotionMaster()->Clear();
                             m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
                             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
