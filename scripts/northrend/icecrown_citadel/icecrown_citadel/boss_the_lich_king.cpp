@@ -167,7 +167,7 @@ struct MANGOS_DLL_DECL boss_the_lich_king_iccAI : public BSWScriptedAI
                pGoFloor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DAMAGED | GO_FLAG_NODESPAWN);
                pGoFloor->SetUInt32Value(GAMEOBJECT_BYTES_1,oldflag);
             }
-        pInstance->CloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
+        pInstance->DoCloseDoor(pInstance->GetData64(GO_FROSTY_WIND));
         summon_timer = 15000;
     }
 
