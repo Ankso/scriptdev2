@@ -33,3 +33,18 @@ DELETE FROM creature_ai_scripts WHERE creature_id = 33707;
 INSERT INTO creature_ai_scripts VALUES
 (3370701, 33707, 4, 0, 100, 1, 0, 1, 1, 5, 11, 63010, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Argent champion - Cast Charge on Aggro'),
 (3370702, 33707, 6, 0, 100, 0, 0, 0, 0, 0, 33, 33708, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Argent champion - Kill credit');
+
+-- Fix for quest Bury those cockroaches!
+
+UPDATE creature_template SET ScriptName='npc_seaforium_depth_charge' WHERE entry=25401;
+
+-- Fix for quest Mistery of the infinite
+
+UPDATE creature_template SET
+ScriptName='npc_hourglass'
+WHERE entry=27840;
+
+
+DELETE from creature_ai_scripts WHERE id=2790002;
+INSERT into creature_ai_scripts VALUES
+(2790002,27900,6,0,100,0,0,0,0,0,15,12470,6,0,0,0,0,0,0,0,0,0,'Infinite Timerender - Quest Credit after death');
