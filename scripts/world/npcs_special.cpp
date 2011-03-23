@@ -2231,6 +2231,10 @@ CreatureAI* GetAI_npc_training_dummy(Creature* pCreature)
     return new npc_training_dummyAI(pCreature);
 }
 
+/*######
+# npc_risen_ally
+#######*/
+
 struct MANGOS_DLL_DECL npc_risen_allyAI : public ScriptedAI
 {
     npc_risen_allyAI(Creature *pCreature) : ScriptedAI(pCreature)
@@ -2301,6 +2305,10 @@ CreatureAI* GetAI_npc_risen_ally(Creature* pCreature)
     return new npc_risen_allyAI(pCreature);
 }
 
+/*######
+# npc_explosive_decoy
+######*/
+
 struct MANGOS_DLL_DECL npc_explosive_decoyAI : public ScriptedAI
 {
     npc_explosive_decoyAI(Creature *pCreature) : ScriptedAI(pCreature)
@@ -2356,6 +2364,10 @@ CreatureAI* GetAI_npc_explosive_decoy(Creature* pCreature)
     return new npc_explosive_decoyAI(pCreature);
 }
 
+/*######
+# npc_eye_of_kilrogg
+######*/
+
 struct MANGOS_DLL_DECL npc_eye_of_kilrogg : public ScriptedAI
 {
     npc_eye_of_kilrogg(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
@@ -2389,6 +2401,40 @@ struct MANGOS_DLL_DECL npc_eye_of_kilrogg : public ScriptedAI
 CreatureAI* GetAI_npc_eye_of_kilrogg(Creature* pCreature)
 {
     return new npc_eye_of_kilrogg(pCreature);
+}
+
+/*######
+# npc_battle_standard
+######*/
+
+#define DESPAWN_TIME 120000 // 2 minutes
+
+struct MANGOS_DLL_DECL npc_battle_standard : public ScriptedAI
+{
+	npc_battle_standard(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+
+	int32 despawn_timer;
+
+	void Reset()
+	{
+		despawn_timer = DESPAWN_TIME;
+		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+        m_creature->SetSpeedRate(MOVE_WALK, 0.0f);
+		m_creature->SetSpeedRate(MOVE_RUN, 0.0f);
+	}
+
+	void UpdateAI(const uint32 uiDiff)
+	{
+		if (despawn_timer <= 0)
+			m_creature->ForcedDespawn();
+		else
+			despawn_timer -= uiDiff;
+	}
+}
+
+CreatureAI* GetAI_npc_battle_standard(Creature* pCreature)
+{
+	return new npc_battle_standard(pCreature);
 }
 
 void AddSC_npcs_special()
@@ -2526,4 +2572,9 @@ void AddSC_npcs_special()
     newscript->Name = "npc_eye_of_kilrogg";
     newscript->GetAI = &GetAI_npc_eye_of_kilrogg;
     newscript->RegisterSelf();
+
+	newscript = new Script;
+	newscript->Name = "npc_battle_standard";
+	newscript->GetAI = &GetAI_npc_battle_standard;
+	newscript->RegisterSelf();
 }
