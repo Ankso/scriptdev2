@@ -2430,7 +2430,7 @@ struct MANGOS_DLL_DECL npc_battle_standard : public ScriptedAI
 		else
 			despawn_timer -= uiDiff;
 	}
-}
+};
 
 CreatureAI* GetAI_npc_battle_standard(Creature* pCreature)
 {
