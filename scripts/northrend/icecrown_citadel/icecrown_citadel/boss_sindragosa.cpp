@@ -323,6 +323,7 @@ struct MANGOS_DLL_DECL boss_sindragosaAI : public BSWScriptedAI
                         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 0);
                         m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
                         m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+						doRemoveFromAll(SPELL_ICY_TOMB);
                     };
                 break;
 
@@ -570,6 +571,7 @@ struct MANGOS_DLL_DECL mob_rimefangAI : public BSWScriptedAI
             if (pSindr)
                 pSindr->SetCreatorGuid(ObjectGuid());
         }
+		m_creature->SetRespawnDelay(5*HOUR);
     }
 
     void UpdateAI(const uint32 diff)
@@ -661,6 +663,7 @@ struct MANGOS_DLL_DECL mob_spinestalkerAI : public BSWScriptedAI
             if (pSindr)
                 pSindr->SetCreatorGuid(ObjectGuid());
         }
+		m_creature->SetRespawnDelay(5*HOUR);
     }
 
     void UpdateAI(const uint32 diff)
