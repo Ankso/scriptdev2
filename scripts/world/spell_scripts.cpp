@@ -543,7 +543,7 @@ bool EffectDummyCreature_spell_dummy_npc(Unit* pCaster, uint32 uiSpellId, SpellE
                         }
 
                         pCreatureTarget->SetStandState(UNIT_STAND_STATE_STAND);
-                        pCreatureTarget->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_WORK);
+                        pCreatureTarget->HandleEmote(EMOTE_STATE_WORK);
                         break;
                     }
                 }
@@ -797,6 +797,9 @@ bool EffectDummyCreature_spell_dummy_npc(Unit* pCaster, uint32 uiSpellId, SpellE
             {
                 bool isMale = urand(0,1);
                 Player* pPlayer = pCreatureTarget->GetLootRecipient();
+
+                if (!pPlayer)
+                    return true;
 
                 if (isMale)
                     DoScriptText(SAY_ITS_MALE, pCreatureTarget, pPlayer);
