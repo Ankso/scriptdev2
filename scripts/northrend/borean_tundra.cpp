@@ -910,30 +910,30 @@ CreatureAI* GetAI_npc_seaforium_depth_charge(Creature* pCreature)
 
 void AddSC_borean_tundra()
 {
-    Script *newscript;
+    Script *pNewscript;
 
-    newscript = new Script;
-    newscript->Name = "npc_fizzcrank_fullthrottle";
-    newscript->pGossipHello = &GossipHello_npc_fizzcrank_fullthrottle;
-    newscript->pGossipSelect = &GossipSelect_npc_fizzcrank_fullthrottle;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_fizzcrank_fullthrottle";
+    pNewscript->pGossipHello = &GossipHello_npc_fizzcrank_fullthrottle;
+    pNewscript->pGossipSelect = &GossipSelect_npc_fizzcrank_fullthrottle;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_iruk";
-    newscript->pGossipHello = &GossipHello_npc_iruk;
-    newscript->pGossipSelect = &GossipSelect_npc_iruk;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_iruk";
+    pNewscript->pGossipHello = &GossipHello_npc_iruk;
+    pNewscript->pGossipSelect = &GossipSelect_npc_iruk;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_kara_thricestar";
-    newscript->pGossipHello = &GossipHello_npc_kara_thricestar;
-    newscript->pGossipSelect = &GossipSelect_npc_kara_thricestar;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_kara_thricestar";
+    pNewscript->pGossipHello = &GossipHello_npc_kara_thricestar;
+    pNewscript->pGossipSelect = &GossipSelect_npc_kara_thricestar;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_nesingwary_trapper";
-    newscript->GetAI = &GetAI_npc_nesingwary_trapper;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_nesingwary_trapper";
+    pNewscript->GetAI = &GetAI_npc_nesingwary_trapper;
+    pNewscript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "npc_oil_stained_wolf";
@@ -942,46 +942,46 @@ void AddSC_borean_tundra()
     pNewScript->pEffectAuraDummy = &EffectAuraDummy_npc_oil_stained_wolf;
     pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_caribou_trap";
-    newscript->pGOUse = &GOUse_go_caribou_trap;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "go_caribou_trap";
+    pNewscript->pGOUse = &GOUse_go_caribou_trap;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_surristrasz";
-    newscript->pGossipHello = &GossipHello_npc_surristrasz;
-    newscript->pGossipSelect = &GossipSelect_npc_surristrasz;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_surristrasz";
+    pNewscript->pGossipHello = &GossipHello_npc_surristrasz;
+    pNewscript->pGossipSelect = &GossipSelect_npc_surristrasz;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_tiare";
-    newscript->pGossipHello = &GossipHello_npc_tiare;
-    newscript->pGossipSelect = &GossipSelect_npc_tiare;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_tiare";
+    pNewscript->pGossipHello = &GossipHello_npc_tiare;
+    pNewscript->pGossipSelect = &GossipSelect_npc_tiare;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_lurgglbr";
-    newscript->GetAI = &GetAI_npc_lurgglbr;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_lurgglbr;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_lurgglbr";
+    pNewscript->GetAI = &GetAI_npc_lurgglbr;
+    pNewscript->pQuestAcceptNPC = &QuestAccept_npc_lurgglbr;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_nexus_drake";
-    newscript->GetAI = &GetAI_npc_nexus_drake;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_nexus_drake";
+    pNewscript->GetAI = &GetAI_npc_nexus_drake;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_scourge_cage";
-    newscript->pGOUse = &GOHello_go_scourge_cage;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "go_scourge_cage";
+    pNewscript->pGOUse = &GOHello_go_scourge_cage;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_beryl_sorcerer";
-    newscript->GetAI = &GetAI_npc_beryl_sorcerer;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_beryl_sorcerer";
+    pNewscript->GetAI = &GetAI_npc_beryl_sorcerer;
+    pNewscript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_seaforium_depth_charge";
-    newscript->GetAI = &GetAI_npc_seaforium_depth_charge;
-    newscript->RegisterSelf();
+    pNewscript = new Script;
+    pNewscript->Name = "npc_seaforium_depth_charge";
+    pNewscript->GetAI = &GetAI_npc_seaforium_depth_charge;
+    pNewscript->RegisterSelf();
 }
