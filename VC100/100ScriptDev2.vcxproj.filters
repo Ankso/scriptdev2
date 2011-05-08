@@ -1044,6 +1044,7 @@
     <ClCompile Include="..\scripts\kalimdor\zulfarrak\zulfarrak.cpp">
       <Filter>scripts\kalimdor\zulfarrak</Filter>
     </ClCompile>
+<<<<<<< HEAD
     <ClCompile Include="..\scripts\outland\blades_edge_mountains.cpp">
       <Filter>scripts\outland</Filter>
     </ClCompile>
@@ -1327,6 +1328,8 @@
       <Filter>system</Filter>
     </ClCompile>
     <ClCompile Include="..\ScriptMgr.cpp" />
+      <Filter>system</Filter>
+    </ClCompile>
     <ClCompile Include="..\scripts\northrend\borean_tundra.cpp">
       <Filter>scripts\northrend</Filter>
     </ClCompile>
