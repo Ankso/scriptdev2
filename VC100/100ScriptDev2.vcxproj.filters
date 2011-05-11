@@ -1954,8 +1954,16 @@
     <ClCompile Include="..\scripts\northrend\utgarde_keep\utgarde_keep\utgarde_keep.cpp">
       <Filter>scripts\northrend\utgarde_keep\utgarde_keep</Filter>
     </ClCompile>
+<<<<<<< HEAD
     <ClCompile Include="..\scripts\northrend\utgarde_keep\utgarde_pinnacle\boss_gortok.cpp">
       <Filter>scripts\northrend\utgarde_keep\utgarde_pinnacle</Filter>
+=======
+    <ClCompile Include="..\scripts\outland\tempest_keep\the_eye\boss_alar.cpp">
+      <Filter>scripts\outland\tempest_keep\the_eye</Filter>
+    </ClCompile>
+    <ClCompile Include="..\scripts\outland\tempest_keep\the_eye\boss_astromancer.cpp">
+      <Filter>scripts\outland\tempest_keep\the_eye</Filter>
+>>>>>>> 01deac3d394b7a445f879871f56ef54241b271c2
     </ClCompile>
     <ClCompile Include="..\scripts\northrend\utgarde_keep\utgarde_pinnacle\boss_skadi.cpp">
       <Filter>scripts\northrend\utgarde_keep\utgarde_pinnacle</Filter>
@@ -1984,6 +1992,7 @@
     <ClCompile Include="..\scripts\northrend\vault_of_archavon\instance_vault_of_archavon.cpp">
       <Filter>scripts\northrend\vault_of_archavon</Filter>
     </ClCompile>
+<<<<<<< HEAD
     <ClCompile Include="..\scripts\northrend\violet_hold\boss_cyanigosa.cpp">
       <Filter>scripts\northrend\violet_hold</Filter>
     </ClCompile>
@@ -1995,6 +2004,10 @@
     </ClCompile>
     <ClCompile Include="..\scripts\northrend\violet_hold\boss_lavanthor.cpp">
       <Filter>scripts\northrend\violet_hold</Filter>
+=======
+    <ClCompile Include="..\scripts\world\bosses_emerald_dragons.cpp">
+      <Filter>scripts\world</Filter>
+>>>>>>> 01deac3d394b7a445f879871f56ef54241b271c2
     </ClCompile>
     <ClCompile Include="..\scripts\northrend\violet_hold\boss_moragg.cpp">
       <Filter>scripts\northrend\violet_hold</Filter>
