@@ -215,6 +215,8 @@ extern void AddSC_boss_epoch_hunter();
 extern void AddSC_boss_lieutenant_drake();
 extern void AddSC_instance_old_hillsbrad();
 extern void AddSC_old_hillsbrad();
+extern void AddSC_dire_maul();                              // dire_maul
+extern void AddSC_instance_dire_maul();
 extern void AddSC_boss_celebras_the_cursed();               //maraudon
 extern void AddSC_boss_landslide();
 extern void AddSC_boss_noxxion();
@@ -243,6 +245,7 @@ extern void AddSC_instance_wailing_caverns();               // wailing_caverns
 extern void AddSC_wailing_caverns();
 extern void AddSC_boss_zumrah();                            // zulfarrak
 extern void AddSC_instance_zulfarrak();
+extern void AddSC_zulfarrak();
 
 // culling of stratholme
 extern void AddSC_boss_lord_epoch();
@@ -748,6 +751,8 @@ void AddScripts()
     AddSC_boss_epoch_hunter();
     AddSC_boss_lieutenant_drake();
     AddSC_instance_old_hillsbrad();
+    AddSC_dire_maul();                                      // dire_maul
+    AddSC_instance_dire_maul();
     AddSC_old_hillsbrad();
     AddSC_boss_celebras_the_cursed();                       //maraudon
     AddSC_boss_landslide();
@@ -776,6 +781,7 @@ void AddScripts()
     AddSC_instance_wailing_caverns();                       // wailing_caverns
     AddSC_wailing_caverns();
     AddSC_boss_zumrah();                                    // zulfarrak
+    AddSC_zulfarrak();
     AddSC_instance_zulfarrak();
 
     AddSC_ashenvale();
