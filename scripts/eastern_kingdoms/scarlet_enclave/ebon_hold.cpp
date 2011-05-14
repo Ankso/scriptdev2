@@ -515,7 +515,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
                     if (distance <= 10.0f)
                         if (MeetQuestCondition(pPlayer))
                         {
-                            m_uiPlayerGUID = pPlayer->GetGUID();
+                            m_playerGuid = pPlayer->GetObjectGuid();
                             break;
                         }
                 }
