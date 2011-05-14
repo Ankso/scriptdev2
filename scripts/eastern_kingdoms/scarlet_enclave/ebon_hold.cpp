@@ -491,7 +491,7 @@ struct MANGOS_DLL_DECL npc_a_special_surpriseAI : public ScriptedAI
             else
                 m_uiExecuteSpeech_Timer -= uiDiff;
         }
-        else if (!m_uiPlayerGUID)
+        else if (m_playerGuid.IsEmpty())
         {
             Map *map = m_creature->GetMap();
 
