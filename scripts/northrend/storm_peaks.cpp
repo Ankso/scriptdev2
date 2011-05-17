@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Storm_Peaks
 SD%Complete: 100
-SDComment: Vendor Support (31247). Quest support: 12970, 12684
+SDComment: Vendor Support (31247). Quest support: 12970, 12684, 12983
 SDCategory: Storm Peaks
 EndScriptData */
 
@@ -25,9 +25,15 @@ EndScriptData */
 npc_loklira_the_crone
 npc_roxi_ramrocket
 npc_frostborn_scout
+npc_freed_protodrake
+npc_brunnhildar_prisoner
+npc_kirgaraak
+npc_harnessed_icemaw_matriarch
 EndContentData */
 
 #include "precompiled.h"
+#include "escort_ai.h"
+#include "Vehicle.h"
 
 /*######
 ## npc_frostborn_scout
@@ -245,6 +251,270 @@ bool GossipSelect_npc_roxi_ramrocket(Player* pPlayer, Creature* pCreature, uint3
     return true;
 }
 
+/*######
+## npc_freed_protodrake
+######*/
+
+enum
+{
+    ENTRY_LIBERATED_BRUNNHILDAR = 29734,
+    ENTRY_FREED_PROTODRAKE = 29709,
+};
+
+struct MANGOS_DLL_DECL npc_freed_protodrakeAI : public npc_escortAI
+{
+    npc_freed_protodrakeAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
+
+    bool m_bNotOnRoute;
+
+    void Reset()
+    {
+        m_bNotOnRoute = false;
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+
+        if (uiPointId == 5) //reached village, give credits
+        {
+            Unit* pPlayer = m_creature->GetVehicleKit()->GetPassenger(0);
+            if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
+            {
+                for (uint8 i = 1; i < 4; ++i)
+                    if (Unit* pPrisoner = m_creature->GetVehicleKit()->GetPassenger(i))
+                    {
+                        ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_LIBERATED_BRUNNHILDAR);
+                        pPrisoner->ExitVehicle();
+                    }
+
+                ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_FREED_PROTODRAKE);
+                pPlayer->ExitVehicle();
+            }
+
+            m_creature->SetVisibility(VISIBILITY_OFF);
+            m_creature->ForcedDespawn(1000);
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_bNotOnRoute && m_creature->GetPositionY() > -2595.0f)
+            if (m_creature->isCharmed())
+            {
+                ((Player*)(m_creature->GetCharmer()))->SetClientControl(m_creature, 0);
+                m_bNotOnRoute = true;
+
+                //flight he don't accept so we walk o_O
+                m_creature->SetSpeedRate(MOVE_WALK, 3.0f,true);
+
+                Start(false, (Player*)(m_creature->GetCharmer()));
+            }
+        npc_escortAI::UpdateAI(uiDiff);
+    }
+};
+
+CreatureAI* GetAI_npc_freed_protodrake(Creature* pCreature)
+{
+    return new npc_freed_protodrakeAI(pCreature);
+}
+
+/*######
+## npc_brunnhildar_prisoner
+######*/
+
+enum
+{
+    SPELL_ICE_BLOCK = 54894,
+    SPELL_ICE_SHARD = 55046,
+    SPELL_ICE_SHARD_IMPACT = 55047
+};
+
+struct npc_brunnhildar_prisonerAI : public ScriptedAI
+{
+    npc_brunnhildar_prisonerAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
+    uint32 m_uiCheckTimer;
+
+    void Reset()
+    {
+        m_uiCheckTimer = 10000;
+        m_creature->CastSpell(m_creature, SPELL_ICE_BLOCK, true);
+    }
+
+    void SpellHit(Unit *pCaster, const SpellEntry *spell)
+    {
+        if (spell->Id == SPELL_ICE_SHARD)
+        {
+            m_creature->CastSpell(m_creature, SPELL_ICE_SHARD_IMPACT, true);
+
+            if (pCaster->IsVehicle())
+            {
+                m_creature->EnterVehicle(pCaster->GetVehicleKit());
+                m_creature->RemoveAurasDueToSpell(SPELL_ICE_BLOCK);
+            }
+        }
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        if (m_uiCheckTimer < diff)
+        {
+            if (!m_creature->hasUnitState(UNIT_STAT_ON_VEHICLE))
+            {
+                //return home if not passenger
+                float x;
+                float y;
+                float z;
+
+                m_creature->GetRespawnCoord(x, y, z);
+                
+                if(m_creature->GetDistance(x,y,z) > 20.0f)
+                {
+                    m_creature->SetDeathState(JUST_DIED);
+                    m_creature->Respawn();
+                }
+            }
+            m_uiCheckTimer = 10000;
+        }
+        else
+            m_uiCheckTimer -= diff;
+    }
+};
+
+CreatureAI* GetAI_npc_brunnhildar_prisoner(Creature* pCreature)
+{
+    return new npc_brunnhildar_prisonerAI(pCreature);
+}
+
+/*######
+## npc_kirgaraak
+######*/
+
+enum
+{
+    QUEST_THE_WARM_UP       = 12996,
+    NPC_KIRGARAAK_CREDIT    = 30221
+};
+
+struct MANGOS_DLL_DECL npc_kirgaraakAI : public ScriptedAI
+{
+    npc_kirgaraakAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        Reset();
+    }
+
+    bool m_bKirgaraakBeaten;
+
+    void Reset()
+    {
+        m_bKirgaraakBeaten =  false;
+        m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage)
+    {
+        if (uiDamage > m_creature->GetHealth() || (m_creature->GetHealth() - uiDamage)*100 / m_creature->GetMaxHealth() < 10)
+        {
+            if (Player* pPlayer = pDoneBy->GetCharmerOrOwnerPlayerOrPlayerItself())
+            {
+                if (!m_bKirgaraakBeaten && pPlayer->GetQuestStatus(QUEST_THE_WARM_UP) == QUEST_STATUS_INCOMPLETE)
+                {
+                    uiDamage = 0;
+                    
+                    m_creature->setFaction(35);
+                    m_creature->CombatStop(true);
+                    m_creature->RemoveAllAuras();
+                    m_creature->DeleteThreatList();
+                    pPlayer->KilledMonsterCredit(NPC_KIRGARAAK_CREDIT);
+                    m_bKirgaraakBeaten = true;
+                }
+            }
+        }
+    }
+
+    void MoveInLineOfSight(Unit* pWho) 
+    {
+        if (pWho->GetTypeId() == TYPEID_PLAYER)
+        {
+            if (pWho->hasUnitState(UNIT_STAT_ON_VEHICLE) && ((Player*)pWho)->GetQuestStatus(QUEST_THE_WARM_UP) == QUEST_STATUS_INCOMPLETE)
+            {
+                m_creature->setFaction(90);
+            }
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_kirgaraak(Creature* pCreature)
+{
+    return new npc_kirgaraakAI(pCreature);
+}
+
+/*######
+## npc_harnessed_icemaw_matriarch
+######*/
+
+enum
+{
+    ENTRY_HARNESSED_MATRIARCH = 29563,
+};
+
+struct MANGOS_DLL_DECL npc_harnessed_icemaw_matriarchAI : public npc_escortAI
+{
+    npc_harnessed_icemaw_matriarchAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
+
+    bool m_bNotOnRoute;
+
+    void Reset()
+    {
+        m_bNotOnRoute = false;
+    }
+
+    void WaypointReached(uint32 uiPointId)
+    {
+
+        if (uiPointId == 16) //reached village, give credits
+        {
+            Unit* pPlayer = m_creature->GetVehicleKit()->GetPassenger(0);
+            if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
+            {
+                ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_HARNESSED_MATRIARCH);
+                pPlayer->ExitVehicle();
+            }
+
+            m_creature->SetVisibility(VISIBILITY_OFF);
+            m_creature->ForcedDespawn();
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (!m_bNotOnRoute && m_creature->isCharmed())
+        {
+            ((Player*)(m_creature->GetCharmer()))->SetClientControl(m_creature, 0);
+            m_bNotOnRoute = true;
+
+            m_creature->SetSpeedRate(MOVE_WALK, 3.0f,true);
+
+            Start(false, (Player*)(m_creature->GetCharmer()));
+        }
+        npc_escortAI::UpdateAI(uiDiff);
+    }
+};
+
+CreatureAI* GetAI_npc_harnessed_icemaw_matriarch(Creature* pCreature)
+{
+    return new npc_harnessed_icemaw_matriarchAI(pCreature);
+}
+
 void AddSC_storm_peaks()
 {
     Script* newscript;
@@ -271,5 +541,25 @@ void AddSC_storm_peaks()
     newscript->Name = "npc_roxi_ramrocket";
     newscript->pGossipHello = &GossipHello_npc_roxi_ramrocket;
     newscript->pGossipSelect = &GossipSelect_npc_roxi_ramrocket;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_freed_protodrake";
+    newscript->GetAI = &GetAI_npc_freed_protodrake;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_brunnhildar_prisoner";
+    newscript->GetAI = &GetAI_npc_brunnhildar_prisoner;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_kirgaraak";
+    newscript->GetAI = &GetAI_npc_kirgaraak;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_harnessed_icemaw_matriarch";
+    newscript->GetAI = &GetAI_npc_harnessed_icemaw_matriarch;
     newscript->RegisterSelf();
 }

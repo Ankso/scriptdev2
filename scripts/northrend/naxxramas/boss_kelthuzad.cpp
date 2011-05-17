@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_KelThuzad
 SD%Complete: 75
-SDComment: Timers will need adjustments, along with tweaking positions and amounts
+SDComment: Timers will need adjustments, along with tweaking positions and amounts, kelthuzads chain spell doesn't work blizzlike
 SDCategory: Naxxramas
 EndScriptData */
 
@@ -36,9 +36,6 @@ enum
     SAY_SAPP_DIALOG3                    = -1533086,
     SAY_SAPP_DIALOG4_LICH               = -1533087,
     SAY_SAPP_DIALOG5                    = -1533088,
-
-    //when cat dies
-    SAY_CAT_DIED                        = -1533089,
 
     SAY_SUMMON_MINIONS                  = -1533105,         //start of phase 1
 
@@ -74,6 +71,13 @@ enum
     SPELL_CHAINS_OF_KELTHUZAD           = 28408,            // 3.x, heroic only
     SPELL_CHAINS_OF_KELTHUZAD_TARGET    = 28410,
 
+    SPELL_CHAINED_MAGE                  = 61085,
+    SPELL_CHAINED_WARLOCK               = 46561,
+    SPELL_CHAINED_ROGUE                 = 49616,
+    SPELL_CHAINED_HUNTER                = 37632,
+    SPELL_CHAINED_WARRIOR               = 43935,
+    SPELL_CHAINED_DEATHKNIGHT           = 61112,
+
     SPELL_MANA_DETONATION               = 27819,
     SPELL_SHADOW_FISSURE                = 27810,
     SPELL_FROST_BLAST                   = 27808,
@@ -85,6 +89,8 @@ enum
     MAX_BANSHEE_COUNT                   = 8,
 
     ACHIEV_REQ_KILLED_ABOMINATIONS      = 18,
+
+    NPC_SHADOW_FISSURE                  = 16129,
 };
 
 static float M_F_ANGLE = 0.2f;                              // to adjust for map rotation
@@ -119,8 +125,17 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
     uint32 m_uiFrostBoltNovaTimer;
     uint32 m_uiChainsTimer;
     uint32 m_uiManaDetonationTimer;
+    uint32 m_uiManaDetonationEndTimer;
+    bool m_bManaDetonationActive;
+    uint32 m_uiManaDetonationMana;
+    uint64 m_uiManaDetonationTargetGUID;
     uint32 m_uiShadowFissureTimer;
     uint32 m_uiFrostBlastTimer;
+    uint32 m_uiShadowFissureActiveTimer;
+    bool m_bShadowFissureActive;
+    uint32 m_uiChainsEndTimer;
+    uint32 m_uiChainsTargetsCastTimer;
+    uint32 m_uiChainsTargetsCastTimer2;
 
     uint32 m_uiPhase1Timer;
     uint32 m_uiSoldierTimer;
@@ -133,24 +148,39 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
     uint32 m_uiSummonIntroTimer;
     uint32 m_uiIntroPackCount;
     uint32 m_uiKilledAbomination;
+    float m_fFissureX;
+    float m_fFissureY;
 
-    GUIDSet m_lIntroMobsSet;
-    GUIDSet m_lAddsSet;
+    std::set<uint64> m_lIntroMobsSet;
+    std::set<uint64> m_lAddsSet;
+    std::set<uint64> m_lChainsTargets;
 
     void Reset()
     {
-        m_uiFrostBoltTimer      = urand(1000, 60000);       //It won't be more than a minute without cast it
-        m_uiFrostBoltNovaTimer  = 15000;                    //Cast every 15 seconds
-        m_uiChainsTimer         = urand(30000, 60000);      //Cast no sooner than once every 30 seconds
-        m_uiManaDetonationTimer = 20000;                    //Seems to cast about every 20 seconds
-        m_uiShadowFissureTimer  = 25000;                    //25 seconds
-        m_uiFrostBlastTimer     = urand(30000, 60000);      //Random time between 30-60 seconds
-        m_uiGuardiansTimer      = 5000;                     //5 seconds for summoning each Guardian of Icecrown in phase 3
-        m_uiGuardiansCount      = 0;
-        m_uiSummonIntroTimer    = 0;
-        m_uiIntroPackCount      = 0;
+        m_uiFrostBoltTimer              = urand(1000, 60000);       //It won't be more than a minute without cast it
+        m_uiFrostBoltNovaTimer          = 15000;                    //Cast every 15 seconds
+        m_uiChainsTimer                 = urand(30000, 60000);      //Cast no sooner than once every 30 seconds
+        m_uiManaDetonationTimer         = 20000;                    //Seems to cast about every 20 seconds
+        m_uiManaDetonationEndTimer      = 5000;
+        m_bManaDetonationActive         = false;
+        m_uiManaDetonationTargetGUID    = 0;
+        m_uiManaDetonationMana          = 0;
+        m_uiShadowFissureTimer          = 25000;                    //25 seconds
+        m_uiFrostBlastTimer             = urand(30000, 60000);      //Random time between 30-60 seconds
+        m_uiGuardiansTimer              = 5000;                     //5 seconds for summoning each Guardian of Icecrown in phase 3
+        m_uiGuardiansCount              = 0;
+        m_uiSummonIntroTimer            = 0;
+        m_uiIntroPackCount              = 0;
+        m_uiShadowFissureActiveTimer    = 0;
+        m_fFissureX                     = 0;
+        m_fFissureY                     = 0;
+        m_bShadowFissureActive          = false;
+        m_lChainsTargets.clear();
+        m_uiChainsEndTimer              = 0;
+        m_uiChainsTargetsCastTimer      = 0;
+        m_uiChainsTargetsCastTimer2     = 0;
 
-        m_uiPhase1Timer         = 228000;                   //Phase 1 lasts "3 minutes and 48 seconds"
+        m_uiPhase1Timer         = 228000;                 //Phase 1 lasts "3 minutes and 48 seconds"
         m_uiSoldierTimer        = 5000;
         m_uiBansheeTimer        = 5000;
         m_uiAbominationTimer    = 5000;
@@ -179,6 +209,15 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
         DoScriptText(SAY_DEATH, m_creature);
         DespawnAdds();
 
+        if (!m_lChainsTargets.empty()) // in case kelthuzad dies during chain spell
+        {
+            for(std::set<uint64>::iterator itr = m_lChainsTargets.begin(); itr != m_lChainsTargets.end(); ++itr)
+                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(*itr))
+                        pPlayer->SetClientControl(pPlayer, 1);
+
+            m_lChainsTargets.clear();
+        }
+
         if (m_pInstance)
             m_pInstance->SetData(TYPE_KELTHUZAD, DONE);
     }
@@ -204,7 +243,7 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
     {
         if (m_pInstance)
         {
-            for(GUIDSet::const_iterator itr = m_lIntroMobsSet.begin(); itr != m_lIntroMobsSet.end(); ++itr)
+            for(std::set<uint64>::const_iterator itr = m_lIntroMobsSet.begin(); itr != m_lIntroMobsSet.end(); ++itr)
             {
                 if (Creature* pCreature = m_pInstance->instance->GetCreature(*itr))
                     pCreature->ForcedDespawn();
@@ -218,7 +257,7 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
     {
         if (m_pInstance)
         {
-            for(GUIDSet::const_iterator itr = m_lAddsSet.begin(); itr != m_lAddsSet.end(); ++itr)
+            for(std::set<uint64>::const_iterator itr = m_lAddsSet.begin(); itr != m_lAddsSet.end(); ++itr)
             {
                 if (Creature* pCreature = m_pInstance->instance->GetCreature(*itr))
                 {
@@ -470,44 +509,105 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
             }
             else
                 m_uiFrostBoltNovaTimer -= uiDiff;
-
+               
             if (m_uiManaDetonationTimer < uiDiff)
             {
-                Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                Unit* pTarget;
+                uint8 counter = 0;
+                do
+                {
+                    counter++;
+                    if (counter >= 25)
+                    {
+                        break;
+                        pTarget = NULL;
+                    }
+                    else
+                        pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+                }
+                while(pTarget->getPowerType() != POWER_MANA);
 
-                if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER && pTarget->getPowerType() == POWER_MANA)
+                if (pTarget)
                 {
                     if (DoCastSpellIfCan(pTarget, SPELL_MANA_DETONATION) == CAST_OK)
                     {
                         if (urand(0, 1))
                             DoScriptText(SAY_SPECIAL1_MANA_DET, m_creature);
 
+                        m_uiManaDetonationTargetGUID = pTarget->GetGUID();
+                        m_uiManaDetonationMana = m_bIsRegularMode ? urand(2500,4000) : urand(3500,5500);
+                        uint32 newMana = pTarget->GetPower(POWER_MANA) - m_uiManaDetonationMana; 
+                        uint32 mana = newMana < 0 ? 0 : newMana;
+                        m_uiManaDetonationMana *= 1+(urand(2,m_bIsRegularMode?5:9)/10.f); // random increase damage output, not blizzlike
+                        pTarget->SetPower(POWER_MANA, mana);
+                        
                         m_uiManaDetonationTimer = 20000;
+                        m_uiManaDetonationEndTimer = 5000;
+                        m_bManaDetonationActive = true;
                     }
                 }
             }
             else
                 m_uiManaDetonationTimer -= uiDiff;
 
+            if (m_bManaDetonationActive)
+                if (m_uiManaDetonationEndTimer < uiDiff)
+                {
+                    if (Player* pTarget = m_creature->GetMap()->GetPlayer(m_uiManaDetonationTargetGUID))
+                    {
+                        Map *map = m_creature->GetMap();
+                        Map::PlayerList const &PlayerList = map->GetPlayers();
+                        if (!PlayerList.isEmpty())
+                            for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+                            {
+                                if(i->getSource()->isDead() || i->getSource() == pTarget || i->getSource()->isGameMaster()) // no dmg on dead, self and GMs
+                                    continue;
+                                if (pTarget->GetDistance2d(i->getSource()) < 15.f)
+                                    i->getSource()->DealDamage(i->getSource(), m_uiManaDetonationMana, NULL, SPELL_DIRECT_DAMAGE, SPELL_SCHOOL_MASK_ARCANE, NULL, true);
+                            }
+                    }
+                    m_bManaDetonationActive = false;
+                }
+                else
+                    m_uiManaDetonationEndTimer -= uiDiff;
+
+            
             if (m_uiShadowFissureTimer < uiDiff)
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                {
-                    if (DoCastSpellIfCan(pTarget, SPELL_SHADOW_FISSURE) == CAST_OK)
+                    if(DoCastSpellIfCan(pTarget, SPELL_SHADOW_FISSURE) == CAST_OK)
                     {
+                        m_fFissureX = pTarget->GetPositionX();
+                        m_fFissureY = pTarget->GetPositionY();
+
                         if (urand(0, 1))
                             DoScriptText(SAY_SPECIAL3_MANA_DET, m_creature);
 
                         m_uiShadowFissureTimer = 25000;
+                        m_uiShadowFissureActiveTimer = 5000;
+                        m_bShadowFissureActive = true;
                     }
-                }
             }
             else
                 m_uiShadowFissureTimer -= uiDiff;
 
+            if(m_bShadowFissureActive)
+                if(m_uiShadowFissureActiveTimer < uiDiff)
+                {   
+                    // hack for shadow fissure damage, shadow fissure spell does not give damage to players
+                    Map::PlayerList const& pPlayers = m_creature->GetMap()->GetPlayers();
+                    if (!pPlayers.isEmpty())
+                        for (Map::PlayerList::const_iterator itr = pPlayers.begin(); itr != pPlayers.end(); ++itr)
+                            if(itr->getSource() && !itr->getSource()->isGameMaster() && (itr->getSource()->GetDistance2d(m_fFissureX,m_fFissureY) < 4.0f))
+                                m_creature->DealDamage(itr->getSource(),itr->getSource()->GetHealth(),NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    m_bShadowFissureActive = false;
+                }
+                else 
+                    m_uiShadowFissureActiveTimer -= uiDiff;
+
             if (m_uiFrostBlastTimer < uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROST_BLAST) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0), SPELL_FROST_BLAST) == CAST_OK)
                 {
                     if (urand(0, 1))
                         DoScriptText(SAY_FROST_BLAST, m_creature);
@@ -517,20 +617,138 @@ struct MANGOS_DLL_DECL boss_kelthuzadAI : public ScriptedAI
             }
             else
                 m_uiFrostBlastTimer -= uiDiff;
-
+                
             if (!m_bIsRegularMode)
             {
                 if (m_uiChainsTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CHAINS_OF_KELTHUZAD) == CAST_OK)
+                    m_lChainsTargets.clear();
+                    if (SpellEntry* TempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(SPELL_CHAINS_OF_KELTHUZAD_TARGET))
                     {
-                        DoScriptText(urand(0, 1) ? SAY_CHAIN1 : SAY_CHAIN2, m_creature);
-
-                        m_uiChainsTimer = urand(30000, 60000);
+                        TempSpell->EffectApplyAuraName[0]=SPELL_AURA_MOD_CHARM;
+                        uint8 uiChainsTargetsCount = 0;
+                        for (uint8 i=0; i<25; ++i)
+                        {
+                            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                            {
+                                if (pTarget->GetTypeId() == TYPEID_PLAYER && !pTarget->HasAura(SPELL_CHAINS_OF_KELTHUZAD_TARGET, EFFECT_INDEX_0))
+                                {
+                                    m_creature->InterruptNonMeleeSpells(false);
+                                    //m_creature->CastCustomSpell(pTarget, TempSpell, NULL, NULL, NULL, true);
+                                    m_creature->CastSpell(pTarget, SPELL_CHAINS_OF_KELTHUZAD_TARGET, true);
+                                    ((Player*)pTarget)->SetClientControl(pTarget, 0);
+                                    m_lChainsTargets.insert(pTarget->GetGUID());
+                                    ++uiChainsTargetsCount;
+                                }
+                                if (uiChainsTargetsCount>=3)
+                                    break;
+                            }
+                        }
+                        m_uiChainsEndTimer = 20000;
+                        m_uiChainsTargetsCastTimer = 0;
+                        m_uiChainsTargetsCastTimer2 = 0;
+                        DoResetThreat();
                     }
+                
+                    //DoCastSpellIfCan(pTarget, SPELL_CHAINS_OF_KELTHUZAD);
+                    DoScriptText(urand(0, 1) ? SAY_CHAIN1 : SAY_CHAIN2, m_creature);
+                    m_uiChainsTimer = urand(40000, 50000);
                 }
                 else
                     m_uiChainsTimer -= uiDiff;
+
+                if (!m_lChainsTargets.empty())
+                {
+                    if (m_uiChainsTargetsCastTimer < uiDiff)
+                    {
+                        for (std::set<uint64>::iterator itr = m_lChainsTargets.begin(); itr != m_lChainsTargets.end(); ++itr)
+                            if (Unit* pUnit = m_creature->GetMap()->GetUnit(*itr))
+                            {
+                                if (pUnit->isDead())
+                                    continue;
+
+                                if (!(m_uiChainsTargetsCastTimer2%5)) // 5 sec spellcooldown
+                                {
+                                    if (pUnit->getClass() == CLASS_PRIEST || pUnit->getClass() == CLASS_SHAMAN || pUnit->getClass() == CLASS_PALADIN ||
+                                        pUnit->getClass() == CLASS_DRUID) // healer classes heal kelthuzad
+                                    {
+                                        int32 amount = urand(45000,55000);
+                                        pUnit->CastCustomSpell(m_creature, 36983, &amount, NULL, NULL, false);
+                                    }
+                                    else 
+                                    {
+                                        Unit* pVictim = pUnit->getVictim();
+                                        if (!pVictim) 
+                                            pVictim = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+                                        if (pVictim)
+                                        { 
+                                            if (pUnit->getClass() == CLASS_WARRIOR)
+                                            {
+                                                pUnit->CastSpell(pUnit,SPELL_CHAINED_WARRIOR,false);
+                                            }
+                                            else if (pUnit->getClass() == CLASS_DEATH_KNIGHT)
+                                            {
+                                                pUnit->CastSpell(pVictim,SPELL_CHAINED_DEATHKNIGHT,false);
+                                            }
+                                            else if (pUnit->getClass() == CLASS_MAGE)
+                                            {
+                                                pUnit->CastSpell(pVictim,SPELL_CHAINED_MAGE,false);
+                                            }
+                                            else if (pUnit->getClass() == CLASS_WARLOCK)
+                                            {
+                                                pUnit->CastSpell(pVictim,SPELL_CHAINED_WARLOCK,false);
+                                            }
+                                            else if (pUnit->getClass() == CLASS_ROGUE)
+                                            {
+                                                pUnit->CastSpell(pVictim,SPELL_CHAINED_ROGUE,false);
+                                            }
+                                            else if (pUnit->getClass() == CLASS_HUNTER)
+                                            {
+                                                pUnit->CastSpell(pVictim,SPELL_CHAINED_HUNTER,false);
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Unit* pVictim = pUnit->getVictim();
+                                    if (!pVictim) 
+                                        pVictim = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0);
+                                    if (pVictim)
+                                    { 
+                                        pUnit->GetMotionMaster()->MoveChase(pVictim);
+                                        pUnit->Attack(pVictim,true);
+                                        /*
+                                        if (pUnit->getClass() == CLASS_MAGE)
+                                        {
+                                            pUnit->CastSpell(pVictim,SPELL_CHAINED_MAGE_2,false);
+                                        }
+                                        else if (pUnit->getClass() == CLASS_WARLOCK)
+                                        {
+                                            pUnit->CastSpell(pVictim,SPELL_CHAINED_WARLOCK_2,false);
+                                        }*/
+                                    }
+                                }
+                                ++m_uiChainsTargetsCastTimer2;
+                            }
+                        m_uiChainsTargetsCastTimer = 1000;
+                    }
+                    else
+                        m_uiChainsTargetsCastTimer -= uiDiff;
+
+                    if (m_uiChainsEndTimer < uiDiff)
+                    {
+                        for(std::set<uint64>::iterator itr = m_lChainsTargets.begin(); itr != m_lChainsTargets.end(); ++itr)
+                            if (Player* pPlayer = m_creature->GetMap()->GetPlayer(*itr))
+                            {
+                                pPlayer->setFactionForRace(pPlayer->getRace());
+                                pPlayer->SetClientControl(pPlayer, 1);
+                            }
+                        m_lChainsTargets.clear();
+                    }
+                    else
+                        m_uiChainsEndTimer -= uiDiff;
+                }
             }
 
             if (m_uiPhase == PHASE_NORMAL)

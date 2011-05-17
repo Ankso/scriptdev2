@@ -55,10 +55,9 @@ enum
     SPELL_SLAM                              = 52026,
 
     //OTHER SPELLS
-    //SPELL_CHARGE_UP                         = 52098,      // only used when starting walk from one platform to the other
-    //SPELL_TEMPORARY_ELECTRICAL_CHARGE       = 52092,      // triggered part of above
+    SPELL_CHARGE_UP                         = 52098,      // only used when starting walk from one platform to the other
+    SPELL_TEMPORARY_ELECTRICAL_CHARGE       = 52092,      // triggered part of above
 
-    NPC_STORMFORGED_LIEUTENANT              = 29240,
     SPELL_ARC_WELD                          = 59085,
     SPELL_RENEW_STEEL_N                     = 52774,
     SPELL_RENEW_STEEL_H                     = 59160,
@@ -72,6 +71,27 @@ enum
 ## boss_bjarngrim
 ######*/
 
+
+struct Waypoint
+{
+    float fX, fY, fZ;
+};
+
+static const Waypoint Waypoints[]=
+{
+    //fX        fY        fZ
+    {1262.256f, 99.495f,  33.5055f},
+    {1262.208f, -26.910f, 33.5056f},
+    {1332.181f, -26.836f, 40.1806f},
+
+    {1395.152f, 35.566f,  50.038f},
+
+    {1332.181f, -26.836f, 40.1806f},
+    {1262.208f, -26.910f, 33.5056f},
+    {1262.256f, 99.495f,  33.5055f}
+};
+
+
 struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
 {
     boss_bjarngrimAI(Creature *pCreature) : ScriptedAI(pCreature)
@@ -79,7 +99,7 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         m_uiStance = STANCE_DEFENSIVE;
-        memset(&m_auiStormforgedLieutenantGUID, 0, sizeof(m_auiStormforgedLieutenantGUID));
+        memset(&m_uiStormforgedLieutenantGUID, 0, sizeof(m_uiStormforgedLieutenantGUID));
         Reset();
     }
 
@@ -87,9 +107,11 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
 
     bool m_bIsRegularMode;
     bool m_bIsChangingStance;
+    bool m_bWaypointReached;
 
     uint8 m_uiChargingStatus;
     uint8 m_uiStance;
+    uint8 m_uiCurrentWaypoint;
 
     uint32 m_uiCharge_Timer;
     uint32 m_uiChangeStance_Timer;
@@ -106,14 +128,19 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
     uint32 m_uiMortalStrike_Timer;
     uint32 m_uiSlam_Timer;
 
-    uint64 m_auiStormforgedLieutenantGUID[2];
+    uint32 m_uiWaypointWait_Timer;
+
+    uint64 m_uiStormforgedLieutenantGUID[2];
 
     void Reset()
     {
         m_bIsChangingStance = false;
+        m_bWaypointReached = false;
 
         m_uiChargingStatus = 0;
         m_uiCharge_Timer = 1000;
+
+        m_uiCurrentWaypoint = 0;
 
         m_uiChangeStance_Timer = urand(20000, 25000);
 
@@ -129,12 +156,16 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
         m_uiMortalStrike_Timer = 8000;
         m_uiSlam_Timer = 10000;
 
+        m_uiStormforgedLieutenantGUID[0] = m_pInstance->GetData64(DATA_STORMFORGED_LIEUTENANT_0);
+        m_uiStormforgedLieutenantGUID[1] = m_pInstance->GetData64(DATA_STORMFORGED_LIEUTENANT_1);
+
         for(uint8 i = 0; i < 2; ++i)
         {
-            if (Creature* pStormforgedLieutenant = m_creature->GetMap()->GetCreature(m_auiStormforgedLieutenantGUID[i]))
+            if (Creature* pStormforgedLieutenant = m_creature->GetMap()->GetCreature(m_uiStormforgedLieutenantGUID[i]))
             {
                 if (!pStormforgedLieutenant->isAlive())
                     pStormforgedLieutenant->Respawn();
+                pStormforgedLieutenant->GetMotionMaster()->MoveFollow(m_creature, 1.0f, M_PI_F/2*((i==0)?1:3));
             }
         }
 
@@ -146,6 +177,50 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_BJARNGRIM, NOT_STARTED);
+        
+        m_creature->GetMotionMaster()->MovePoint(m_uiCurrentWaypoint,Waypoints[m_uiCurrentWaypoint].fX,Waypoints[m_uiCurrentWaypoint].fY,Waypoints[m_uiCurrentWaypoint].fZ);
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId)
+    {
+        if (uiMoveType != POINT_MOTION_TYPE)
+            return;
+        
+
+        m_bWaypointReached = true;
+        switch(uiPointId)
+        {
+            case 1:
+                m_uiWaypointWait_Timer = 15000;
+                DoCastSpellIfCan(m_creature,SPELL_CHARGE_UP);
+                break;
+            case 2:
+                m_uiWaypointWait_Timer = 15000;
+                break;
+            case 3:
+                m_uiWaypointWait_Timer = 15000;
+                m_creature->RemoveAurasDueToSpell(SPELL_CHARGE_UP);
+                m_creature->RemoveAurasDueToSpell(52092);
+                break;
+            case 4:
+                m_uiWaypointWait_Timer = 15000;
+                DoCastSpellIfCan(m_creature,SPELL_CHARGE_UP);
+                break;
+            case 5:
+                m_uiWaypointWait_Timer = 15000;
+                break;
+            case 0:
+            case 6:
+                m_uiWaypointWait_Timer = 15000;
+                m_uiCurrentWaypoint = 0;
+                m_creature->RemoveAurasDueToSpell(SPELL_CHARGE_UP);
+                m_creature->RemoveAurasDueToSpell(52092);
+                break;
+        }
+
+        m_uiCurrentWaypoint++;
+
+        
     }
 
     void Aggro(Unit* pWho)
@@ -179,6 +254,15 @@ struct MANGOS_DLL_DECL boss_bjarngrimAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff)
     {
+        if(m_bWaypointReached)
+            if(m_uiWaypointWait_Timer < uiDiff)
+            {
+                m_bWaypointReached = false;
+                m_creature->GetMotionMaster()->MovePoint(m_uiCurrentWaypoint,Waypoints[m_uiCurrentWaypoint].fX,Waypoints[m_uiCurrentWaypoint].fY,Waypoints[m_uiCurrentWaypoint].fZ);
+            }
+            else
+                m_uiWaypointWait_Timer -= uiDiff;
+
         //Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;

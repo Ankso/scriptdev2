@@ -43,6 +43,8 @@ struct MANGOS_DLL_DECL instance_halls_of_lightning : public ScriptedInstance
     uint64 m_uiLokenGUID;
     uint64 m_uiVolkhanGUID;
 
+    uint64 m_auiStormforgedLieutenantGUID[2];
+
     uint64 m_uiVolkhanDoorGUID;
     uint64 m_uiIonarDoorGUID;
     uint64 m_uiLokenDoorGUID;
@@ -51,16 +53,20 @@ struct MANGOS_DLL_DECL instance_halls_of_lightning : public ScriptedInstance
     void Initialize()
     {
         memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+        memset(&m_auiStormforgedLieutenantGUID, 0, sizeof(m_auiStormforgedLieutenantGUID));
 
-        m_uiGeneralBjarngrimGUID = 0;
-        m_uiVolkhanGUID          = 0;
-        m_uiIonarGUID            = 0;
-        m_uiLokenGUID            = 0;
+        m_uiGeneralBjarngrimGUID            = 0;
+        m_uiVolkhanGUID                     = 0;
+        m_uiIonarGUID                       = 0;
+        m_uiLokenGUID                       = 0;
+        m_auiStormforgedLieutenantGUID[0]   = 0;
+        m_auiStormforgedLieutenantGUID[1]   = 0;
 
-        m_uiVolkhanDoorGUID      = 0;
-        m_uiIonarDoorGUID        = 0;
-        m_uiLokenDoorGUID        = 0;
-        m_uiLokenGlobeGUID       = 0;
+        m_uiVolkhanDoorGUID                 = 0;
+        m_uiIonarDoorGUID                   = 0;
+        m_uiLokenDoorGUID                   = 0;
+        m_uiLokenGlobeGUID                  = 0;
+
     }
 
     void OnCreatureCreate(Creature* pCreature)
@@ -78,6 +84,12 @@ struct MANGOS_DLL_DECL instance_halls_of_lightning : public ScriptedInstance
                 break;
             case NPC_LOKEN:
                 m_uiLokenGUID = pCreature->GetGUID();
+                break;
+            case NPC_STORMFORGED_LIEUTENANT:
+                if(m_auiStormforgedLieutenantGUID[0])
+                    m_auiStormforgedLieutenantGUID[1] = pCreature->GetGUID();
+                else
+                    m_auiStormforgedLieutenantGUID[0] = pCreature->GetGUID();
                 break;
         }
     }
@@ -184,6 +196,10 @@ struct MANGOS_DLL_DECL instance_halls_of_lightning : public ScriptedInstance
                 return m_uiIonarGUID;
             case DATA_LOKEN:
                 return m_uiLokenGUID;
+            case DATA_STORMFORGED_LIEUTENANT_0:
+                return m_auiStormforgedLieutenantGUID[0];
+            case DATA_STORMFORGED_LIEUTENANT_1:
+                return m_auiStormforgedLieutenantGUID[1];
         }
         return 0;
     }
