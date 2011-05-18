@@ -29,17 +29,17 @@ enum
     SAY_KING_DRED_TALON                = -1600020,
     SAY_CALL_FOR_RAPTOR                = -1600021,
     
-    SPELL_BELLOWING_ROAR            = 22686,
+    SPELL_BELLOWING_ROAR               = 22686,
     SPELL_FEARSOME_ROAR                = 48849,
-    H_SPELL_FEARSOME_ROAR            = 59422,
+    SPELL_FEARSOME_ROAR_H              = 59422,
     SPELL_GRIEVOUS_BITE                = 48920,
-    SPELL_MANGLING_SLASH            = 48873,
-    SPELL_PIERCING_SLASH            = 48878,
-    SPELL_RAPTOR_CALL                = 59416,            //not yet implemented
-
+    SPELL_MANGLING_SLASH               = 48873,
+    SPELL_PIERCING_SLASH               = 48878,
+    SPELL_RAPTOR_CALL                  = 59416,            //not yet implemented
 };
 
 const float PosSummon1[3] = {-528.8f, -690.58f, 30.25f};
+
 /*######
 ## boss_dred
 ######*/
@@ -55,126 +55,133 @@ struct MANGOS_DLL_DECL boss_dredAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
-    
-    uint32 FearsomeRoar_Timer;
-    uint32 ManglingSlash_Timer;
-    uint32 PiercingSlash_Timer;
-    uint32 GrievousBite_Timer;
-    uint32 BellowingRoar_Timer;
-    uint32 Check_Timer;
-    uint32 CallForRaptor_Timer;
-    uint32 CallForRaptorSpawn_Timer;
-    uint32 CallForRaptorSpawn_Check;
+
+    bool m_bCalledForRaptorSpawn;
+    uint32 m_uiFearsomeRoarTimer;
+    uint32 m_uiManglingSlashTimer;
+    uint32 m_uiPiercingSlashTimer;
+    uint32 m_uiGrievousBiteTimer;
+    uint32 m_uiBellowingRoarTimer;
+    uint32 m_uiCheckTimer;
+    uint32 m_uiCallForRaptorTimer;
+    uint32 m_uiCallForRaptorSpawnTimer;
     
     void Reset()
     {
-        FearsomeRoar_Timer = 15000;
-        ManglingSlash_Timer = urand(5000, 10000);
-        PiercingSlash_Timer = urand(10000, 15000);
-        GrievousBite_Timer = urand (15000, 20000);
-        BellowingRoar_Timer = 60000;
-        Check_Timer = 15000;
-        CallForRaptor_Timer = 25000;
-        CallForRaptorSpawn_Check = 0;
+        m_uiFearsomeRoarTimer = 15*IN_MILLISECONDS;
+        m_uiManglingSlashTimer = urand(5*IN_MILLISECONDS, 10*IN_MILLISECONDS);
+        m_uiPiercingSlashTimer = urand(10*IN_MILLISECONDS, 15*IN_MILLISECONDS);
+        m_uiGrievousBiteTimer = urand (15*IN_MILLISECONDS, 20*IN_MILLISECONDS);
+        m_uiBellowingRoarTimer = 1*MINUTE*IN_MILLISECONDS;
+        m_uiCheckTimer = 15*IN_MILLISECONDS;
+        m_uiCallForRaptorTimer = 25*IN_MILLISECONDS;
+        m_bCalledForRaptorSpawn = false;
     }
 
     void Aggro(Unit* pWho)
     {
-       
     }
 
     void KilledUnit(Unit* pVictim)
     {
-        
     }
 
     void JustDied(Unit* pKiller)
     {
-        
     }
     
     void CallForRaptorSpawnCheck()
     {
-        CallForRaptorSpawn_Timer = 1000;
-        CallForRaptorSpawn_Check = 1;
+        m_uiCallForRaptorSpawnTimer = 1*IN_MILLISECONDS;
+        m_bCalledForRaptorSpawn = true;
     }
+
     void UpdateAI(const uint32 uiDiff)
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Fearsome Roar
-        if (FearsomeRoar_Timer < uiDiff)
+        if (m_uiFearsomeRoarTimer < uiDiff)
         {
-            DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_FEARSOME_ROAR : H_SPELL_FEARSOME_ROAR, true);
-            FearsomeRoar_Timer = 15000;
-        }else FearsomeRoar_Timer -= uiDiff;
+            DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_FEARSOME_ROAR : SPELL_FEARSOME_ROAR_H, true);
+            m_uiFearsomeRoarTimer = 15*IN_MILLISECONDS;
+        }
+        else
+            m_uiFearsomeRoarTimer -= uiDiff;
 
-        //Piercing Slash
-        if (PiercingSlash_Timer < uiDiff)
+        if (m_uiPiercingSlashTimer < uiDiff)
         {    
             DoCast(m_creature->getVictim(), SPELL_PIERCING_SLASH, true);
-            PiercingSlash_Timer = urand(20000, 25000);
-        }else PiercingSlash_Timer -= uiDiff;
+            m_uiPiercingSlashTimer = urand(20*IN_MILLISECONDS, 25*IN_MILLISECONDS);
+        }
+        else
+            m_uiPiercingSlashTimer -= uiDiff;
 
-        //Mangling Slash
-        if (ManglingSlash_Timer < uiDiff)
+        if (m_uiManglingSlashTimer < uiDiff)
         {    
             DoCast(m_creature->getVictim(), SPELL_MANGLING_SLASH, true);
-            ManglingSlash_Timer = urand(20000, 25000);
-        }else ManglingSlash_Timer -= uiDiff;
+            m_uiManglingSlashTimer = urand(20*IN_MILLISECONDS, 25*IN_MILLISECONDS);
+        }
+        else
+            m_uiManglingSlashTimer -= uiDiff;
 
-        //Mangling Slash
-        if (GrievousBite_Timer < uiDiff)
+        if (m_uiGrievousBiteTimer < uiDiff)
         {    
             DoCast(m_creature->getVictim(), SPELL_GRIEVOUS_BITE, true);
-            GrievousBite_Timer = urand(20000, 25000);
-        }else GrievousBite_Timer -= uiDiff;
+            m_uiGrievousBiteTimer = urand(20*IN_MILLISECONDS, 25*IN_MILLISECONDS);
+        }
+        else
+            m_uiGrievousBiteTimer -= uiDiff;
 
-        //Grievous Bite remove
-        if (Check_Timer < uiDiff)
+        if (m_uiCheckTimer < uiDiff)
         {
-            Unit* pPlayer = m_creature->getVictim();
-            if (pPlayer->GetHealth() == pPlayer->GetMaxHealth())
-                if (pPlayer->HasAura(SPELL_GRIEVOUS_BITE))
+            if (Unit* pPlayer = m_creature->getVictim())
+                if (pPlayer->GetHealth() == pPlayer->GetMaxHealth())
+                    if (pPlayer->HasAura(SPELL_GRIEVOUS_BITE))
                         pPlayer->RemoveAura(SPELL_GRIEVOUS_BITE, EFFECT_INDEX_0);
-            Check_Timer = 1000;
-        }else Check_Timer -= uiDiff;
+
+            m_uiCheckTimer = 1*IN_MILLISECONDS;
+        }
+        else
+            m_uiCheckTimer -= uiDiff;
         
-        //Bellowing Roar
-        if (BellowingRoar_Timer < uiDiff)
+        if (m_uiBellowingRoarTimer < uiDiff)
         {    
             DoCast(m_creature, SPELL_BELLOWING_ROAR);
-            BellowingRoar_Timer = 60000;
-        }else BellowingRoar_Timer -= uiDiff;
+            m_uiBellowingRoarTimer = 1*MINUTE*IN_MILLISECONDS;
+        }
+        else
+            m_uiBellowingRoarTimer -= uiDiff;
 
-        //Call For Raptor - spell
-        if (CallForRaptor_Timer < uiDiff)
+        if (m_uiCallForRaptorTimer < uiDiff)
         {    
             DoScriptText(SAY_CALL_FOR_RAPTOR, m_creature);
             m_creature->CastSpell(m_creature, SAY_CALL_FOR_RAPTOR, true);
-            CallForRaptor_Timer = 25000;
+            m_uiCallForRaptorTimer = 25*IN_MILLISECONDS;
             CallForRaptorSpawnCheck();
-        }else CallForRaptor_Timer -= uiDiff;
+        }
+        else
+            m_uiCallForRaptorTimer -= uiDiff;
 
-        //Call For Raptor - spawn
-        if (CallForRaptorSpawn_Timer < uiDiff && CallForRaptorSpawn_Check == 1)
+        if (m_uiCallForRaptorSpawnTimer < uiDiff && m_bCalledForRaptorSpawn)
         {    
-            switch(urand(0, 1))
+            std::list<Creature*> assistList;
+
+            GetCreatureListWithEntryInGrid(assistList, m_creature, NPC_DRAKKARI_GUTRIPPER, 30.0f);
+            if (assistList.empty())
+                GetCreatureListWithEntryInGrid(assistList, m_creature, NPC_DRAKKARI_SCYTHECLAW, 30.0f);
+
+            if (!assistList.empty())
             {
-                case 0:
-                {
-                    if (Creature* pRaptor1 = m_creature->SummonCreature(NPC_DRAKKARI_GUTRIPPER, PosSummon1[0], PosSummon1[1], PosSummon1[2], 0 , TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 240000))
-                        pRaptor1->AI()->AttackStart(m_creature->getVictim());
-                }
-                case 1:
-                {
-                    if (Creature* pRaptor2 = m_creature->SummonCreature(NPC_DRAKKARI_SCYTHECLAW, PosSummon1[0], PosSummon1[1], PosSummon1[2], 0 , TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 240000))
-                        pRaptor2->AI()->AttackStart(m_creature->getVictim());
-                }
+                Creature* target = *(assistList.begin());
+                if (target && target->isAlive())
+                    target->AI()->AttackStart(m_creature->getVictim());
             }
-            CallForRaptorSpawn_Check = 0;
-        }else CallForRaptorSpawn_Timer -= uiDiff;
+
+            m_bCalledForRaptorSpawn = false;
+        }
+        else
+            m_uiCallForRaptorSpawnTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -187,10 +194,10 @@ CreatureAI* GetAI_boss_dred(Creature* pCreature)
 
 void AddSC_boss_dred()
 {
-    Script *newscript;
+    Script *pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_dred";
-    newscript->GetAI = &GetAI_boss_dred;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_dred";
+    pNewScript->GetAI = &GetAI_boss_dred;
+    pNewScript->RegisterSelf();
 }

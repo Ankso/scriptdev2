@@ -32,12 +32,14 @@ struct MANGOS_DLL_DECL instance_pinnacle : public ScriptedInstance
     std::string strInstData;
 
     uint64 m_uiSkadiDoorGUID;
+    uint64 m_uiYmironDoorGUID;
 
     void Initialize()
     {
         memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
 
         m_uiSkadiDoorGUID = 0;
+        m_uiYmironDoorGUID = 0;
     }
 
     void OnObjectCreate(GameObject* pGo)
@@ -49,9 +51,24 @@ struct MANGOS_DLL_DECL instance_pinnacle : public ScriptedInstance
 
                 if (m_auiEncounter[2] == DONE)
                     pGo->SetGoState(GO_STATE_ACTIVE);
-
+                break;
+            case GO_DOOR_YMIRON:
+                m_uiYmironDoorGUID = pGo->GetGUID();
                 break;
         }
+    }
+
+    void OnCreatureCreate(Creature* pCreature)
+    {
+        switch(pCreature->GetEntry())
+        {
+            case NPC_WORGEN:
+            case NPC_FURBOLG:
+            case NPC_JORMUNGAR:
+            case NPC_RHINO:
+                pCreature->setFaction(35);
+        }
+        
     }
 
     void SetData(uint32 uiType, uint32 uiData)
@@ -68,12 +85,17 @@ struct MANGOS_DLL_DECL instance_pinnacle : public ScriptedInstance
                 break;
             case TYPE_SKADI:
                 if (uiData == DONE)
+                {
                     DoUseDoorOrButton(m_uiSkadiDoorGUID);
-
+                }
                 m_auiEncounter[2] = uiData;
                 break;
             case TYPE_YMIRON:
                 m_auiEncounter[3] = uiData;
+                if (uiData == DONE)
+                {
+                    DoUseDoorOrButton(m_uiYmironDoorGUID);
+                }
                 break;
             default:
                 error_log("SD2: Instance Pinnacle: SetData = %u for type %u does not exist/not implemented.", uiType, uiData);

@@ -38,7 +38,10 @@ enum
     SPELL_HATEFULSTRIKE_H = 59192,
     SPELL_ENRAGE          = 28131,
     SPELL_BERSERK         = 26662,
-    SPELL_SLIMEBOLT       = 32309
+    SPELL_SLIMEBOLT       = 32309,
+
+    ACHIEV_MAKE_QUICK_10  = 1856,
+    ACHIEV_MAKE_QUICK_25  = 1857
 };
 
 struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
@@ -47,25 +50,32 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
     {
         m_pInstance = (instance_naxxramas*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        m_uiMode = pCreature->GetMap()->GetDifficulty();
         Reset();
     }
 
     instance_naxxramas* m_pInstance;
     bool m_bIsRegularMode;
+    uint8 m_uiMode;
 
     uint32 m_uiHatefulStrikeTimer;
     uint32 m_uiBerserkTimer;
     uint32 m_uiSlimeboltTimer;
+    uint32 m_uiAchievTimer;
+
     bool   m_bEnraged;
     bool   m_bBerserk;
+    bool   m_bTimedAchiev;
 
     void Reset()
     {
         m_uiHatefulStrikeTimer = 1000;                      //1 second
         m_uiBerserkTimer = MINUTE*6*IN_MILLISECONDS;         //6 minutes
+        m_uiAchievTimer = MINUTE*3*IN_MILLISECONDS;    //3 minutes
         m_uiSlimeboltTimer = 10000;
         m_bEnraged = false;
         m_bBerserk = false;
+        m_bTimedAchiev =  false;
     }
 
     void KilledUnit(Unit* pVictim)
@@ -82,6 +92,33 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_PATCHWERK, DONE);
+
+        Map *pMap = m_creature->GetMap();
+        if(pMap && pMap->IsDungeon())
+        {
+            bool m_bIs25 = false;
+            switch (m_uiMode)
+            {
+                case RAID_DIFFICULTY_25MAN_NORMAL:
+                case RAID_DIFFICULTY_25MAN_HEROIC:
+                    m_bIs25 = true;
+                    break;
+                case RAID_DIFFICULTY_10MAN_NORMAL:
+                case RAID_DIFFICULTY_10MAN_HEROIC:
+                default:
+                    break;
+            }
+
+            AchievementEntry const *AchievMakeQuickWerkOfHim = GetAchievementStore()->LookupEntry(m_bIs25 ? ACHIEV_MAKE_QUICK_25 : ACHIEV_MAKE_QUICK_10);
+            Map::PlayerList const &lPlayers = pMap->GetPlayers();
+            for (Map::PlayerList::const_iterator iter = lPlayers.begin(); iter != lPlayers.end(); ++iter)
+            {
+                if (AchievMakeQuickWerkOfHim && !m_bTimedAchiev)
+                {
+                    iter->getSource()->CompletedAchievement(AchievMakeQuickWerkOfHim);
+                }
+            }
+        }
     }
 
     void Aggro(Unit* pWho)
@@ -113,14 +150,16 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
 
             if (Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid()))
             {
-                if (pTempTarget->GetHealth() > uiHighestHP && m_creature->CanReachWithMeleeAttack(pTempTarget))
+                if (m_creature->CanReachWithMeleeAttack(pTempTarget))
                 {
-                    uiHighestHP = pTempTarget->GetHealth();
-                    pTarget = pTempTarget;
+                    if (pTempTarget->GetHealth() > uiHighestHP)
+                    {
+                        uiHighestHP = pTempTarget->GetHealth();
+                        pTarget = pTempTarget;
+                    }
+                    --uiTargets;
                 }
             }
-
-            --uiTargets;
         }
 
         if (pTarget)
@@ -153,7 +192,16 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
                 }
             }
         }
-
+        
+        if (!m_bTimedAchiev)
+        {
+            if (m_uiAchievTimer < uiDiff)
+            {
+                m_bTimedAchiev = true;
+            }
+            else
+                m_uiAchievTimer -= uiDiff;
+        }
         // Berserk after 6 minutes
         if (!m_bBerserk)
         {
