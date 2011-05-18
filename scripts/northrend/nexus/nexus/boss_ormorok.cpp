@@ -265,7 +265,7 @@ struct MANGOS_DLL_DECL mob_crystalline_tanglerAI : public ScriptedAI
             m_uiRootsTimer = 15*IN_MILLISECONDS;
         }
         else
-            m_uiRootsTimer -=diff;
+            m_uiRootsTimer -=uiDiff;
 
         DoMeleeAttackIfReady();   
     } 

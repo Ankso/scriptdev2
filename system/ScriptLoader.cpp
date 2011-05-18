@@ -12,6 +12,9 @@ extern void AddSC_battlegroundSA();
 extern void AddSC_npc_arena_honor();
 extern void AddSC_mob_teleguy();
 
+// Events
+extern void AddSC_Orgrimmar_Event();
+
 // OutdoorPvP
 extern void AddSC_outdoor_pvp_eastern_kingdoms();
 extern void AddSC_outdoor_pvp_kalimdor();
@@ -548,6 +551,9 @@ void AddScripts()
     //custom
     AddSC_npc_arena_honor();
     AddSC_mob_teleguy();
+
+    // Events
+    AddSC_Orgrimmar_Event();
 
     // OutdoorPvP zone scripts
     // Must be _before_ map scripts call!

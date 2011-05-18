@@ -139,6 +139,7 @@
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <AdditionalOptions>/Zm200</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>mangosd.lib;ACEd.lib;framework.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -741,6 +742,7 @@
     <ClCompile Include="..\system\ScriptLoader.cpp" />
     <ClCompile Include="..\system\system.cpp" />
     <ClCompile Include="..\ScriptMgr.cpp" />
+    <ClCompile Include="OrgrimmarEvent.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\base\BSW_ai.h" />
@@ -833,6 +835,7 @@
     <ClInclude Include="..\system\ScriptLoader.h" />
     <ClInclude Include="..\system\system.h" />
     <ClInclude Include="..\config.h" />
+    <ClInclude Include="OrgrimmarEvent.h" />
     <CustomBuild Include="..\revision.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Extracting revision</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">cd "$(SolutionDir)"

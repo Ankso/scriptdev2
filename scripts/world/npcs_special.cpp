@@ -2621,50 +2621,6 @@ CreatureAI* GetAI_pet_greater_fire_elemental(Creature* pCreature)
 }
 
 /*######
-## npc_training_dummy
-######*/
-
-#define OUT_OF_COMBAT_TIME 5000
-
-struct MANGOS_DLL_DECL npc_training_dummyAI : public Scripted_NoMovementAI
-{
-    uint32 combat_timer;
-
-    npc_training_dummyAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
-    {
-        Reset();
-    }
-
-    void Reset()
-    {
-        combat_timer = 0;
-		m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
-    }
-
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
-    {
-        combat_timer = 0;
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        m_creature->ModifyHealth(m_creature->GetMaxHealth());
-
-        combat_timer += diff;
-        if (combat_timer > OUT_OF_COMBAT_TIME)
-            EnterEvadeMode();
-    }
-};
-
-CreatureAI* GetAI_npc_training_dummy(Creature* pCreature)
-{
-    return new npc_training_dummyAI(pCreature);
-}
-
-/*######
 ## npc_winter_reveler
 ######*/
 
@@ -2932,43 +2888,6 @@ bool GossipSelect_npc_metzen(Player* pPlayer, Creature* pCreature, uint32 uiSend
             pCreature->CastSpell(pCreature, SPELL_REINDEER_DUST, true);
         }
     }
-    return true;
-}
-
-/*######
-## npc_experience_eliminator
-######*/
-
-#define GOSSIP_ITEM_STOP_XP_GAIN                 "I don't want to gain experience anymore."
-#define GOSSIP_CONFIRM_STOP_XP_GAIN              "Are you sure you want to stop gaining experience?"
-#define GOSSIP_ITEM_START_XP_GAIN                "I want to be able to gain experience again."
-#define GOSSIP_CONFIRM_START_XP_GAIN             "Are you sure you want to be able to gain experience once again?"
-
-bool GossipHello_npc_experience_eliminator(Player* pPlayer, Creature* pCreature)
-{
-    pPlayer->ADD_GOSSIP_ITEM_EXTENDED(GOSSIP_ICON_CHAT, pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_XP_USER_DISABLED) ? GOSSIP_ITEM_START_XP_GAIN : GOSSIP_ITEM_STOP_XP_GAIN,
-    GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1,
-    pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_XP_USER_DISABLED) ? GOSSIP_CONFIRM_START_XP_GAIN : GOSSIP_CONFIRM_STOP_XP_GAIN, 100000, false);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
-    return true;
-}
-
-bool GossipSelect_npc_experience_eliminator(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if(uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        if(pPlayer->GetMoney() < 100000)
-            return true;
-
-        pPlayer->ModifyMoney(-100000);
-
-        if(pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_XP_USER_DISABLED))
-            pPlayer->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_XP_USER_DISABLED);
-        else
-            pPlayer->SetFlag(PLAYER_FLAGS, PLAYER_FLAGS_XP_USER_DISABLED);
-    }
-    pPlayer->CLOSE_GOSSIP_MENU();
     return true;
 }
 
@@ -3464,11 +3383,6 @@ void AddSC_npcs_special()
     newscript->RegisterSelf();
 
     newscript = new Script;
-    newscript->Name = "npc_training_dummy";
-    newscript->GetAI = &GetAI_npc_training_dummy;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
     newscript->Name = "npc_winter_reveler";
     newscript->GetAI = &GetAI_npc_winter_reveler;
     newscript->RegisterSelf();
@@ -3477,12 +3391,6 @@ void AddSC_npcs_special()
     newscript->Name = "npc_metzen";
     newscript->pGossipHello = &GossipHello_npc_metzen;
     newscript->pGossipSelect = &GossipSelect_npc_metzen;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_experience_eliminator";
-    newscript->pGossipHello = &GossipHello_npc_experience_eliminator;
-    newscript->pGossipSelect = &GossipSelect_npc_experience_eliminator;
     newscript->RegisterSelf();
 
     newscript = new Script;
