@@ -62,6 +62,31 @@ enum Phases
 
 };
 
+enum Spells
+{
+    BOLVAR_SPELL_STRIKE       = 0,
+    BOLVAR_SPELL_DIVINE_STORM = 1,
+    BOLVAR_SPELL_SACRED_LIGHT = 2,
+    BOLVAR_SPELL_RESURRECTION = 3,
+    BOLVAR_SPELL_HAND_OF_FREEDOM = 1044,
+};
+
+enum Timers
+{
+    BOLVAR_TIMER_STRIKE          = 0,
+    BOLVAR_TIMER_DIVINE_STORM    = 1,
+    BOLVAR_TIMER_SACRED_LIGHT    = 2,
+    BOLVAR_TIMER_HAND_OF_FREEDOM = 3,
+    BOLVAR_TIMER_RESURRECTION    = 4,
+};
+
+enum SelectionType
+{
+    TARGET_ENEMY    = 0,
+    TARGET_FRIENDLY = 1,
+    TARGET_ALL      = 2,
+};
+
 float BolvarPositions[11][4] = {
     { 1272.475830f, -4399.773438f, 26.321188f, 3.488860f },
     { 1267.679321f, -4378.562012f, 28.625492f, 4.458753f },

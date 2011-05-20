@@ -8,6 +8,8 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
     int32 m_uiMovementTimer;
     uint16 nextMovementId;
     uint8 phase;
+    // Spell timers
+    int32 m_uiSpellTimers[5];
 
     void Reset()
     {
@@ -16,18 +18,87 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
         phase = BOLVAR_PHASE_INTRO;
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
+        for (uint8 i = 0; i < 5; ++i)
+            m_uiSpellTimers[i] = 5 * (i + 1) * IN_MILLISECONDS;
+    }
+    
+    Player* SelectRandomFriendlyCCedPlayerAtRange(float range)
+    {
+        Map *pMap = m_creature->GetMap();
+        Map::PlayerList const &pPlayers = pMap->GetPlayers();
+        std::list<Player*> pList;
+
+        pList.clear();
+
+        MaNGOS::FriendlyCCedInRangeCheck u_check(m_creature, range);
+        MaNGOS::PlayerListSearcher<MaNGOS::FriendlyCCedInRangeCheck> searcher(pList, u_check);
+
+        if (pList.empty())
+            return NULL;
+
+        return (urand(0,1) == 0 ? pList.front() : pList.back());
+    }
+
+    Player* SelectRandomPlayerAtRange(float range, bool alive, SelectionType uiType)
+    {
+        Map *pMap = m_creature->GetMap();
+        Map::PlayerList const &pPlayers = pMap->GetPlayers();
+        std::vector<Player*> pList;
+
+        pList.clear();
+
+        for (Map::PlayerList::const_iterator itr = pPlayers.begin(); itr != pPlayers.end(); ++itr)
+        {
+            if (Player *player = itr->getSource())
+            {
+                if (!player->IsInMap(m_creature))
+                    continue;
+
+                if (player->isGameMaster())
+                    continue;
+
+                bool isValid = true;
+                switch(uiType)
+                {
+                    case TARGET_ENEMY:
+                        if (player->IsFriendlyTo(m_creature))
+                            isValid = false;
+                        break;
+                    case TARGET_FRIENDLY:
+                        if (!player->IsFriendlyTo(m_creature))
+                            isValid = false;
+                        break;
+                    case TARGET_ALL:
+                    default:
+                        break;
+                }
+
+                if (!isValid)
+                    continue;
+
+                if (alive && player->isAlive() && player->IsWithinDistInMap(m_creature, range))
+                    pList.push_back(player);
+                else if (!alive && !player->isAlive() && player->IsWithinDistInMap(m_creature, range))
+                    pList.push_back(player);
+            }
+        }
+
+        if (pList.empty())
+            return NULL;
+
+        return pList[urand(0, pList.size() - 1)];
     }
 
     void JustDied(Unit *killer)
     {
-        Map *map = m_creature->GetMap();
+        Map *pMap = m_creature->GetMap();
         const Quest *pQuest = GetQuestTemplateStore(QUEST_HORDE);
         const CreatureInfo *cInfo = GetCreatureTemplateStore(NPC_THRALL);
 
-        if (!map || !pQuest || !cInfo)
+        if (!pMap || !pQuest || !cInfo)
             return;
 
-        for (Map::PlayerList::const_iterator itr = map->GetPlayers().begin(); itr != map->GetPlayers().end(); ++itr)
+        for (Map::PlayerList::const_iterator itr = pMap->GetPlayers().begin(); itr != pMap->GetPlayers().end(); ++itr)
         {
             Player *player = itr->getSource();
             
@@ -100,16 +171,13 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
                             m_uiMovementTimer = 5 * IN_MILLISECONDS;
                             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                             m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-                            phase = BOLVAR_PHASE_FRONT_DOOR;
                             break;
                         case BOLVAR_WAYPOINT_FRONT_DOOR:
                             m_uiMovementTimer = 20 * /*MINUTE **/ IN_MILLISECONDS;
-                            phase = BOLVAR_PHASE_TUNNEL;
                             break;
                         case BOLVAR_WAYPOINT_TUNNEL:
                             m_uiMovementTimer = 10 * /*MINUTE **/ IN_MILLISECONDS;
                             DoScriptText(BOLVAR_SAY_FRONT_DOOR_TO_TUNNEL, m_creature);
-                            phase = BOLVAR_PHASE_SQUARE;
                             break;
                         case BOLVAR_WAYPOINT_SQUARE:
                             DoScriptText(BOLVAR_SAY_SQUARE, m_creature);
@@ -125,24 +193,36 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
             }
             
             // Combat handling
-            switch(phase)
+            for (uint8 i = 0; i <= BOLVAR_TIMER_RESURRECTION; ++i)
             {
-                case BOLVAR_PHASE_INTRO:
-                    break;
-                case BOLVAR_PHASE_FRONT_DOOR:
+                if (m_uiSpellTimers[i] <= 0)
                 {
-                    break;
+                    switch(i)
+                    {
+                        case BOLVAR_TIMER_STRIKE:
+                            DoCast(m_creature->getThreatManager().getHostileTarget(), BOLVAR_SPELL_STRIKE);
+                            m_uiSpellTimers[i] = urand(5, 10) * IN_MILLISECONDS;
+                            break;
+                        case BOLVAR_TIMER_DIVINE_STORM:
+                            DoCast(m_creature->getThreatManager().getHostileTarget(), BOLVAR_SPELL_DIVINE_STORM);
+                            m_uiSpellTimers[i] = urand(7, 10) * IN_MILLISECONDS;
+                            break;
+                        case BOLVAR_TIMER_SACRED_LIGHT:
+                            DoCast(DoSelectLowestHpFriendly(30.0f), BOLVAR_SPELL_SACRED_LIGHT);
+                            m_uiSpellTimers[i] = urand(10, 15) * IN_MILLISECONDS;
+                            break;
+                        case BOLVAR_TIMER_HAND_OF_FREEDOM:
+                            DoCast(SelectRandomFriendlyCCedPlayerAtRange(40.0f), BOLVAR_SPELL_HAND_OF_FREEDOM);
+                            m_uiSpellTimers[i] = urand(20, 25) * IN_MILLISECONDS;
+                            break;
+                        case BOLVAR_TIMER_RESURRECTION:
+                            DoCast(SelectRandomPlayerAtRange(50.0f, false, TARGET_FRIENDLY), BOLVAR_SPELL_RESURRECTION, true);
+                            m_uiSpellTimers[i] = urand(25, 30) * IN_MILLISECONDS;
+                            break;
+                    }
                 }
-                case BOLVAR_PHASE_TUNNEL:
-                {
-                    break;
-                }
-                case BOLVAR_PHASE_SQUARE:
-                {
-                    break;
-                }
-                default:
-                    break;
+                else
+                    m_uiSpellTimers[i] -= uiDiff;
             }
         }
     }
