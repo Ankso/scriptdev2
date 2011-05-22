@@ -6,25 +6,25 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
     npc_bolvar_fordragonAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     int32 m_uiMovementTimer;
-    uint16 nextMovementId;
-    uint8 phase;
+    uint16 m_uiNextMovementId;
+    uint8 m_uiPhase;
     // Spell timers
     int32 m_uiSpellTimers[5];
     // This coords are used for evade to a specific location
-    float evadeX, evadeY, evadeZ;
+    float m_uiEvadePosition[3];
 
     void Reset()
     {
         m_uiMovementTimer = 20 * IN_MILLISECONDS;
-        nextMovementId = 0;
-        phase = BOLVAR_PHASE_INTRO;
+        m_uiNextMovementId = 0;
+        m_uiPhase = BOLVAR_PHASE_INTRO;
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
         for (uint8 i = 0; i < 5; ++i)
             m_uiSpellTimers[i] = 10 * (i + 1) * IN_MILLISECONDS;
-        evadeX = m_creature->GetPositionX();
-        evadeY = m_creature->GetPositionY();
-        evadeZ = m_creature->GetPositionZ();
+        m_uiEvadePosition[0] = m_creature->GetPositionX();
+        m_uiEvadePosition[1] = m_creature->GetPositionY();
+        m_uiEvadePosition[2] = m_creature->GetPositionZ();
     }
     
     Player* SelectRandomFriendlyCCedPlayerAtRange(float range)
@@ -99,8 +99,9 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
     void ResetCombatPosition()
     {
         SetMoving(true);
-        m_creature->getThreatManager().clearReferences();
-        m_creature->GetMotionMaster()->MovePoint(17, evadeX, evadeY, evadeZ);
+        m_creature->DeleteThreatList();
+        m_creature->CombatStop(true);
+        m_creature->GetMotionMaster()->MovePoint(17, m_uiEvadePosition[0], m_uiEvadePosition[1], m_uiEvadePosition[2]);
     }
 
     void SetMoving(bool bMove)
@@ -108,12 +109,12 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
         if (bMove)
         {
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-            phase = BOLVAR_PHASE_MOVEMENT;
+            m_uiPhase = BOLVAR_PHASE_MOVEMENT;
         }
         else
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-            phase = BOLVAR_PHASE_COMBAT;
+            m_uiPhase = BOLVAR_PHASE_COMBAT;
         }
     }
 
@@ -187,12 +188,12 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
         if (IsEventActive(ORGRIMMAR_EVENT))
         {
             // Movement handling
-            if (nextMovementId <= BOLVAR_WAYPOINT_SQUARE)
+            if (m_uiNextMovementId <= BOLVAR_WAYPOINT_SQUARE)
             {
                 if (m_uiMovementTimer <= 0)
                 {
-                    m_creature->GetMotionMaster()->MovePoint(nextMovementId, BolvarPositions[nextMovementId][0], BolvarPositions[nextMovementId][1], BolvarPositions[nextMovementId][2]);
-                    switch(nextMovementId)
+                    m_creature->GetMotionMaster()->MovePoint(m_uiNextMovementId, BolvarPositions[m_uiNextMovementId][0], BolvarPositions[m_uiNextMovementId][1], BolvarPositions[m_uiNextMovementId][2]);
+                    switch(m_uiNextMovementId)
                     {
                         case BOLVAR_WAYPOINT_INTRO_1:
                             m_uiMovementTimer = 10 * IN_MILLISECONDS;
@@ -225,20 +226,19 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
                             SetMoving(true);
                             break;
                         default:
-                            error_log("SD2: Unhandled waypoint %i in npc_bolvar_fordragon script.", nextMovementId);
+                            error_log("SD2: Unhandled waypoint %i in npc_bolvar_fordragon script.", m_uiNextMovementId);
                             break;
                     }
-                    evadeX = BolvarPositions[nextMovementId][0];
-                    evadeY = BolvarPositions[nextMovementId][1];
-                    evadeZ = BolvarPositions[nextMovementId][2];
-                    ++nextMovementId;
+                    for (int i = 0; i < 3; ++i)
+                        m_uiEvadePosition[i] = BolvarPositions[m_uiNextMovementId][i];
+                    ++m_uiNextMovementId;
                 }
                 else
                     m_uiMovementTimer -= uiDiff;
             }
             
             // Combat handling
-            if (phase == BOLVAR_PHASE_COMBAT)
+            if (m_uiPhase == BOLVAR_PHASE_COMBAT)
             {
                 for (uint8 i = 0; i <= BOLVAR_TIMER_RESURRECTION; ++i)
                 {
@@ -263,7 +263,9 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
                                 m_uiSpellTimers[i] = urand(20, 25) * IN_MILLISECONDS;
                                 break;
                             case BOLVAR_TIMER_RESURRECTION:
-                                DoCast(SelectRandomPlayerAtRange(50.0f, false, TARGET_FRIENDLY), BOLVAR_SPELL_RESURRECTION, true);
+                                Player *pTarget = SelectRandomPlayerAtRange(50.0f, false, TARGET_FRIENDLY);
+                                if (pTarget)
+                                    DoCast(pTarget, BOLVAR_SPELL_RESURRECTION, true);
                                 m_uiSpellTimers[i] = urand(25, 30) * IN_MILLISECONDS;
                                 break;
                         }
@@ -274,8 +276,8 @@ struct MANGOS_DLL_DECL npc_bolvar_fordragonAI : public ScriptedAI
                 DoMeleeAttackIfReady();
             }
 
-            if (m_creature->GetDistance(evadeX, evadeY, evadeZ) >= EVADE_DISTANCE && phase != BOLVAR_PHASE_MOVEMENT)
-                    ResetCombatPosition();
+            if (m_creature->GetDistance(m_uiEvadePosition[0], m_uiEvadePosition[1], m_uiEvadePosition[2]) >= EVADE_DISTANCE && m_uiPhase != BOLVAR_PHASE_MOVEMENT)
+                ResetCombatPosition();
         }
     }
 };
@@ -300,15 +302,15 @@ struct MANGOS_DLL_DECL npc_alliance_soldierAI : public ScriptedAI
 {
     npc_alliance_soldierAI(Creature *pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    int32 yellTimer;
-    int32 phaseTimer;
-    uint8 phase;
+    int32 m_uiYellTimer;
+    int32 m_uiPhaseTimer;
+    uint8 m_uiPhase;
 
     void Reset()
     {
-        yellTimer = urand(25, 30) * IN_MILLISECONDS;
-        phase = SOLDIER_PHASE_INTRO;
-        phaseTimer = 67 * IN_MILLISECONDS;
+        m_uiYellTimer = urand(25, 30) * IN_MILLISECONDS;
+        m_uiPhase = SOLDIER_PHASE_INTRO;
+        m_uiPhaseTimer = 67 * IN_MILLISECONDS;
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
@@ -328,18 +330,18 @@ struct MANGOS_DLL_DECL npc_alliance_soldierAI : public ScriptedAI
     {
         if (IsEventActive(ORGRIMMAR_EVENT))
         {
-            switch(phase)
+            switch(m_uiPhase)
             {
                 case SOLDIER_PHASE_INTRO:
                 {
                     // They start charging 2 seconds after Bolvar
-                    if (phaseTimer <= 0)
-                        phase = SOLDIER_PHASE_CHARGE;
+                    if (m_uiPhaseTimer <= 0)
+                        m_uiPhase = SOLDIER_PHASE_CHARGE;
                     else
-                        phaseTimer -= uiDiff;
+                        m_uiPhaseTimer -= uiDiff;
 
                     // Random yells during intro
-                    if (yellTimer <= 0)
+                    if (m_uiYellTimer <= 0)
                     {
                         if (urand(1, 20) == 1) // There are about 60 soldiers, so only 5% chance to yell something.
                         {
@@ -364,18 +366,18 @@ struct MANGOS_DLL_DECL npc_alliance_soldierAI : public ScriptedAI
                                     break;
                             }
                         }
-                        yellTimer = urand(10, 20) * IN_MILLISECONDS;
+                        m_uiYellTimer = urand(10, 20) * IN_MILLISECONDS;
                     }
                     else
-                        yellTimer -= uiDiff;
+                        m_uiYellTimer -= uiDiff;
                     break;
                 }
                 case SOLDIER_PHASE_CHARGE:
                 {
-                    uint8 randomPos = urand(0, 9);
+                    uint8 randomPos = urand(0, 7);
                     m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
                     m_creature->GetMotionMaster()->MovePoint(0, SoldiersPositions_FrontDoor[randomPos][0] + frand(-3.0f, 3.0f), SoldiersPositions_FrontDoor[randomPos][1] + urand(-3.0f, 3.0f), SoldiersPositions_FrontDoor[randomPos][2]);
-                    phase = SOLDIER_PHASE_FIGHT;
+                    m_uiPhase = SOLDIER_PHASE_FIGHT;
                     break;
                 }
                 case SOLDIER_PHASE_FIGHT:
@@ -384,7 +386,7 @@ struct MANGOS_DLL_DECL npc_alliance_soldierAI : public ScriptedAI
                     break;
                 }
                 default:
-                    error_log("SD2: Unhandled phase %i for npc_alliance_soldier.", phase);
+                    error_log("SD2: Unhandled phase %i for npc_alliance_soldier.", m_uiPhase);
                     break;
             }
         }
