@@ -2062,7 +2062,7 @@
     <ClCompile Include="..\scripts\kalimdor\razorfen_kraul\razorfen_kraul.cpp">
       <Filter>scripts\kalimdor\razorfen_kraul</Filter>
     </ClCompile>
-    <ClCompile Include="OrgrimmarEvent.cpp">
+    <ClCompile Include="..\scripts\custom\OrgrimmarEvent.cpp">
       <Filter>scripts\custom</Filter>
     </ClCompile>
   </ItemGroup>
@@ -2375,7 +2375,7 @@
     <ClInclude Include="..\include\sc_outdoor_pvp.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="OrgrimmarEvent.h">
+    <ClInclude Include="..\scripts\custom\OrgrimmarEvent.h">
       <Filter>scripts\custom</Filter>
     </ClInclude>
   </ItemGroup>
