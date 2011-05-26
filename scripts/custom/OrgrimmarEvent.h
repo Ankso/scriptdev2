@@ -2,6 +2,9 @@
 #include "ObjectMgr.h"
 #include "GameEventMgr.h"
 
+#ifndef ORGRIMMAR_EVENT_H
+#define ORGRIMMAR_EVENT_H
+
 #define ORGRIMMAR_EVENT             78
 #define ORGRIMMAR_PREPARATION_EVENT 79
 #define QUEST_ALLIANCE              80000
@@ -123,3 +126,5 @@ float SoldiersPositions_FrontDoor[8][3] = {
     { 1357.747192f, -4392.923828f, 29.361778f },
     { 1357.109619f, -4406.307129f, 28.641808f },
 };
+
+#endif
