@@ -45,26 +45,26 @@ enum
     SAY_VOLUNTEER_1                     = -1619031,         //said by the volunteer image
     SAY_VOLUNTEER_2                     = -1619032,
 
-    NPC_VOLUNTEER						= 30385,
+    NPC_VOLUNTEER                       = 30385,
     NPC_TWILIGHT_INITIATE               = 30114,
-    NPC_VISUAL_TRIGGER					= 38667,
+    NPC_VISUAL_TRIGGER                  = 38667,
 
-    FAC_FRIENDLY						= 35,
-    FAC_HOSTILE							= 16, 
+    FAC_FRIENDLY                        = 35,
+    FAC_HOSTILE                         = 16, 
 
-    SPELL_SPHERE_VISUAL					= 56075,
-    SPELL_SACRIFICE_VISUAL				= 56133,
-    SPELL_DARK_BEAM						= 46016,
-    SPELL_GIFT_OF_THE_HERALD			= 56219,
+    SPELL_SPHERE_VISUAL                 = 56075,
+    SPELL_SACRIFICE_VISUAL              = 56133,
+    SPELL_DARK_BEAM                     = 46016,
+    SPELL_GIFT_OF_THE_HERALD            = 56219,
     
-    SPELL_LIGHTING_BALL					= 56891,
-    SPELL_LIGHTING_BALL_H				= 60032,
+    SPELL_LIGHTING_BALL                 = 56891,
+    SPELL_LIGHTING_BALL_H               = 60032,
 
-    SPELL_THUNDERSHOCK					= 56926,
-    SPELL_THUNDERSHOCK_H				= 60029,
+    SPELL_THUNDERSHOCK                  = 56926,
+    SPELL_THUNDERSHOCK_H                = 60029,
 
-    SPELL_CYCLONE_STRIKE				= 56855,
-    SPELL_CYCLONE_STRIKE_H				= 60030,
+    SPELL_CYCLONE_STRIKE                = 56855,
+    SPELL_CYCLONE_STRIKE_H              = 60030,
 
     ACHIEVEMENT_VOLUNTEER_WORK          = 2056
 };
@@ -91,7 +91,7 @@ const float volunteerPos[7][4] =
 #define START_X         372.33f
 #define START_Y         -705.28f
 #define START_Z         -8.904f
-#define START_O			5.427970f
+#define START_O         5.427970f
 
 /*######
 ## boss_jedoga
@@ -112,7 +112,7 @@ struct MANGOS_DLL_DECL boss_jedogaAI : public ScriptedAI
     bool volunteerPhase;
     bool getsAchievement;
 
-    std::list<uint64> volunteerGUIDList;
+    GUIDList m_lVolunteerGUIDList;
 
     Creature* pChosenVolunteer;
     Creature* pVisualTrigger;
@@ -139,7 +139,7 @@ struct MANGOS_DLL_DECL boss_jedogaAI : public ScriptedAI
         cycloneStrikeTimer = 8000;
         getsAchievement = true;
 
-        volunteerGUIDList.clear();
+        m_lVolunteerGUIDList.clear();
 
         if(m_pInstance)
             m_pInstance->SetData(TYPE_JEDOGA,NOT_STARTED);
@@ -198,22 +198,22 @@ struct MANGOS_DLL_DECL boss_jedogaAI : public ScriptedAI
         for (int i = 0; i < MAX_VOLUNTEER; i++)
         {
             if (Creature* pVolunteer = m_creature->SummonCreature(NPC_VOLUNTEER,
-                volunteerPos[i][0], volunteerPos[i][1], volunteerPos[i][2],volunteerPos[i][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5000))
+                volunteerPos[i][0], volunteerPos[i][1], volunteerPos[i][2],volunteerPos[i][3], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 20000))
             {
                 pVolunteer->setFaction(FAC_FRIENDLY);
                 pVolunteer->DeleteThreatList();
                 pVolunteer->CastSpell(pVolunteer, SPELL_SPHERE_VISUAL, true);
                 pVolunteer->HandleEmoteCommand(EMOTE_STATE_KNEEL);
-                volunteerGUIDList.push_back(pVolunteer->GetGUID());
+                m_lVolunteerGUIDList.push_back(pVolunteer->GetGUID());
             } 
         }
     }
 
     void DepawnVolunteers()
     {
-        if (!volunteerGUIDList.empty() && m_pInstance)
+        if (!m_lVolunteerGUIDList.empty() && m_pInstance)
         {
-            for(std::list<uint64>::iterator itr = volunteerGUIDList.begin(); itr != volunteerGUIDList.end(); ++itr)
+            for(GUIDList::const_iterator itr = m_lVolunteerGUIDList.begin(); itr != m_lVolunteerGUIDList.end(); ++itr)
             {
                 if (Creature* pVolunteer = m_pInstance->instance->GetCreature(*itr))
                 {
@@ -226,11 +226,11 @@ struct MANGOS_DLL_DECL boss_jedogaAI : public ScriptedAI
 
     void MoveVolunteer()
     {
-        if (volunteerGUIDList.empty())
+        if (m_lVolunteerGUIDList.empty())
             return;
 
-        std::list<uint64>::iterator itr = volunteerGUIDList.begin();
-        std::advance(itr, urand(0, volunteerGUIDList.size() - 1));
+        GUIDList::iterator itr = m_lVolunteerGUIDList.begin();
+        std::advance(itr, urand(0, m_lVolunteerGUIDList.size() - 1));
 
         if (Creature* pVolunteer = m_creature->GetMap()->GetCreature(*itr))
         {
@@ -326,13 +326,13 @@ struct MANGOS_DLL_DECL boss_jedogaAI : public ScriptedAI
 
             if (volunteerDeathTimer < uiDiff)
             {
-                if (pChosenVolunteer && !volunteerGUIDList.empty())
-                    volunteerGUIDList.remove(pChosenVolunteer->GetGUID());
+                if (pChosenVolunteer && !m_lVolunteerGUIDList.empty() && pChosenVolunteer->GetGUID())
+                    m_lVolunteerGUIDList.remove(pChosenVolunteer->GetGUID());
 
                 if (pChosenVolunteer && pChosenVolunteer->isAlive())
                     pChosenVolunteer->DealDamage(pChosenVolunteer, pChosenVolunteer->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
 
-                if (volunteerGUIDList.empty() || victimCounter >= 6)
+                if (m_lVolunteerGUIDList.empty() || victimCounter >= 6)
                 {
                     DepawnVolunteers();
                     SpawnVolunteers();

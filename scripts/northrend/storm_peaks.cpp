@@ -273,6 +273,8 @@ struct MANGOS_DLL_DECL npc_freed_protodrakeAI : public npc_escortAI
     void Reset()
     {
         m_bNotOnRoute = false;
+        if (m_creature->getFaction() != m_creature->GetCreatureInfo()->faction_A)
+            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
     }
 
     void WaypointReached(uint32 uiPointId)
@@ -309,6 +311,8 @@ struct MANGOS_DLL_DECL npc_freed_protodrakeAI : public npc_escortAI
 
                 //flight he don't accept so we walk o_O
                 m_creature->SetSpeedRate(MOVE_WALK, 3.0f,true);
+
+                m_creature->setFaction(35);
 
                 Start(false, (Player*)(m_creature->GetCharmer()));
             }

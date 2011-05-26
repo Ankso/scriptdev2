@@ -1324,8 +1324,9 @@ struct MANGOS_DLL_DECL npc_scion_of_eternityAI : public ScriptedAI
             if (Unit* pDiskUnit = pDiskVehicle->GetBase())
             {
                 //We want to attack the Player on the Disc and not the Disc itself
-                if(m_creature->getVictim()->GetEntry() == NPC_HOVER_DISK && m_creature->getVictim()->GetVehicle()->GetPassenger(0))
-                    m_creature->Attack(m_creature->getVictim()->GetVehicle()->GetPassenger(0), false);
+                if (m_creature->getVictim()->GetEntry() == NPC_HOVER_DISK && m_creature->getVictim()->GetVehicle()) 
+                    if (m_creature->getVictim()->GetVehicle()->GetPassenger(0))
+                        m_creature->Attack(m_creature->getVictim()->GetVehicle()->GetPassenger(0), false);
             }
         }
 

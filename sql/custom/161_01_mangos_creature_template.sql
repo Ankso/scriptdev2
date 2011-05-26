@@ -126,3 +126,8 @@ UPDATE `creature_template` SET `ScriptName` = 'mob_spirit_fount' WHERE `entry` =
 -- Quest The Last of her kind
 
 UPDATE `creature_template` SET `ScriptName`='npc_harnessed_icemaw_matriarch', `flags_extra`='4098' WHERE `entry`='30468';
+
+
+-- Quest Ambush at the Overlook
+
+UPDATE `creature_template` SET `ScriptName`='mob_scarlet_courier' WHERE `entry`='29076';

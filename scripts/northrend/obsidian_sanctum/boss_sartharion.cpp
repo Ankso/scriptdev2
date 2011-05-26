@@ -243,8 +243,8 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
         m_uiShadronTimer = 75000;
         m_uiVesperonTimer = 120000;
 
-        m_uiFlameTsunamiTimer = 30000;
-        m_uiFlameBreathTimer = 20000;
+        m_uiFlameTsunamiTimer = m_bIsRegularMode ? 30000 : 20000;
+        m_uiFlameBreathTimer = m_bIsRegularMode ? 20000 : 10000;
         m_uiTailSweepTimer = 5000;
         m_uiCleaveTimer = 7000;
         m_uiCycloneAuraTimer = 10000;
@@ -565,7 +565,7 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
                case 3: DoScriptText(SAY_SARTHARION_SPECIAL_4, m_creature); break;
             }
 
-            m_uiFlameTsunamiTimer = 30000;
+            m_uiFlameTsunamiTimer = m_bIsRegularMode ? 30000 : 20000;
         }
         else
             m_uiFlameTsunamiTimer -= uiDiff;
@@ -575,7 +575,7 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
         {
             DoScriptText(SAY_SARTHARION_BREATH, m_creature);
             DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_FLAME_BREATH : SPELL_FLAME_BREATH_H);
-            m_uiFlameBreathTimer = urand(25000, 35000);
+            m_uiFlameBreathTimer = urand(25000, 35000) * (m_bIsRegularMode ? 1 : 0.8);
         }
         else
             m_uiFlameBreathTimer -= uiDiff;
@@ -584,7 +584,7 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
         if (m_uiTailSweepTimer < uiDiff)
         {
             DoCast(m_creature, m_bIsRegularMode ? SPELL_TAIL_LASH : SPELL_TAIL_LASH_H);
-            m_uiTailSweepTimer = urand(5000, 7000);
+            m_uiTailSweepTimer = urand(5000, 7000) * (m_bIsRegularMode ? 1 : 0.8);
         }
         else
             m_uiTailSweepTimer -= uiDiff;
@@ -593,7 +593,7 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
         if (m_uiCleaveTimer < uiDiff)
         {
             DoCast(m_creature->getVictim(), SPELL_CLEAVE);
-            m_uiCleaveTimer = urand(7000, 10000);
+            m_uiCleaveTimer = urand(7000, 10000) * (m_bIsRegularMode ? 1 : 0.8);
         }
         else
             m_uiCleaveTimer -= uiDiff;
@@ -618,9 +618,9 @@ struct MANGOS_DLL_DECL boss_sartharionAI : public ScriptedAI
                 }
             }
             if (m_bIsSoftEnraged)
-                m_uiCycloneAuraTimer = 10000;
+                m_uiCycloneAuraTimer = m_bIsRegularMode ? 10000 : 8000;
             else
-                m_uiCycloneAuraTimer = urand(20000, 25000);
+                m_uiCycloneAuraTimer = urand(20000, 25000) * (m_bIsRegularMode ? 1 : 0.8);
         }
         else
             m_uiCycloneAuraTimer -= uiDiff;

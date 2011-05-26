@@ -107,7 +107,7 @@
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <AdditionalOptions>-Zm200 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-Zm124 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>mangosd.lib;ACEd.lib;framework.lib;%(AdditionalDependencies)</AdditionalDependencies>

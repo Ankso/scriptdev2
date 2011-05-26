@@ -1882,6 +1882,9 @@
     <ClCompile Include="..\scripts\custom\teleguy.cpp">
       <Filter>scripts\custom</Filter>
     </ClCompile>
+    <ClCompile Include="..\scripts\custom\vip_master.cpp">
+      <Filter>scripts\custom</Filter>
+    </ClCompile>
     <ClCompile Include="..\scripts\kalimdor\caverns_of_time\culling_of_stratholme\boss_infinite_corruptor.cpp">
       <Filter>scripts\kalimdor\caverns_of_time\culling_of_stratholme</Filter>
     </ClCompile>

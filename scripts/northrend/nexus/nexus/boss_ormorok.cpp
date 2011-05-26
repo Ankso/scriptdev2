@@ -49,10 +49,11 @@ enum
     SAY_DEATH                                  = -1576021,
     SAY_REFLECT                                = -1576022,
     SAY_CRYSTAL_SPIKES                         = -1576023,
-    SAY_KILL                                   = -1576024
-};
+    SAY_KILL                                   = -1576024,
 
-#define SPIKE_DISTANCE                            5.0f
+    // Others
+    SPIKE_DISTANCE                             = 5
+};
 
 struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
 {
@@ -115,14 +116,14 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
         DoScriptText(SAY_KILL, m_creature);
     }
 
-    void UpdateAI(const uint32 diff) 
+    void UpdateAI(const uint32 uiDiff) 
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
         if (m_bIsCrystalSpikes)
         {
-            if (m_uiCrystalSpikesTimer < diff)
+            if (m_uiCrystalSpikesTimer < uiDiff)
             {
                 m_fSpikeXY[0][0] = m_fBaseX+(SPIKE_DISTANCE*m_uiCrystalSpikesCount*cos(m_fBaseO));
                 m_fSpikeXY[0][1] = m_fBaseY+(SPIKE_DISTANCE*m_uiCrystalSpikesCount*sin(m_fBaseO));
@@ -142,7 +143,7 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
                 m_uiCrystalSpikesTimer = 0.2*IN_MILLISECONDS;
             }
             else
-                m_uiCrystalSpikesTimer -= diff;
+                m_uiCrystalSpikesTimer -= uiDiff;
         }
 
         if (!m_bIsFrenzy && (m_creature->GetHealthPercent() < 25.0f))
@@ -151,24 +152,24 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
             m_bIsFrenzy = true;
         }
 
-        if (m_uiTrampleTimer < diff)
+        if (m_uiTrampleTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_TRAMPLE_N : SPELL_TRAMPLE_H);
             m_uiTrampleTimer = urand(10*IN_MILLISECONDS, 35*IN_MILLISECONDS);
         }
         else
-            m_uiTrampleTimer -= diff;
+            m_uiTrampleTimer -= uiDiff;
 
-        if (m_uiReflectionTimer < diff)
+        if (m_uiReflectionTimer < uiDiff)
         {
             DoScriptText(SAY_REFLECT, m_creature);
             DoCast(m_creature, SPELL_SPELL_REFLECTION);
             m_uiReflectionTimer = 15*IN_MILLISECONDS;
         }
         else
-            m_uiReflectionTimer -= diff;
+            m_uiReflectionTimer -= uiDiff;
 
-        if (m_uiSpellCrystalSpikesTimer < diff)
+        if (m_uiSpellCrystalSpikesTimer < uiDiff)
         {
             DoScriptText(SAY_CRYSTAL_SPIKES, m_creature);
             m_bIsCrystalSpikes = true;
@@ -181,9 +182,9 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
             m_uiSpellCrystalSpikesTimer = 20*IN_MILLISECONDS;
         }
         else
-            m_uiSpellCrystalSpikesTimer -=diff;
+            m_uiSpellCrystalSpikesTimer -= uiDiff;
 
-        if (!m_bIsRegularMode && (m_uiSummonTanglerTimer < diff))
+        if (!m_bIsRegularMode && (m_uiSummonTanglerTimer < uiDiff))
         {
             Creature* CrystallineTangler = m_creature->SummonCreature(MOB_CRYSTALLINE_TANGLER, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), m_creature->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
             if (CrystallineTangler)
@@ -193,18 +194,23 @@ struct MANGOS_DLL_DECL boss_ormorokAI : public ScriptedAI
             m_uiSummonTanglerTimer = 17*IN_MILLISECONDS;
         }
         else
-            m_uiSummonTanglerTimer -=diff;
+            m_uiSummonTanglerTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
 
+CreatureAI* GetAI_boss_ormorok(Creature* pCreature)
+{
+    return new boss_ormorokAI (pCreature);
+}
+
 struct MANGOS_DLL_DECL mob_crystal_spikeAI : public Scripted_NoMovementAI
 {
     mob_crystal_spikeAI(Creature *pCreature) : Scripted_NoMovementAI(pCreature)
     {
-        Reset();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
     }
 
     bool m_bIsRegularMode;
@@ -242,12 +248,14 @@ struct MANGOS_DLL_DECL mob_crystal_spikeAI : public Scripted_NoMovementAI
     } 
 }; 
 
+CreatureAI* GetAI_mob_crystal_spike(Creature* pCreature)
+{
+    return new mob_crystal_spikeAI (pCreature);
+}
+
 struct MANGOS_DLL_DECL mob_crystalline_tanglerAI : public ScriptedAI
 {
-    mob_crystalline_tanglerAI(Creature *pCreature) : ScriptedAI(pCreature) 
-    {
-        Reset();
-    }
+    mob_crystalline_tanglerAI(Creature *pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     uint32 m_uiRootsTimer;
 
@@ -265,25 +273,15 @@ struct MANGOS_DLL_DECL mob_crystalline_tanglerAI : public ScriptedAI
             m_uiRootsTimer = 15*IN_MILLISECONDS;
         }
         else
-            m_uiRootsTimer -=uiDiff;
+            m_uiRootsTimer -= uiDiff;
 
         DoMeleeAttackIfReady();   
     } 
 }; 
 
-CreatureAI* GetAI_mob_crystal_spike(Creature* pCreature)
-{
-    return new mob_crystal_spikeAI (pCreature);
-}
-
 CreatureAI* GetAI_mob_crystalline_tangler(Creature* pCreature)
 {
     return new mob_crystalline_tanglerAI (pCreature);
-}
-
-CreatureAI* GetAI_boss_ormorok(Creature* pCreature)
-{
-    return new boss_ormorokAI (pCreature);
 }
 
 void AddSC_boss_ormorok()

@@ -147,7 +147,17 @@ struct MANGOS_DLL_DECL mob_volazj_cloneAI : public ScriptedAI
     uint32 spellWarriorTimer; 
     uint32 spellPaladinTimer; 
     uint32 spellHunterTimer; 
-        
+
+    void KilledUnit(Unit* pVictim)
+    {
+        for(int i=0; i<5; i++)
+             pVictim->RemoveAurasDueToSpell(m_aPhasingSpells[i]);
+
+        m_creature->SetDeathState(JUST_DIED);
+        m_creature->SetHealth(0);
+        m_creature->RemoveCorpse();
+    }
+
     void Reset()
     {
         m_bOwnclass = 0;
@@ -478,53 +488,59 @@ struct MANGOS_DLL_DECL boss_volazjAI : public ScriptedAI
         { 
             if(Unit* target = m_creature->GetMap()->GetUnit(itr->getSource()->GetGUID()))
             {
-                m_uilPlayerGUIDs[m_uiCount] = target->GetGUID(); // save GUIDs
-                target->CastSpell(target,m_aPhasingSpells[m_uiCount],true); // cast phase shifting spell
-                m_uiCount++;
+                if (target->isAlive())
+                {
+                    m_uilPlayerGUIDs[m_uiCount] = target->GetGUID(); // save GUIDs
+                    target->CastSpell(target,m_aPhasingSpells[m_uiCount],true); // cast phase shifting spell
+                    m_uiCount++;
+                }
             }
         }
 
         for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr) // get every player
         { 
             if(Unit* target = m_creature->GetMap()->GetUnit(itr->getSource()->GetGUID())) 
-            { 
-                for(uint8 i=0;i<m_uiCount;i++) // get all other players
+            {
+                if (target->isAlive())
                 {
-                    if (target->GetGUID() == m_uilPlayerGUIDs[i]) // get other players, but not self
-                        continue;
+                    for(uint8 i=0;i<m_uiCount;i++) // get all other players
+                    {
+                        if (target->GetGUID() == m_uilPlayerGUIDs[i]) // get other players, but not self
+                            continue;
 
-                    if(Player* pOtherPlayer = m_creature->GetMap()->GetPlayer(m_uilPlayerGUIDs[i]))
-                    {    
-                        uint32 m_uiNpc = urand(0,4); // create mirror image with random weapon/model on other players position
-                        Creature* pClone = m_creature->SummonCreature(m_uilMirrorNPCs[m_uiNpc], pOtherPlayer->GetPositionX(), pOtherPlayer->GetPositionY(), pOtherPlayer->GetPositionZ(), pOtherPlayer->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 90000);
-                    
-                        if (pClone) 
-                        {
-                            pClone->SetDisplayId(pOtherPlayer->GetNativeDisplayId());
-                            pClone->SetName(pOtherPlayer->GetName());
-                            pClone->setFaction(FAC_HOSTILE);
-                            if (mob_volazj_cloneAI* pCloneAI = dynamic_cast<mob_volazj_cloneAI*>(pClone->AI()))
+                        if(Player* pOtherPlayer = m_creature->GetMap()->GetPlayer(m_uilPlayerGUIDs[i]))
+                        {    
+                            uint32 m_uiNpc = urand(0,4); // create mirror image with random weapon/model on other players position
+                            Creature* pClone = m_creature->SummonCreature(m_uilMirrorNPCs[m_uiNpc], pOtherPlayer->GetPositionX(), pOtherPlayer->GetPositionY(), pOtherPlayer->GetPositionZ(), pOtherPlayer->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 90000);
+
+                            if (pClone) 
                             {
-                                pCloneAI->m_bOwnclass = pOtherPlayer->getClass(); // set class to other players class
-                            }
+                                pClone->SetDisplayId(pOtherPlayer->GetNativeDisplayId());
+                                pClone->SetName(pOtherPlayer->GetName());
+                                pClone->setFaction(FAC_HOSTILE);
+                                if (mob_volazj_cloneAI* pCloneAI = dynamic_cast<mob_volazj_cloneAI*>(pClone->AI()))
+                                {
+                                    pCloneAI->m_bOwnclass = pOtherPlayer->getClass(); // set class to other players class
+                                }
 
-                            pClone->Attack(target, true); 
-                            pClone->GetMotionMaster()->MoveChase(target);
-                            pClone->AddThreat(target, 10.0f);
-                            pClone->SetPhaseMask(target->GetPhaseMask(),true);
-                            m_lCloneGUIDList.push_back(pClone->GetGUID()); 
+                                pClone->Attack(target, true); 
+                                pClone->GetMotionMaster()->MoveChase(target);
+                                pClone->AddThreat(target, 10.0f);
+                                pClone->SetPhaseMask(target->GetPhaseMask(),true);
+                                m_lCloneGUIDList.push_back(pClone->GetGUID()); 
 
-                            switch(pClone->GetPhaseMask())
-                            {
-                                case 16:  m_lClone16GUIDList.push_back(pClone->GetGUID()); break;
-                                case 32:  m_lClone32GUIDList.push_back(pClone->GetGUID()); break;
-                                case 64:  m_lClone64GUIDList.push_back(pClone->GetGUID()); break;
-                                case 128: m_lClone128GUIDList.push_back(pClone->GetGUID()); break;
-                                case 256: m_lClone256GUIDList.push_back(pClone->GetGUID()); break;
-                                default: break;
-                            }
+                                switch(pClone->GetPhaseMask())
+                                {
+                                    case 16:  m_lClone16GUIDList.push_back(pClone->GetGUID()); break;
+                                    case 32:  m_lClone32GUIDList.push_back(pClone->GetGUID()); break;
+                                    case 64:  m_lClone64GUIDList.push_back(pClone->GetGUID()); break;
+                                    case 128: m_lClone128GUIDList.push_back(pClone->GetGUID()); break;
+                                    case 256: m_lClone256GUIDList.push_back(pClone->GetGUID()); break;
+                                    default: break;
+                                }
+                            } 
                         } 
-                    } 
+                    }
                 }   
             }
         }
@@ -650,7 +666,7 @@ struct MANGOS_DLL_DECL boss_volazjAI : public ScriptedAI
                 {
                     m_creature->InterruptNonMeleeSpells(true);
                     SetCombatMovement(false);    
-                    m_uiInsanityCount=1;
+                    m_uiInsanityCount++;
                     DoCast(m_creature, SPELL_INSANITY);
                     m_uiPhase = PHASE_INSANITY_1;
 

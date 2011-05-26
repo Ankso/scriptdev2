@@ -190,7 +190,7 @@ struct MANGOS_DLL_DECL npc_air_force_botsAI : public ScriptedAI
             if (!pPlayerTarget)
                 return;
 
-            Creature* pLastSpawnedGuard = m_spawnedGuid.IsEmpty() ? NULL : GetSummonedGuard();
+            Creature* pLastSpawnedGuard = m_spawnedGuid ? GetSummonedGuard() : NULL;
 
             // prevent calling GetCreature at next MoveInLineOfSight call - speedup
             if (!pLastSpawnedGuard)
@@ -572,7 +572,7 @@ struct MANGOS_DLL_DECL npc_injured_patientAI : public ScriptedAI
         {
             if ((((Player*)caster)->GetQuestStatus(6624) == QUEST_STATUS_INCOMPLETE) || (((Player*)caster)->GetQuestStatus(6622) == QUEST_STATUS_INCOMPLETE))
             {
-                if (!m_doctorGuid.IsEmpty())
+                if (m_doctorGuid)
                 {
                     if (Creature* pDoctor = m_creature->GetMap()->GetCreature(m_doctorGuid))
                     {
@@ -630,7 +630,7 @@ struct MANGOS_DLL_DECL npc_injured_patientAI : public ScriptedAI
             m_creature->SetDeathState(JUST_DIED);
             m_creature->SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
 
-            if (!m_doctorGuid.IsEmpty())
+            if (m_doctorGuid)
             {
                 if (Creature* pDoctor = m_creature->GetMap()->GetCreature(m_doctorGuid))
                 {
@@ -1822,7 +1822,6 @@ struct MANGOS_DLL_DECL npc_mirror_imageAI : public ScriptedAI
             m_creature->clearUnitState(UNIT_STAT_FOLLOW);
             m_creature->SetInCombatWith(pWho);
             pWho->SetInCombatWith(m_creature);
-            m_creature->AddThreat(pWho, 100.0f);
             DoStartMovement(pWho, 30.0f);
             SetCombatMovement(true);
             inCombat = true;
@@ -3059,6 +3058,7 @@ enum
 {
     AREA_GRRIZZLEMAW            = 395,
     AREA_WINTERFIN_RETREAT      = 4099,
+    AREA_SNOWFALL_GLADE         = 4154,
     AREA_BRONZE_DRAGONSHRINE    = 4175,
     AREA_SHAPERS_TERRACE        = 4382,
     AREA_WYRMREST_TEMPLE        = 4161,
@@ -3140,7 +3140,11 @@ struct MANGOS_DLL_DECL pet_orphanAI : public PetAI
                 {
                     if(((Player*)pPlayer)->GetQuestStatus(QUEST_PLAYMATES_O) == QUEST_STATUS_INCOMPLETE)
                         m_creature->CastSpell(pPlayer, SPELL_PLAYMATES_O,true);
-                    else if (((Player*)pPlayer)->GetQuestStatus(QUEST_PLAYMATES_W) == QUEST_STATUS_INCOMPLETE)
+                    break;
+                }
+                case AREA_SNOWFALL_GLADE:
+                {
+                    if (((Player*)pPlayer)->GetQuestStatus(QUEST_PLAYMATES_W) == QUEST_STATUS_INCOMPLETE)
                         m_creature->CastSpell(pPlayer, SPELL_PLAYMATES_W,true);
                     break;
                 }

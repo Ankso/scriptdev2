@@ -289,7 +289,7 @@ bool GOHello_go_stasis_generator(Player* pPlayer, GameObject* pGo)
 {
     if (ScriptedInstance* m_pInstance = (ScriptedInstance*)pGo->GetInstanceData())
     {
-        if (m_pInstance->GetData(TYPE_GORTOK) == NOT_STARTED)
+        if (m_pInstance->GetData(TYPE_GORTOK) == NOT_STARTED || m_pInstance->GetData(TYPE_GORTOK) == FAIL)
             m_pInstance->SetData(TYPE_GORTOK, IN_PROGRESS);
     }
 
