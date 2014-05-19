@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -52,7 +52,7 @@ struct MANGOS_DLL_DECL boss_golemaggAI : public ScriptedAI
     uint32 m_uiBuffTimer;
     bool m_bEnraged;
 
-    void Reset()
+    void Reset() override
     {
         m_uiPyroblastTimer  = 7 * IN_MILLISECONDS;
         m_uiEarthquakeTimer = 3 * IN_MILLISECONDS;
@@ -62,27 +62,25 @@ struct MANGOS_DLL_DECL boss_golemaggAI : public ScriptedAI
         m_creature->CastSpell(m_creature, SPELL_MAGMA_SPLASH, true);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GOLEMAGG, IN_PROGRESS);
-
-        m_creature->CallForHelp(1.5 * RANGE_CALL_FOR_HELP);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GOLEMAGG, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GOLEMAGG, FAIL);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -93,7 +91,7 @@ struct MANGOS_DLL_DECL boss_golemaggAI : public ScriptedAI
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
                 if (DoCastSpellIfCan(pTarget, SPELL_PYROBLAST) == CAST_OK)
-                    m_uiPyroblastTimer = 7*IN_MILLISECONDS;
+                    m_uiPyroblastTimer = 7 * IN_MILLISECONDS;
             }
         }
         else
@@ -112,7 +110,7 @@ struct MANGOS_DLL_DECL boss_golemaggAI : public ScriptedAI
             if (m_uiEarthquakeTimer < uiDiff)
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_EARTHQUAKE) == CAST_OK)
-                    m_uiEarthquakeTimer = 3*IN_MILLISECONDS;
+                    m_uiEarthquakeTimer = 3 * IN_MILLISECONDS;
             }
             else
                 m_uiEarthquakeTimer -= uiDiff;
@@ -122,7 +120,7 @@ struct MANGOS_DLL_DECL boss_golemaggAI : public ScriptedAI
         if (m_uiBuffTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature, SPELL_GOLEMAGG_TRUST);
-            m_uiBuffTimer = 1.5*IN_MILLISECONDS;
+            m_uiBuffTimer = 1.5 * IN_MILLISECONDS;
         }
         else
             m_uiBuffTimer -= uiDiff;
@@ -142,12 +140,12 @@ struct MANGOS_DLL_DECL mob_core_ragerAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     uint32 m_uiMangleTimer;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiMangleTimer = 7*IN_MILLISECONDS;                 // These times are probably wrong
+        m_uiMangleTimer = 7 * IN_MILLISECONDS;              // These times are probably wrong
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32& uiDamage)
+    void DamageTaken(Unit* /*pDoneBy*/, uint32& uiDamage) override
     {
         if (m_creature->GetHealthPercent() < 50.0f)
         {
@@ -160,7 +158,7 @@ struct MANGOS_DLL_DECL mob_core_ragerAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -169,7 +167,7 @@ struct MANGOS_DLL_DECL mob_core_ragerAI : public ScriptedAI
         if (m_uiMangleTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_MANGLE) == CAST_OK)
-                m_uiMangleTimer = 10*IN_MILLISECONDS;
+                m_uiMangleTimer = 10 * IN_MILLISECONDS;
         }
         else
             m_uiMangleTimer -= uiDiff;

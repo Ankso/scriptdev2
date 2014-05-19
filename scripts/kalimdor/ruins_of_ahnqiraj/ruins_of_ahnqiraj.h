@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -32,10 +32,25 @@ enum
     NPC_CAPTAIN_DRENN           = 15389,
     NPC_CAPTAIN_TUUBID          = 15392,
     NPC_CAPTAIN_QEEZ            = 15391,
+    NPC_QIRAJI_WARRIOR          = 15387,
+    NPC_SWARMGUARD_NEEDLER      = 15344,
+
+    MAX_ARMY_WAVES              = 7,
 
     GO_OSSIRIAN_CRYSTAL         = 180619,                   // Used in the ossirian encounter
+    NPC_OSSIRIAN_TRIGGER        = 15590,                    // Triggers ossirian weakness
 
-    SAY_OSSIRIAN_INTRO          = -1509022                  // Yelled after Kurinnax dies
+    SAY_OSSIRIAN_INTRO          = -1509022,                 // Yelled after Kurinnax dies
+
+    // Rajaxx yells
+    SAY_WAVE3                   = -1509005,
+    SAY_WAVE4                   = -1509006,
+    SAY_WAVE5                   = -1509007,
+    SAY_WAVE6                   = -1509008,
+    SAY_WAVE7                   = -1509009,
+    SAY_INTRO                   = -1509010,
+    SAY_DEAGGRO                 = -1509015,                 // on Rajaxx evade
+    SAY_COMPLETE_QUEST          = -1509017,                 // Yell when realm complete quest 8743 for world event
 };
 
 struct SpawnLocation
@@ -44,15 +59,42 @@ struct SpawnLocation
     float m_fX, m_fY, m_fZ, m_fO;
 };
 
-// These positions are likely wrong, and the npcs need some movement to these coords
-// TODO Research proper positions
-static  const SpawnLocation aAndorovSpawnLocs[MAX_HELPERS] =
+// Spawn coords for Andorov and his team
+static const SpawnLocation aAndorovSpawnLocs[MAX_HELPERS] =
 {
-    {NPC_GENERAL_ANDOROV, -8876.97f, 1651.96f, 21.57f, 5.52f},
-    {NPC_KALDOREI_ELITE,  -8875.47f, 1653.51f, 21.57f, 5.32f},
-    {NPC_KALDOREI_ELITE,  -8873.96f, 1655.06f, 21.57f, 5.13f},
-    {NPC_KALDOREI_ELITE,  -8878.26f, 1650.63f, 21.57f, 5.7f},
-    {NPC_KALDOREI_ELITE,  -8879.46f, 1649.39f, 21.57f, 5.85f}
+    {NPC_GENERAL_ANDOROV, -8660.4f,  1510.29f, 32.449f,  2.2184f},
+    {NPC_KALDOREI_ELITE,  -8655.84f, 1509.78f, 32.462f,  2.33341f},
+    {NPC_KALDOREI_ELITE,  -8657.39f, 1506.28f, 32.418f,  2.33346f},
+    {NPC_KALDOREI_ELITE,  -8660.96f, 1504.9f,  32.1567f, 2.33306f},
+    {NPC_KALDOREI_ELITE,  -8664.45f, 1506.44f, 32.0944f, 2.33302f}
+};
+
+// Movement locations for Andorov
+static const SpawnLocation aAndorovMoveLocs[] =
+{
+    {0, -8701.51f, 1561.80f, 32.092f},
+    {0, -8718.66f, 1577.69f, 21.612f},
+    {0, -8876.97f, 1651.96f, 21.57f, 5.52f},
+    {0, -8882.15f, 1602.77f, 21.386f},
+    {0, -8940.45f, 1550.69f, 21.616f},
+};
+
+struct SortingParameters
+{
+    uint32 m_uiEntry;
+    int32 m_uiYellEntry;
+    float m_fSearchDist;
+};
+
+static const SortingParameters aArmySortingParameters[MAX_ARMY_WAVES] =
+{
+    {NPC_CAPTAIN_QEEZ,   0,         20.0f},
+    {NPC_CAPTAIN_TUUBID, 0,         22.0f},
+    {NPC_CAPTAIN_DRENN,  SAY_WAVE3, 22.0f},
+    {NPC_CAPTAIN_XURREM, SAY_WAVE4, 22.0f},
+    {NPC_MAJOR_YEGGETH,  SAY_WAVE5, 20.0f},
+    {NPC_MAJOR_PAKKON,   SAY_WAVE6, 21.0f},
+    {NPC_COLONEL_ZERRAN, SAY_WAVE7, 17.0f},
 };
 
 class MANGOS_DLL_DECL instance_ruins_of_ahnqiraj : public ScriptedInstance
@@ -61,42 +103,39 @@ class MANGOS_DLL_DECL instance_ruins_of_ahnqiraj : public ScriptedInstance
         instance_ruins_of_ahnqiraj(Map* pMap);
         ~instance_ruins_of_ahnqiraj() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        // bool IsEncounterInProgress() const;              // not active in AQ20
+        // bool IsEncounterInProgress() const override;              // not active in AQ20
 
-        void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
-        void OnPlayerEnter(Player* pPlayer);
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnPlayerEnter(Player* pPlayer) override;
 
-        void OnCreatureEnterCombat(Creature* pCreature);
+        void OnCreatureEnterCombat(Creature* pCreature) override;
         void OnCreatureEvade(Creature* pCreature);
-        void OnCreatureDeath(Creature* pCreature);
+        void OnCreatureDeath(Creature* pCreature) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        void GetKaldoreiGuidList(GuidList& lList) { lList = m_lKaldoreiGuidList; }
+
+        void Update(uint32 uiDiff) override;
+
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
     private:
         void DoSapwnAndorovIfCan();
+        void DoSortArmyWaves();
+        void DoSendNextArmyWave();
 
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string m_strInstData;
 
-        uint64 m_uiOssirianGUID;
-        uint64 m_uiBuruGUID;
-        uint64 m_uiKurinnaxxGUID;
-        uint64 m_uiAndorovGUID;
-        uint64 m_uiRajaxxGUID;
-        uint64 m_uiQeezGUID;
-        uint64 m_uiTuubidGUID;
-        uint64 m_uiDrennGUID;
-        uint64 m_uiXurremGUID;
-        uint64 m_uiYeggethGUID;
-        uint64 m_uiPakkonGUID;
-        uint64 m_uiZerranGUID;
+        GuidList m_lKaldoreiGuidList;
+        GuidSet m_sArmyWavesGuids[MAX_ARMY_WAVES];
+
+        uint32 m_uiArmyDelayTimer;
+        uint8 m_uiCurrentArmyWave;
 };
 #endif

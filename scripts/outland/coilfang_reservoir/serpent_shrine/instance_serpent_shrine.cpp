@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -34,12 +34,7 @@ EndScriptData */
 */
 
 instance_serpentshrine_cavern::instance_serpentshrine_cavern(Map* pMap) : ScriptedInstance(pMap),
-    m_uiSharkkis(0),
-    m_uiTidalvess(0),
-    m_uiCaribdis(0),
-    m_uiLadyVashj(0),
-    m_uiKarathress(0),
-    m_uiKarathressEvent_Starter(0)
+    m_uiSpellBinderCount(0)
 {
     Initialize();
 }
@@ -47,7 +42,6 @@ instance_serpentshrine_cavern::instance_serpentshrine_cavern(Map* pMap) : Script
 void instance_serpentshrine_cavern::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-    memset(&m_auiShieldGenerator, 0, sizeof(m_auiShieldGenerator));
 }
 
 bool instance_serpentshrine_cavern::IsEncounterInProgress() const
@@ -65,33 +59,43 @@ void instance_serpentshrine_cavern::OnCreatureCreate(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
     {
-        case NPC_LADYVASHJ:  m_uiLadyVashj  = pCreature->GetGUID(); break;
-        case NPC_KARATHRESS: m_uiKarathress = pCreature->GetGUID(); break;
-        case NPC_SHARKKIS:   m_uiSharkkis   = pCreature->GetGUID(); break;
-        case NPC_TIDALVESS:  m_uiTidalvess  = pCreature->GetGUID(); break;
-        case NPC_CARIBDIS:   m_uiCaribdis   = pCreature->GetGUID(); break;
+        case NPC_LADYVASHJ:
+        case NPC_SHARKKIS:
+        case NPC_TIDALVESS:
+        case NPC_CARIBDIS:
+        case NPC_LEOTHERAS:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case NPC_GREYHEART_SPELLBINDER:
+            m_lSpellBindersGUIDList.push_back(pCreature->GetObjectGuid());
+            break;
+        case NPC_HYDROSS_BEAM_HELPER:
+            m_lBeamHelpersGUIDList.push_back(pCreature->GetObjectGuid());
+            break;
+        case NPC_SHIELD_GENERATOR:
+            m_lShieldGeneratorGUIDList.push_back(pCreature->GetObjectGuid());
+            break;
+        case NPC_COILFANG_PRIESTESS:
+        case NPC_COILFANG_SHATTERER:
+        case NPC_VASHJIR_HONOR_GUARD:
+        case NPC_GREYHEART_TECHNICIAN:
+            // Filter only the mobs spawned on the platforms
+            if (pCreature->GetPositionZ() > 0)
+                m_sPlatformMobsGUIDSet.insert(pCreature->GetObjectGuid());
+            break;
     }
 }
 
-void instance_serpentshrine_cavern::SetData64(uint32 uiType, uint64 uiData)
+void instance_serpentshrine_cavern::OnObjectCreate(GameObject* pGo)
 {
-    if (uiType == DATA_KARATHRESS_STARTER)
-        m_uiKarathressEvent_Starter = uiData;
-}
-
-uint64 instance_serpentshrine_cavern::GetData64(uint32 uiData)
-{
-    switch (uiData)
+    switch (pGo->GetEntry())
     {
-        case NPC_SHARKKIS:            return m_uiSharkkis;
-        case NPC_TIDALVESS:           return m_uiTidalvess;
-        case NPC_CARIBDIS:            return m_uiCaribdis;
-        case NPC_LADYVASHJ:           return m_uiLadyVashj;
-        case NPC_KARATHRESS:          return m_uiKarathress;
-        case DATA_KARATHRESS_STARTER: return m_uiKarathressEvent_Starter;
-
-        default:
-            return 0;
+        case GO_SHIELD_GENERATOR_1:
+        case GO_SHIELD_GENERATOR_2:
+        case GO_SHIELD_GENERATOR_3:
+        case GO_SHIELD_GENERATOR_4:
+            m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+            break;
     }
 }
 
@@ -100,31 +104,44 @@ void instance_serpentshrine_cavern::SetData(uint32 uiType, uint32 uiData)
     switch (uiType)
     {
         case TYPE_HYDROSS_EVENT:
-            m_auiEncounter[0] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_LEOTHERAS_EVENT:
-            m_auiEncounter[1] = uiData;
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == FAIL)
+            {
+                for (GuidList::const_iterator itr = m_lSpellBindersGUIDList.begin(); itr != m_lSpellBindersGUIDList.end(); ++itr)
+                {
+                    if (Creature* pSpellBinder = instance->GetCreature(*itr))
+                        pSpellBinder->Respawn();
+                }
+
+                m_uiSpellBinderCount = 0;
+            }
             break;
         case TYPE_THELURKER_EVENT:
-            m_auiEncounter[2] = uiData;
-            break;
         case TYPE_KARATHRESS_EVENT:
-            m_auiEncounter[3] = uiData;
-            break;
         case TYPE_MOROGRIM_EVENT:
-            m_auiEncounter[4] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_LADYVASHJ_EVENT:
-            if (uiData == NOT_STARTED)
-                memset(&m_auiShieldGenerator, 0, sizeof(m_auiShieldGenerator));
-            m_auiEncounter[5] = uiData;
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == FAIL)
+            {
+                // interrupt the shield
+                for (GuidList::const_iterator itr = m_lShieldGeneratorGUIDList.begin(); itr != m_lShieldGeneratorGUIDList.end(); ++itr)
+                {
+                    if (Creature* pGenerator = instance->GetCreature(*itr))
+                        pGenerator->InterruptNonMeleeSpells(false);
+                }
+
+                // reset generators
+                DoToggleGameObjectFlags(GO_SHIELD_GENERATOR_1, GO_FLAG_NO_INTERACT, false);
+                DoToggleGameObjectFlags(GO_SHIELD_GENERATOR_2, GO_FLAG_NO_INTERACT, false);
+                DoToggleGameObjectFlags(GO_SHIELD_GENERATOR_3, GO_FLAG_NO_INTERACT, false);
+                DoToggleGameObjectFlags(GO_SHIELD_GENERATOR_4, GO_FLAG_NO_INTERACT, false);
+            }
             break;
-        case TYPE_SHIELDGENERATOR1:
-        case TYPE_SHIELDGENERATOR2:
-        case TYPE_SHIELDGENERATOR3:
-        case TYPE_SHIELDGENERATOR4:
-            m_auiShieldGenerator[uiType - TYPE_SHIELDGENERATOR1] = uiData;
-            return;
     }
 
     if (uiData == DONE)
@@ -133,7 +150,7 @@ void instance_serpentshrine_cavern::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-            << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5];
+                   << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5];
 
         m_strInstData = saveStream.str();
 
@@ -154,7 +171,7 @@ void instance_serpentshrine_cavern::Load(const char* chrIn)
 
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-        >> m_auiEncounter[4] >> m_auiEncounter[5];
+               >> m_auiEncounter[4] >> m_auiEncounter[5];
 
     for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
@@ -165,32 +182,70 @@ void instance_serpentshrine_cavern::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_serpentshrine_cavern::GetData(uint32 uiType)
+uint32 instance_serpentshrine_cavern::GetData(uint32 uiType) const
 {
-    switch (uiType)
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
+}
+
+void instance_serpentshrine_cavern::SetData64(uint32 uiData, uint64 uiGuid)
+{
+    // Note: this is handled in Acid. The purpose is check which npc from the platform set is alive
+    // The function is triggered by eventAI on generic timer
+    if (uiData == DATA_WATERSTATE_EVENT)
     {
-        case TYPE_HYDROSS_EVENT:    return m_auiEncounter[0];
-        case TYPE_LEOTHERAS_EVENT:  return m_auiEncounter[1];
-        case TYPE_THELURKER_EVENT:  return m_auiEncounter[2];
-        case TYPE_KARATHRESS_EVENT: return m_auiEncounter[3];
-        case TYPE_MOROGRIM_EVENT:   return m_auiEncounter[4];
-        case TYPE_LADYVASHJ_EVENT:  return m_auiEncounter[5];
+        if (m_sPlatformMobsGUIDSet.find(ObjectGuid(uiGuid)) != m_sPlatformMobsGUIDSet.end())
+            m_sPlatformMobsAliveGUIDSet.insert(ObjectGuid(uiGuid));
+    }
+}
 
-        case TYPE_SHIELDGENERATOR1: return m_auiShieldGenerator[0];
-        case TYPE_SHIELDGENERATOR2: return m_auiShieldGenerator[1];
-        case TYPE_SHIELDGENERATOR3: return m_auiShieldGenerator[2];
-        case TYPE_SHIELDGENERATOR4: return m_auiShieldGenerator[3];
+bool instance_serpentshrine_cavern::CheckConditionCriteriaMeet(Player const* pPlayer, uint32 uiInstanceConditionId, WorldObject const* pConditionSource, uint32 conditionSourceType) const
+{
+    switch (uiInstanceConditionId)
+    {
+        case INSTANCE_CONDITION_ID_LURKER:
+            return GetData(TYPE_THELURKER_EVENT) != DONE;
+        case INSTANCE_CONDITION_ID_SCALDING_WATER:
+            return m_sPlatformMobsAliveGUIDSet.empty();
+    }
 
-        case TYPE_VASHJ_PHASE3_CHECK:
-            for(uint8 i = 0; i < MAX_GENERATOR; ++i)
+    script_error_log("instance_serpentshrine_cavern::CheckConditionCriteriaMeet called with unsupported Id %u. Called with param plr %s, src %s, condition source type %u",
+                     uiInstanceConditionId, pPlayer ? pPlayer->GetGuidStr().c_str() : "NULL", pConditionSource ? pConditionSource->GetGuidStr().c_str() : "NULL", conditionSourceType);
+    return false;
+}
+
+void instance_serpentshrine_cavern::OnCreatureEnterCombat(Creature* pCreature)
+{
+    // Interrupt spell casting on aggro
+    if (pCreature->GetEntry() == NPC_GREYHEART_SPELLBINDER)
+        pCreature->InterruptNonMeleeSpells(false);
+}
+
+void instance_serpentshrine_cavern::OnCreatureDeath(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
+    {
+        case NPC_GREYHEART_SPELLBINDER:
+            ++m_uiSpellBinderCount;
+
+            if (m_uiSpellBinderCount == MAX_SPELLBINDERS)
             {
-                if (m_auiShieldGenerator[i] != DONE)
-                    return NOT_STARTED;
+                if (Creature* pLeotheras = GetSingleCreatureFromStorage(NPC_LEOTHERAS))
+                {
+                    pLeotheras->RemoveAurasDueToSpell(SPELL_LEOTHERAS_BANISH);
+                    pLeotheras->SetInCombatWithZone();
+                }
             }
-            return DONE;
-
-        default:
-            return 0;
+            break;
+        case NPC_COILFANG_PRIESTESS:
+        case NPC_COILFANG_SHATTERER:
+        case NPC_VASHJIR_HONOR_GUARD:
+        case NPC_GREYHEART_TECHNICIAN:
+            if (m_sPlatformMobsGUIDSet.find(pCreature->GetObjectGuid()) != m_sPlatformMobsGUIDSet.end())
+                m_sPlatformMobsAliveGUIDSet.erase(pCreature->GetObjectGuid());
+            break;
     }
 }
 

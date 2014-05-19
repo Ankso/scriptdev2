@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,19 +17,15 @@
 /* ScriptData
 SDName: Shattrath_City
 SD%Complete: 100
-SDComment: Quest support: 10004, 10009, 10211, 10231. Flask vendors, Teleport to Caverns of Time
+SDComment: Quest support: 10004, 10231.
 SDCategory: Shattrath City
 EndScriptData */
 
 /* ContentData
 npc_dirty_larry
 npc_ishanah
-npc_khadgar
 npc_khadgars_servant
-npc_raliq_the_drunk
 npc_salsalabim
-npc_shattrathflaskvendors
-npc_zephyr
 EndContentData */
 
 #include "precompiled.h"
@@ -69,7 +65,7 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
     uint32 m_uiSayTimer;
     uint32 m_uiStep;
 
-    void Reset()
+    void Reset() override
     {
         m_creature->SetUInt32Value(UNIT_NPC_FLAGS, m_uiNpcFlags);
 
@@ -83,7 +79,7 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
         m_uiSayTimer = 1000;
         m_uiStep = 0;
 
-        //expect database to have correct faction (1194) and then only unit flags set/remove needed
+        // expect database to have correct faction (1194) and then only unit flags set/remove needed
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
     }
@@ -154,7 +150,7 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
             return 0;
         }
 
-        switch(uiStep)
+        switch (uiStep)
         {
             case 1:
                 DoScriptText(SAY_START, m_creature, pPlayer);
@@ -178,7 +174,7 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
         }
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (m_creature->getVictim())
             return;
@@ -189,12 +185,12 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
         AttackStart(pAttacker);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32& uiDamage)
+    void DamageTaken(Unit* /*pDoneBy*/, uint32& uiDamage) override
     {
         if (uiDamage < m_creature->GetHealth())
             return;
 
-        //damage will kill, this is pretty much the same as 1%HP left
+        // damage will kill, this is pretty much the same as 1%HP left
         if (bEvent)
         {
             uiDamage = 0;
@@ -211,7 +207,7 @@ struct MANGOS_DLL_DECL npc_dirty_larryAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 diff) override
     {
         if (bEvent && !bActiveAttack)
         {
@@ -234,15 +230,15 @@ bool GossipHello_npc_dirty_larry(Player* pPlayer, Creature* pCreature)
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
     if (pPlayer->GetQuestStatus(QUEST_WHAT_BOOK) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_BOOK, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_BOOK, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
-bool GossipSelect_npc_dirty_larry(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_dirty_larry(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         if (npc_dirty_larryAI* pLarryAI = dynamic_cast<npc_dirty_larryAI*>(pCreature->AI()))
             pLarryAI->StartEvent(pPlayer);
@@ -256,99 +252,6 @@ bool GossipSelect_npc_dirty_larry(Player* pPlayer, Creature* pCreature, uint32 u
 CreatureAI* GetAI_npc_dirty_larry(Creature* pCreature)
 {
     return new npc_dirty_larryAI(pCreature);
-}
-
-/*######
-## npc_ishanah
-######*/
-
-#define GOSSIP_ISHANAH_1    "Who are the Sha'tar?"
-#define GOSSIP_ISHANAH_2    "Isn't Shattrath a draenei city? Why do you allow others here?"
-
-bool GossipHello_npc_ishanah(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ISHANAH_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ISHANAH_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_ishanah(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-        pPlayer->SEND_GOSSIP_MENU(9458, pCreature->GetObjectGuid());
-    else if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
-        pPlayer->SEND_GOSSIP_MENU(9459, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-/*######
-## npc_khadgar
-######*/
-
-enum
-{
-    QUEST_CITY_LIGHT        = 10211,
-};
-
-#define KHADGAR_GOSSIP_1    "I've heard your name spoken only in whispers, mage. Who are you?"
-#define KHADGAR_GOSSIP_2    "Go on, please."
-#define KHADGAR_GOSSIP_3    "I see."
-#define KHADGAR_GOSSIP_4    "What did you do then?"
-#define KHADGAR_GOSSIP_5    "What happened next?"
-#define KHADGAR_GOSSIP_7    "There was something else I wanted to ask you."
-
-bool GossipHello_npc_khadgar(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestRewardStatus(QUEST_CITY_LIGHT))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    pPlayer->SEND_GOSSIP_MENU(9243, pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_khadgar(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-            pPlayer->SEND_GOSSIP_MENU(9876, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-            pPlayer->SEND_GOSSIP_MENU(9877, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+4);
-            pPlayer->SEND_GOSSIP_MENU(9878, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+5);
-            pPlayer->SEND_GOSSIP_MENU(9879, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+5:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+6);
-            pPlayer->SEND_GOSSIP_MENU(9880, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+6:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_7, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+7);
-            pPlayer->SEND_GOSSIP_MENU(9881, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+7:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, KHADGAR_GOSSIP_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-            pPlayer->SEND_GOSSIP_MENU(9243, pCreature->GetObjectGuid());
-            break;
-    }
-    return true;
 }
 
 /*######
@@ -400,7 +303,9 @@ enum
     NPC_ADYRIA              = 18596,
     NPC_ANCHORITE           = 19142,
     NPC_ARCANIST            = 18547,
-    NPC_HAGGARD             = 19684
+    NPC_HAGGARD             = 19684,
+
+    QUEST_CITY_LIGHT        = 10211
 };
 
 struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
@@ -410,7 +315,7 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
         if (pCreature->GetOwner() && pCreature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
             Start(false, (Player*)pCreature->GetOwner());
         else
-            error_log("SD2: npc_khadgars_servant can not obtain owner or owner is not a player.");
+            script_error_log("npc_khadgars_servant can not obtain owner or owner is not a player.");
 
         Reset();
     }
@@ -420,7 +325,7 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
     uint32 m_uiTalkCount;
     uint32 m_uiRandomTalkCooldown;
 
-    void Reset()
+    void Reset() override
     {
         m_uiTalkTimer = 2500;
         m_uiTalkCount = 0;
@@ -428,11 +333,11 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
         m_uiRandomTalkCooldown = 0;
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         if (!m_uiRandomTalkCooldown && pWho->GetTypeId() == TYPEID_UNIT && m_creature->IsWithinDistInMap(pWho, 10.0f))
         {
-            switch(pWho->GetEntry())
+            switch (pWho->GetEntry())
             {
                 case NPC_HAGGARD:
                     if (Player* pPlayer = GetPlayerForEscort())
@@ -453,17 +358,17 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
         }
     }
 
-    void WaypointStart(uint32 uiPointId)
+    void WaypointStart(uint32 uiPointId) override
     {
         if (uiPointId == 2)
             DoScriptText(SAY_KHAD_SERV_0, m_creature);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         m_uiPointId = uiPointId;
 
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 0:
                 if (Creature* pKhadgar = GetClosestCreatureWithEntry(m_creature, NPC_KHADGAR, 10.0f))
@@ -488,7 +393,7 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
         if (m_uiRandomTalkCooldown)
         {
@@ -510,11 +415,11 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                 if (!pPlayer)
                     return;
 
-                switch(m_uiPointId)
+                switch (m_uiPointId)
                 {
-                    case 5:                                 //to lower city
+                    case 5:                                 // to lower city
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 1:
                                 DoScriptText(SAY_KHAD_SERV_1, m_creature, pPlayer);
@@ -532,9 +437,9 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                         }
                         break;
                     }
-                    case 24:                                //in lower city
+                    case 24:                                // in lower city
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 5:
                                 if (Creature* pShanir = GetClosestCreatureWithEntry(m_creature, NPC_SHANIR, 15.0f))
@@ -552,9 +457,9 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                         }
                         break;
                     }
-                    case 50:                                //outside
+                    case 50:                                // outside
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 8:
                                 DoScriptText(SAY_KHAD_SERV_8, m_creature, pPlayer);
@@ -572,9 +477,9 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                         }
                         break;
                     }
-                    case 63:                                //scryer
+                    case 63:                                // scryer
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 12:
                                 DoScriptText(SAY_KHAD_SERV_12, m_creature, pPlayer);
@@ -586,9 +491,9 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                         }
                         break;
                     }
-                    case 74:                                //aldor
+                    case 74:                                // aldor
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 14:
                                 DoScriptText(SAY_KHAD_SERV_14, m_creature, pPlayer);
@@ -606,9 +511,9 @@ struct MANGOS_DLL_DECL npc_khadgars_servantAI : public npc_escortAI
                         }
                         break;
                     }
-                    case 75:                                //a'dal
+                    case 75:                                // a'dal
                     {
-                        switch(m_uiTalkCount)
+                        switch (m_uiTalkCount)
                         {
                             case 18:
                                 DoScriptText(SAY_KHAD_SERV_18, m_creature, pPlayer);
@@ -641,124 +546,58 @@ CreatureAI* GetAI_npc_khadgars_servant(Creature* pCreature)
 }
 
 /*######
-## npc_raliq_the_drunk
+# npc_salsalabim
 ######*/
 
 enum
 {
-    SPELL_UPPERCUT          = 10966,
-    QUEST_CRACK_SKULLS      = 10009,
-    FACTION_HOSTILE_RD      = 45
+    FACTION_HOSTILE_SA              = 90,
+    QUEST_10004                     = 10004,
+
+    SPELL_MAGNETIC_PULL             = 31705,
 };
-
-#define GOSSIP_RALIQ        "You owe Sim'salabim money. Hand them over or die!"
-
-struct MANGOS_DLL_DECL npc_raliq_the_drunkAI : public ScriptedAI
-{
-    npc_raliq_the_drunkAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_uiNormFaction = pCreature->getFaction();
-        Reset();
-    }
-
-    uint32 m_uiNormFaction;
-    uint32 m_uiUppercut_Timer;
-
-    void Reset()
-    {
-        m_uiUppercut_Timer = 5000;
-
-        if (m_creature->getFaction() != m_uiNormFaction)
-            m_creature->setFaction(m_uiNormFaction);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (m_uiUppercut_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_UPPERCUT);
-            m_uiUppercut_Timer = 15000;
-        }else m_uiUppercut_Timer -= diff;
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-CreatureAI* GetAI_npc_raliq_the_drunk(Creature* pCreature)
-{
-    return new npc_raliq_the_drunkAI(pCreature);
-}
-
-bool GossipHello_npc_raliq_the_drunk(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(QUEST_CRACK_SKULLS) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_RALIQ, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    pPlayer->SEND_GOSSIP_MENU(9440, pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_raliq_the_drunk(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->setFaction(FACTION_HOSTILE_RD);
-        pCreature->AI()->AttackStart(pPlayer);
-    }
-    return true;
-}
-
-/*######
-# npc_salsalabim
-######*/
-
-#define FACTION_HOSTILE_SA              90
-#define FACTION_FRIENDLY_SA             35
-#define QUEST_10004                     10004
-
-#define SPELL_MAGNETIC_PULL             31705
 
 struct MANGOS_DLL_DECL npc_salsalabimAI : public ScriptedAI
 {
     npc_salsalabimAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 MagneticPull_Timer;
+    uint32 m_uiMagneticPullTimer;
 
-    void Reset()
+    void Reset() override
     {
-        MagneticPull_Timer = 15000;
-        m_creature->setFaction(FACTION_FRIENDLY_SA);
+        m_uiMagneticPullTimer = 15000;
     }
 
-    void DamageTaken(Unit *done_by, uint32 &damage)
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
     {
-        if (done_by->GetTypeId() == TYPEID_PLAYER)
-            if ((m_creature->GetHealth()-damage)*100 / m_creature->GetMaxHealth() < 20)
+        if (pDoneBy->GetTypeId() == TYPEID_PLAYER)
         {
-            ((Player*)done_by)->GroupEventHappens(QUEST_10004,m_creature);
-            damage = 0;
-            EnterEvadeMode();
+            if (m_creature->GetHealthPercent() < 20.0f)
+            {
+                ((Player*)pDoneBy)->GroupEventHappens(QUEST_10004, m_creature);
+                uiDamage = 0;
+                EnterEvadeMode();
+            }
         }
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (MagneticPull_Timer < diff)
+        if (m_uiMagneticPullTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_MAGNETIC_PULL);
-            MagneticPull_Timer = 15000;
-        }else MagneticPull_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_MAGNETIC_PULL);
+            m_uiMagneticPullTimer = 15000;
+        }
+        else
+            m_uiMagneticPullTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_npc_salsalabim(Creature* pCreature)
 {
     return new npc_salsalabimAI(pCreature);
@@ -768,142 +607,39 @@ bool GossipHello_npc_salsalabim(Player* pPlayer, Creature* pCreature)
 {
     if (pPlayer->GetQuestStatus(QUEST_10004) == QUEST_STATUS_INCOMPLETE)
     {
-        pCreature->setFaction(FACTION_HOSTILE_SA);
+        pCreature->SetFactionTemporary(FACTION_HOSTILE_SA, TEMPFACTION_RESTORE_REACH_HOME);
         pCreature->AI()->AttackStart(pPlayer);
     }
     else
     {
         if (pCreature->isQuestGiver())
             pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
+
         pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     }
-    return true;
-}
-
-/*
-##################################################
-Shattrath City Flask Vendors provides flasks to people exalted with 3 factions:
-Haldor the Compulsive
-Arcanist Xorith
-Both sell special flasks for use in Outlands 25man raids only,
-purchasable for one Mark of Illidari each
-Purchase requires exalted reputation with Scryers/Aldor, Cenarion Expedition and The Sha'tar
-##################################################
-*/
-
-bool GossipHello_npc_shattrathflaskvendors(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->GetEntry() == 23484)
-    {
-        // Aldor vendor
-        if (pCreature->isVendor() && (pPlayer->GetReputationRank(932) == REP_EXALTED) && (pPlayer->GetReputationRank(935) == REP_EXALTED) && (pPlayer->GetReputationRank(942) == REP_EXALTED))
-        {
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-            pPlayer->SEND_GOSSIP_MENU(11085, pCreature->GetObjectGuid());
-        }
-        else
-        {
-            pPlayer->SEND_GOSSIP_MENU(11083, pCreature->GetObjectGuid());
-        }
-    }
-
-    if (pCreature->GetEntry() == 23483)
-    {
-        // Scryers vendor
-        if (pCreature->isVendor() && (pPlayer->GetReputationRank(934) == REP_EXALTED) && (pPlayer->GetReputationRank(935) == REP_EXALTED) && (pPlayer->GetReputationRank(942) == REP_EXALTED))
-        {
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-            pPlayer->SEND_GOSSIP_MENU(11085, pCreature->GetObjectGuid());
-        }
-        else
-        {
-            pPlayer->SEND_GOSSIP_MENU(11084, pCreature->GetObjectGuid());
-        }
-    }
-
-    return true;
-}
-
-bool GossipSelect_npc_shattrathflaskvendors(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_TRADE)
-        pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
-
-    return true;
-}
-
-/*######
-# npc_zephyr
-######*/
-
-bool GossipHello_npc_zephyr(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetReputationRank(989) >= REP_REVERED)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Take me to the Caverns of Time.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_zephyr(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-        pPlayer->CastSpell(pPlayer,37778,false);
 
     return true;
 }
 
 void AddSC_shattrath_city()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_dirty_larry";
-    newscript->GetAI = &GetAI_npc_dirty_larry;
-    newscript->pGossipHello = &GossipHello_npc_dirty_larry;
-    newscript->pGossipSelect = &GossipSelect_npc_dirty_larry;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_dirty_larry";
+    pNewScript->GetAI = &GetAI_npc_dirty_larry;
+    pNewScript->pGossipHello = &GossipHello_npc_dirty_larry;
+    pNewScript->pGossipSelect = &GossipSelect_npc_dirty_larry;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_ishanah";
-    newscript->pGossipHello = &GossipHello_npc_ishanah;
-    newscript->pGossipSelect = &GossipSelect_npc_ishanah;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_khadgars_servant";
+    pNewScript->GetAI = &GetAI_npc_khadgars_servant;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_khadgar";
-    newscript->pGossipHello = &GossipHello_npc_khadgar;
-    newscript->pGossipSelect = &GossipSelect_npc_khadgar;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_khadgars_servant";
-    newscript->GetAI = &GetAI_npc_khadgars_servant;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_raliq_the_drunk";
-    newscript->GetAI = &GetAI_npc_raliq_the_drunk;
-    newscript->pGossipHello = &GossipHello_npc_raliq_the_drunk;
-    newscript->pGossipSelect = &GossipSelect_npc_raliq_the_drunk;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_salsalabim";
-    newscript->GetAI = &GetAI_npc_salsalabim;
-    newscript->pGossipHello = &GossipHello_npc_salsalabim;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_shattrathflaskvendors";
-    newscript->pGossipHello = &GossipHello_npc_shattrathflaskvendors;
-    newscript->pGossipSelect = &GossipSelect_npc_shattrathflaskvendors;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_zephyr";
-    newscript->pGossipHello = &GossipHello_npc_zephyr;
-    newscript->pGossipSelect = &GossipSelect_npc_zephyr;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_salsalabim";
+    pNewScript->GetAI = &GetAI_npc_salsalabim;
+    pNewScript->pGossipHello = &GossipHello_npc_salsalabim;
+    pNewScript->RegisterSelf();
 }

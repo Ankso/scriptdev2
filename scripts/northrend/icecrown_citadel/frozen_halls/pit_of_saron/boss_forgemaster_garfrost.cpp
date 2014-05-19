@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,14 +16,15 @@
 
 /* ScriptData
 SDName: boss_forgemaster_garfrost
-SD%Complete: 70
-SDComment: TODO movement to the forges currently workaround (need core support for Jump-MMGen)
+SD%Complete: 90
+SDComment: Tyrannus outro event NYI.
 SDCategory: Pit of Saron
 EndScriptData */
 
 #include "precompiled.h"
 #include "pit_of_saron.h"
-enum saysSD2
+
+enum
 {
     SAY_AGGRO                           = -1658014,
     SAY_SLAY_1                          = -1658015,
@@ -31,19 +32,20 @@ enum saysSD2
     SAY_DEATH                           = -1658017,
     SAY_FORGE_1                         = -1658018,
     SAY_FORGE_2                         = -1658019,
-    SAY_TYRANNUS_GARFROST               = -1658020,
-    SAY_GENERAL_GARFROST                = -1658021,
 
     EMOTE_THROW_SARONITE                = -1658022,
     EMOTE_DEEP_FREEZE                   = -1658023,
 
     SPELL_PERMAFROST                    = 70326,
+    SPELL_PERMAFROST_AURA_H             = 70336,
     SPELL_THROW_SARONITE                = 68788,
     SPELL_THUNDERING_STOMP              = 68771,
     SPELL_FORGE_FROZEN_BLADE            = 68774,
     SPELL_CHILLING_WAVE                 = 68778,
     SPELL_FORGE_FROSTBORN_MACE          = 68785,
     SPELL_DEEP_FREEZE                   = 70381,
+
+    MAX_PERMAFROST_STACK                = 10,               // the max allowed stacks for the achiev to pass
 
     PHASE_NO_ENCHANTMENT                = 1,
     PHASE_BLADE_ENCHANTMENT             = 2,
@@ -53,27 +55,33 @@ enum saysSD2
 
 static const float aGarfrostMoveLocs[2][3] =
 {
-    {719.785f, -230.227f, 527.033f},
     {657.539f, -203.564f, 526.691f},
+    {719.785f, -230.227f, 527.033f},
 };
+
+static const float afOutroNpcSpawnLoc[4] = {695.0146f, -123.7532f, 515.3067f, 4.59f};
 
 struct MANGOS_DLL_DECL boss_forgemaster_garfrostAI : public ScriptedAI
 {
     boss_forgemaster_garfrostAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_pit_of_saron*)pCreature->GetInstanceData();
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_pit_of_saron* m_pInstance;
+    bool m_bIsRegularMode;
 
     uint32 m_uiThrowSaroniteTimer;
     uint32 m_uiPhase;
     uint32 m_uiChillingWaveTimer;
     uint32 m_uiDeepFreezeTimer;
+    uint32 m_uiCheckPermafrostTimer;
 
-    void Reset()
+    void Reset() override
     {
+        m_uiCheckPermafrostTimer = 2000;
         m_uiThrowSaroniteTimer = 13000;
         m_uiChillingWaveTimer = 10000;
         m_uiDeepFreezeTimer = 10000;
@@ -81,26 +89,61 @@ struct MANGOS_DLL_DECL boss_forgemaster_garfrostAI : public ScriptedAI
         m_uiPhase = PHASE_NO_ENCHANTMENT;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         DoScriptText(SAY_AGGRO, m_creature, pWho);
         DoCastSpellIfCan(m_creature, SPELL_PERMAFROST);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_GARFROST, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* pKiller) override
     {
         DoScriptText(SAY_DEATH, m_creature, pKiller);
+
+        if (m_pInstance)
+        {
+            m_pInstance->SetData(TYPE_GARFROST, DONE);
+
+            // Summon Ironskull or Victus for outro
+            m_creature->SummonCreature(m_pInstance->GetPlayerTeam() == HORDE ? NPC_IRONSKULL_PART1 : NPC_VICTUS_PART1,
+                                       afOutroNpcSpawnLoc[0], afOutroNpcSpawnLoc[1], afOutroNpcSpawnLoc[2], afOutroNpcSpawnLoc[3], TEMPSUMMON_TIMED_DESPAWN, 2 * MINUTE * IN_MILLISECONDS);
+
+            // ToDo: handle the other npcs movement
+        }
     }
 
-    void KilledUnit()
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(SAY_SLAY_1, m_creature);
     }
 
-    void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+    void JustReachedHome() override
     {
-        // TODO Change to jump movement type when proper implemented
-        if (uiMotionType != POINT_MOTION_TYPE)
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_GARFROST, FAIL);
+    }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        switch (pSummoned->GetEntry())
+        {
+            case NPC_IRONSKULL_PART1:
+            case NPC_VICTUS_PART1:
+            {
+                float fX, fY, fZ;
+                pSummoned->SetWalk(false);
+                m_creature->GetContactPoint(pSummoned, fX, fY, fZ, 4 * INTERACTION_DISTANCE);
+                pSummoned->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
+                break;
+            }
+        }
+    }
+
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
+    {
+        if (uiMotionType != EFFECT_MOTION_TYPE)
             return;
 
         if (uiPointId != PHASE_BLADE_ENCHANTMENT && uiPointId != PHASE_MACE_ENCHANTMENT)
@@ -121,10 +164,41 @@ struct MANGOS_DLL_DECL boss_forgemaster_garfrostAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
+
+        // This needs to be checked only on heroic
+        if (!m_bIsRegularMode && m_uiCheckPermafrostTimer)
+        {
+            if (m_uiCheckPermafrostTimer <= uiDiff)
+            {
+                ThreatList playerList = m_creature->getThreatManager().getThreatList();
+                for (ThreatList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
+                {
+                    if (Player* pTarget = m_creature->GetMap()->GetPlayer((*itr)->getUnitGuid()))
+                    {
+                        Aura* pAuraIntenseCold = pTarget->GetAura(SPELL_PERMAFROST_AURA_H, EFFECT_INDEX_2);
+
+                        if (pAuraIntenseCold)
+                        {
+                            if (pAuraIntenseCold->GetStackAmount() > MAX_PERMAFROST_STACK)
+                            {
+                                if (m_pInstance)
+                                    m_pInstance->SetSpecialAchievementCriteria(TYPE_ACHIEV_DOESNT_GO_ELEVEN, false);
+
+                                m_uiCheckPermafrostTimer = 0;
+                                return;
+                            }
+                        }
+                    }
+                }
+                m_uiCheckPermafrostTimer = 1000;
+            }
+            else
+                m_uiCheckPermafrostTimer -= uiDiff;
+        }
 
         // Do nothing more while moving
         if (m_uiPhase == PHASE_MOVEMENT)
@@ -155,8 +229,7 @@ struct MANGOS_DLL_DECL boss_forgemaster_garfrostAI : public ScriptedAI
                     DoCastSpellIfCan(m_creature, SPELL_THUNDERING_STOMP, CAST_INTERRUPT_PREVIOUS);
                     SetCombatMovement(false);
 
-                    // TODO This should actually be jump movement
-                    m_creature->GetMotionMaster()->MovePoint(PHASE_BLADE_ENCHANTMENT, aGarfrostMoveLocs[0][0], aGarfrostMoveLocs[0][1], aGarfrostMoveLocs[0][2]);
+                    m_creature->GetMotionMaster()->MoveJump(aGarfrostMoveLocs[0][0], aGarfrostMoveLocs[0][1], aGarfrostMoveLocs[0][2], 3 * m_creature->GetSpeed(MOVE_RUN), 10.0f, PHASE_BLADE_ENCHANTMENT);
                     m_uiPhase = PHASE_MOVEMENT;
 
                     // Stop further action
@@ -171,8 +244,7 @@ struct MANGOS_DLL_DECL boss_forgemaster_garfrostAI : public ScriptedAI
                     DoCastSpellIfCan(m_creature, SPELL_THUNDERING_STOMP, CAST_INTERRUPT_PREVIOUS);
                     SetCombatMovement(false);
 
-                    // TODO This should actually be jump movement
-                    m_creature->GetMotionMaster()->MovePoint(PHASE_MACE_ENCHANTMENT, aGarfrostMoveLocs[1][0], aGarfrostMoveLocs[1][1], aGarfrostMoveLocs[1][2]);
+                    m_creature->GetMotionMaster()->MoveJump(aGarfrostMoveLocs[1][0], aGarfrostMoveLocs[1][1], aGarfrostMoveLocs[1][2], 3 * m_creature->GetSpeed(MOVE_RUN), 10.0f, PHASE_MACE_ENCHANTMENT);
                     m_uiPhase = PHASE_MOVEMENT;
 
                     // Stop further action

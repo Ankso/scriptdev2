@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -37,6 +37,8 @@ EndScriptData */
 
 enum
 {
+    SPELL_SPIRIT_HEAL_CHANNEL       = 22011,                // Spirit Heal Channel
+
     SPELL_SPIRIT_HEAL               = 22012,                // Spirit Heal
     SPELL_SPIRIT_HEAL_MANA          = 44535,                // in battlegrounds player get this no-mana-cost-buff
 
@@ -45,23 +47,22 @@ enum
 
 struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
 {
-    npc_spirit_guideAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
-
-    void Reset()
+    npc_spirit_guideAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
+        pCreature->SetActiveObjectState(true);
+        Reset();
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void Reset() override {}
+
+    void UpdateAI(const uint32 /*uiDiff*/) override
     {
         // auto cast the whole time this spell
         if (!m_creature->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-        {
-            m_creature->CastSpell(m_creature, SPELL_SPIRIT_HEAL, true);
             m_creature->CastSpell(m_creature, SPELL_SPIRIT_HEAL_CHANNEL, false);
-        }
     }
 
-    void CorpseRemoved(uint32 &)
+    void CorpseRemoved(uint32&) override
     {
         // TODO: would be better to cast a dummy spell
         Map* pMap = m_creature->GetMap();
@@ -69,9 +70,9 @@ struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
         if (!pMap || !pMap->IsBattleGround())
             return;
 
-        Map::PlayerList const &PlayerList = pMap->GetPlayers();
+        Map::PlayerList const& PlayerList = pMap->GetPlayers();
 
-        for(Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
+        for (Map::PlayerList::const_iterator itr = PlayerList.begin(); itr != PlayerList.end(); ++itr)
         {
             Player* pPlayer = itr->getSource();
             if (!pPlayer || !pPlayer->IsWithinDistInMap(m_creature, 20.0f) || !pPlayer->HasAura(SPELL_WAITING_TO_RESURRECT))
@@ -82,15 +83,15 @@ struct MANGOS_DLL_DECL npc_spirit_guideAI : public ScriptedAI
         }
     }
 
-    void SpellHitTarget (Unit* pUnit, const SpellEntry* pSpellEntry)
+    void SpellHitTarget(Unit* pUnit, const SpellEntry* pSpellEntry) override
     {
         if (pSpellEntry->Id == SPELL_SPIRIT_HEAL && pUnit->GetTypeId() == TYPEID_PLAYER
-            && pUnit->HasAura(SPELL_WAITING_TO_RESURRECT))
+                && pUnit->HasAura(SPELL_WAITING_TO_RESURRECT))
             pUnit->CastSpell(pUnit, SPELL_SPIRIT_HEAL_MANA, true);
     }
 };
 
-bool GossipHello_npc_spirit_guide(Player* pPlayer, Creature* pCreature)
+bool GossipHello_npc_spirit_guide(Player* pPlayer, Creature* /*pCreature*/)
 {
     pPlayer->CastSpell(pPlayer, SPELL_WAITING_TO_RESURRECT, true);
     return true;
@@ -101,63 +102,13 @@ CreatureAI* GetAI_npc_spirit_guide(Creature* pCreature)
     return new npc_spirit_guideAI(pCreature);
 }
 
-struct MANGOS_DLL_DECL npc_battleground_vehicleAI : public ScriptedAI
-{
-    npc_battleground_vehicleAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        SetCombatMovement(false);
-        Reset();
-    }
-
-    void Reset()
-    {
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-    }
-
-    void EnterCombat(Unit *pEnemy)
-    {
-        if (!m_creature->isCharmed())
-            m_creature->CombatStop();
-    }
-
-    void Aggro(Unit* who)
-    {
-        // Theorically, we should never be here...
-        if (!m_creature->isCharmed())
-            m_creature->CombatStop(); 
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->isCharmed())
-            if (m_creature->isInCombat()) // And theorically, this should never happen... but it happens
-                m_creature->CombatStop();
-    }
-
-    void HealBy(Unit* pHealer, uint32 uiAmountHealed)
-    {
-        // Some spells like chain heals can heal vehicles, this prevents it:
-        m_creature->DealDamage(m_creature, uiAmountHealed, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-    }
-};
-
-CreatureAI* GetAI_npc_battleground_vehicle(Creature* pCreature)
-{
-    return new npc_battleground_vehicleAI(pCreature);
-}
-
 void AddSC_battleground()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_spirit_guide";
-    newscript->GetAI = &GetAI_npc_spirit_guide;
-    newscript->pGossipHello = &GossipHello_npc_spirit_guide;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_battleground_vehicle";
-    newscript->GetAI = &GetAI_npc_battleground_vehicle;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_spirit_guide";
+    pNewScript->GetAI = &GetAI_npc_spirit_guide;
+    pNewScript->pGossipHello = &GossipHello_npc_spirit_guide;
+    pNewScript->RegisterSelf();
 }

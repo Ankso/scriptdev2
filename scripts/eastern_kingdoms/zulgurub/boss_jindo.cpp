@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -36,10 +36,6 @@ enum
 
     SPELL_HEALING_WARD_HEAL         = 24311,
 
-    // Shade of Jindo Spell
-    SPELL_SHADOWSHOCK               = 19460,
-    SPELL_SHADE_OF_JINDO_PASSIVE    = 24307,                // shade invisibility, needs core support to prevent removing when attacking
-
     // npcs
     NPC_SHADE_OF_JINDO              = 14986,
     NPC_SACRIFICED_TROLL            = 14826,
@@ -69,7 +65,7 @@ struct MANGOS_DLL_DECL boss_jindoAI : public ScriptedAI
     uint32 m_uiDelusionsTimer;
     uint32 m_uiTeleportTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiBrainWashTotemTimer     = 20000;
         m_uiHealingWardTimer        = 16000;
@@ -78,18 +74,18 @@ struct MANGOS_DLL_DECL boss_jindoAI : public ScriptedAI
         m_uiTeleportTimer           = 5000;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void SummonedCreatureJustDied(Creature* pSummoned)
+    void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_POWERFULL_HEALING_WARD)
             m_uiHealingWardTimer = 15000;                   // how long delay?
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -136,7 +132,7 @@ struct MANGOS_DLL_DECL boss_jindoAI : public ScriptedAI
             {
                 float fX, fY, fZ;
                 m_creature->GetRandomPoint(pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 5.0f, fX, fY, fZ);
-                if (Creature* pSummoned = m_creature->SummonCreature(NPC_SHADE_OF_JINDO, fX, fY, fZ, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000))
+                if (Creature* pSummoned = m_creature->SummonCreature(NPC_SHADE_OF_JINDO, fX, fY, fZ, 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 15000))
                     pSummoned->AI()->AttackStart(pTarget);
 
                 m_uiDelusionsTimer = urand(4000, 12000);
@@ -157,7 +153,7 @@ struct MANGOS_DLL_DECL boss_jindoAI : public ScriptedAI
                 for (uint8 i = 0; i < MAX_SKELETONS; ++i)
                 {
                     m_creature->GetRandomPoint(aPitTeleportLocs[0], aPitTeleportLocs[1], aPitTeleportLocs[2], 4.0f, fX, fY, fZ);
-                    if (Creature* pSummoned = m_creature->SummonCreature(NPC_SACRIFICED_TROLL, fX, fY, fZ, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 15000))
+                    if (Creature* pSummoned = m_creature->SummonCreature(NPC_SACRIFICED_TROLL, fX, fY, fZ, 0.0f, TEMPSUMMON_TIMED_OOC_DESPAWN, 15000))
                         pSummoned->AI()->AttackStart(pTarget);
                 }
 
@@ -178,15 +174,15 @@ struct MANGOS_DLL_DECL mob_healing_wardAI : public ScriptedAI
 
     uint32 m_uiHealTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiHealTimer = 3000;                               // Timer unknown, sources go over 1s, per tick to 3s, keep 3s as in original script
     }
 
-    void AttackStart(Unit* pWho) {}
-    void MoveInLineOfSight(Unit* pWho) {}
+    void AttackStart(Unit* /*pWho*/) override {}
+    void MoveInLineOfSight(Unit* /*pWho*/) override {}
 
-    void UpdateAI (const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         // Heal Timer
         if (m_uiHealTimer < uiDiff)
@@ -199,43 +195,6 @@ struct MANGOS_DLL_DECL mob_healing_wardAI : public ScriptedAI
     }
 };
 
-// TODO Move to Acid
-struct MANGOS_DLL_DECL mob_shade_of_jindoAI : public ScriptedAI
-{
-    mob_shade_of_jindoAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiShadowShockTimer;
-
-    void Reset()
-    {
-        m_uiShadowShockTimer = 1000;
-        DoCastSpellIfCan(m_creature, SPELL_SHADE_OF_JINDO_PASSIVE);
-    }
-
-    void UpdateAI (const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        // ShadowShock Timer
-        if (m_uiShadowShockTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_SHADOWSHOCK) == CAST_OK)
-                m_uiShadowShockTimer = 2000;
-        }
-        else
-            m_uiShadowShockTimer -= uiDiff;
-
-        DoMeleeAttackIfReady();
-    }
-};
-
 CreatureAI* GetAI_boss_jindo(Creature* pCreature)
 {
     return new boss_jindoAI(pCreature);
@@ -244,11 +203,6 @@ CreatureAI* GetAI_boss_jindo(Creature* pCreature)
 CreatureAI* GetAI_mob_healing_ward(Creature* pCreature)
 {
     return new mob_healing_wardAI(pCreature);
-}
-
-CreatureAI* GetAI_mob_shade_of_jindo(Creature* pCreature)
-{
-    return new mob_shade_of_jindoAI(pCreature);
 }
 
 void AddSC_boss_jindo()
@@ -263,10 +217,5 @@ void AddSC_boss_jindo()
     pNewScript = new Script;
     pNewScript->Name = "mob_healing_ward";
     pNewScript->GetAI = &GetAI_mob_healing_ward;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "mob_shade_of_jindo";
-    pNewScript->GetAI = &GetAI_mob_shade_of_jindo;
     pNewScript->RegisterSelf();
 }

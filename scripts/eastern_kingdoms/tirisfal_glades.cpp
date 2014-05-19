@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,7 +42,7 @@ enum
     GO_DOOR         = 176594
 };
 
-bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* /*pGo*/)
 {
     if (pPlayer->GetQuestStatus(QUEST_ULAG) != QUEST_STATUS_INCOMPLETE)
         return false;
@@ -50,7 +50,7 @@ bool GOUse_go_mausoleum_door(Player* pPlayer, GameObject* pGo)
     if (GameObject* pTrigger = GetClosestGameObjectWithEntry(pPlayer, GO_TRIGGER, 30.0f))
     {
         pTrigger->SetGoState(GO_STATE_READY);
-        pPlayer->SummonCreature(NPC_ULAG, 2390.26f, 336.47f, 40.01f, 2.26f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000);
+        pPlayer->SummonCreature(NPC_ULAG, 2390.26f, 336.47f, 40.01f, 2.26f, TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
         return false;
     }
 
@@ -65,7 +65,7 @@ bool GOUse_go_mausoleum_trigger(Player* pPlayer, GameObject* pGo)
     if (GameObject* pDoor = GetClosestGameObjectWithEntry(pPlayer, GO_DOOR, 30.0f))
     {
         pGo->SetGoState(GO_STATE_ACTIVE);
-        pDoor->RemoveFlag(GAMEOBJECT_FLAGS,GO_FLAG_INTERACT_COND);
+        pDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND);
         return true;
     }
 
@@ -88,26 +88,21 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
 {
     npc_calvin_montagueAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiNormFaction = pCreature->getFaction();
         Reset();
     }
 
-    uint32 m_uiNormFaction;
     uint32 m_uiPhase;
     uint32 m_uiPhaseTimer;
     ObjectGuid m_playerGuid;
 
-    void Reset()
+    void Reset() override
     {
         m_uiPhase = 0;
         m_uiPhaseTimer = 5000;
         m_playerGuid.Clear();
-
-        if (m_creature->getFaction() != m_uiNormFaction)
-            m_creature->setFaction(m_uiNormFaction);
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (m_creature->getVictim() || m_creature->IsFriendlyTo(pAttacker))
             return;
@@ -115,13 +110,12 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
         AttackStart(pAttacker);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
     {
-        if (uiDamage > m_creature->GetHealth() || ((m_creature->GetHealth() - uiDamage)*100 / m_creature->GetMaxHealth() < 15))
+        if (uiDamage > m_creature->GetHealth() || ((m_creature->GetHealth() - uiDamage) * 100 / m_creature->GetMaxHealth() < 15))
         {
             uiDamage = 0;
 
-            m_creature->setFaction(m_uiNormFaction);
             m_creature->CombatStop(true);
 
             m_uiPhase = 1;
@@ -131,7 +125,7 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiPhase)
         {
@@ -143,7 +137,7 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
                 return;
             }
 
-            switch(m_uiPhase)
+            switch (m_uiPhase)
             {
                 case 1:
                     DoScriptText(SAY_COMPLETE, m_creature);
@@ -153,7 +147,7 @@ struct MANGOS_DLL_DECL npc_calvin_montagueAI : public ScriptedAI
                     if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                         pPlayer->AreaExploredOrEventHappens(QUEST_590);
 
-                    m_creature->CastSpell(m_creature,SPELL_DRINK,true);
+                    m_creature->CastSpell(m_creature, SPELL_DRINK, true);
                     ++m_uiPhase;
                     break;
                 case 3:
@@ -180,7 +174,7 @@ bool QuestAccept_npc_calvin_montague(Player* pPlayer, Creature* pCreature, const
 {
     if (pQuest->GetQuestId() == QUEST_590)
     {
-        pCreature->setFaction(FACTION_HOSTILE);
+        pCreature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_COMBAT_STOP | TEMPFACTION_RESTORE_RESPAWN);
         pCreature->AI()->AttackStart(pPlayer);
     }
     return true;
@@ -188,21 +182,21 @@ bool QuestAccept_npc_calvin_montague(Player* pPlayer, Creature* pCreature, const
 
 void AddSC_tirisfal_glades()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "go_mausoleum_door";
-    newscript->pGOUse = &GOUse_go_mausoleum_door;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_mausoleum_door";
+    pNewScript->pGOUse = &GOUse_go_mausoleum_door;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "go_mausoleum_trigger";
-    newscript->pGOUse = &GOUse_go_mausoleum_trigger;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "go_mausoleum_trigger";
+    pNewScript->pGOUse = &GOUse_go_mausoleum_trigger;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_calvin_montague";
-    newscript->GetAI = &GetAI_npc_calvin_montague;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_calvin_montague;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_calvin_montague";
+    pNewScript->GetAI = &GetAI_npc_calvin_montague;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_calvin_montague;
+    pNewScript->RegisterSelf();
 }

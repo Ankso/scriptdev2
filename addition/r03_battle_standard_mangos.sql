@@ -1,1 +1,0 @@
-UPDATE `creature_template` SET `ScriptName` = 'npc_battle_standard' WHERE `entry` IN (14465, 14466);

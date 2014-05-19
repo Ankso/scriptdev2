@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,11 +42,7 @@ enum
     SPELL_SLIME_SPRAY_H             = 54364,
     SPELL_BERSERK                   = 26662,
 
-    NPC_FALLOUT_SLIME               = 16290,
-    NPC_GROBBOLUS_CLOUD             = 16363,
-
-    // spell of grobbolus cloud
-    SPELL_POISON_CLOUD_DAMAGE       = 59116
+    NPC_FALLOUT_SLIME               = 16290
 };
 
 struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
@@ -69,29 +65,29 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
     uint32 m_uiBerserkTimer;
     uint32 m_uiSlimeStreamTimer;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiInjectionTimer = 12*IN_MILLISECONDS;
-        m_uiPoisonCloudTimer = urand (20*IN_MILLISECONDS, 25*IN_MILLISECONDS);
-        m_uiSlimeSprayTimer = urand(20*IN_MILLISECONDS, 30*IN_MILLISECONDS);
-        m_uiBerserkTimeSecs = m_bIsRegularMode ? 12*MINUTE : 9*MINUTE;
-        m_uiBerserkTimer = m_uiBerserkTimeSecs*IN_MILLISECONDS;
-        m_uiSlimeStreamTimer = 5*IN_MILLISECONDS;           // The first few secs it is ok to be out of range
+        m_uiInjectionTimer = 12 * IN_MILLISECONDS;
+        m_uiPoisonCloudTimer = urand(20 * IN_MILLISECONDS, 25 * IN_MILLISECONDS);
+        m_uiSlimeSprayTimer = urand(20 * IN_MILLISECONDS, 30 * IN_MILLISECONDS);
+        m_uiBerserkTimeSecs = m_bIsRegularMode ? 12 * MINUTE : 9 * MINUTE;
+        m_uiBerserkTimer = m_uiBerserkTimeSecs * IN_MILLISECONDS;
+        m_uiSlimeStreamTimer = 5 * IN_MILLISECONDS;         // The first few secs it is ok to be out of range
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GROBBULUS, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GROBBULUS, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_GROBBULUS, FAIL);
@@ -105,9 +101,8 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
 
         std::vector<Unit*> suitableTargets;
         ThreatList const& threatList = m_creature->getThreatManager().getThreatList();
-        ThreatList::const_iterator itr = threatList.begin();
 
-        for (itr; itr != threatList.end(); ++itr)
+        for (ThreatList::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
         {
             if (Unit* pTarget = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid()))
             {
@@ -129,13 +124,13 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
             return false;
     }
 
-    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell)
+    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell) override
     {
         if ((pSpell->Id == SPELL_SLIME_SPRAY || pSpell->Id == SPELL_SLIME_SPRAY_H) && pTarget->GetTypeId() == TYPEID_PLAYER)
-            m_creature->SummonCreature(NPC_FALLOUT_SLIME, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10*IN_MILLISECONDS);
+            m_creature->SummonCreature(NPC_FALLOUT_SLIME, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_OOC_DESPAWN, 10 * IN_MILLISECONDS);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -147,7 +142,7 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
             {
                 if (DoCastSpellIfCan(m_creature, SPELL_SLIME_STREAM) == CAST_OK)
                     // Give some time, to re-reach grobbulus
-                    m_uiSlimeStreamTimer = 3*IN_MILLISECONDS;
+                    m_uiSlimeStreamTimer = 3 * IN_MILLISECONDS;
             }
         }
         else
@@ -175,7 +170,7 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SLIME_SPRAY : SPELL_SLIME_SPRAY_H) == CAST_OK)
             {
-                m_uiSlimeSprayTimer = urand(30*IN_MILLISECONDS, 60*IN_MILLISECONDS);
+                m_uiSlimeSprayTimer = urand(30 * IN_MILLISECONDS, 60 * IN_MILLISECONDS);
                 DoScriptText(EMOTE_SPRAY_SLIME, m_creature);
             }
         }
@@ -189,9 +184,9 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
             {
                 // Timer dependend on time of encounter  - on enrage time between 5-8s, heroic 2-5s (TODO no reliable source for heroic)
                 if (m_bIsRegularMode)
-                    m_uiInjectionTimer = urand(10*IN_MILLISECONDS, 13*IN_MILLISECONDS) -  5 * (m_uiBerserkTimeSecs*IN_MILLISECONDS - m_uiBerserkTimer) / m_uiBerserkTimeSecs;
+                    m_uiInjectionTimer = urand(10 * IN_MILLISECONDS, 13 * IN_MILLISECONDS) -  5 * (m_uiBerserkTimeSecs * IN_MILLISECONDS - m_uiBerserkTimer) / m_uiBerserkTimeSecs;
                 else
-                    m_uiInjectionTimer = urand(10*IN_MILLISECONDS, 13*IN_MILLISECONDS) -  8 * (m_uiBerserkTimeSecs*IN_MILLISECONDS - m_uiBerserkTimer) / m_uiBerserkTimeSecs;
+                    m_uiInjectionTimer = urand(10 * IN_MILLISECONDS, 13 * IN_MILLISECONDS) -  8 * (m_uiBerserkTimeSecs * IN_MILLISECONDS - m_uiBerserkTimer) / m_uiBerserkTimeSecs;
             }
         }
         else
@@ -201,7 +196,7 @@ struct MANGOS_DLL_DECL boss_grobbulusAI : public ScriptedAI
         if (m_uiPoisonCloudTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_POISON_CLOUD) == CAST_OK)
-                m_uiPoisonCloudTimer = 15*IN_MILLISECONDS;
+                m_uiPoisonCloudTimer = 15 * IN_MILLISECONDS;
         }
         else
             m_uiPoisonCloudTimer -= uiDiff;
@@ -215,44 +210,6 @@ CreatureAI* GetAI_boss_grobbulus(Creature* pCreature)
     return new boss_grobbulusAI(pCreature);
 }
 
-struct MANGOS_DLL_DECL npc_grobbulus_poison_cloudAI : public Scripted_NoMovementAI
-{
-    npc_grobbulus_poison_cloudAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
-    {
-        Reset();
-    }
-
-    uint32 m_uiCloud_Timer;
-    uint32 m_uiDespawn_Timer;
-
-    void Reset()
-    {
-        m_uiCloud_Timer = 1000;
-        m_uiDespawn_Timer = 75000;
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (m_uiCloud_Timer < diff)
-        {
-            DoCast(m_creature, SPELL_POISON_CLOUD_DAMAGE);
-            m_uiCloud_Timer = 10000;
-        }else m_uiCloud_Timer -= diff;
-
-        if (m_uiDespawn_Timer < diff)
-            m_creature->ForcedDespawn();
-        else
-            m_uiDespawn_Timer -= diff;
-    }
-};
-
-CreatureAI* GetAI_npc_grobbulus_poison_cloud(Creature* pCreature)
-{
-    return new npc_grobbulus_poison_cloudAI(pCreature);
-}
-
 void AddSC_boss_grobbulus()
 {
     Script* pNewScript;
@@ -260,10 +217,5 @@ void AddSC_boss_grobbulus()
     pNewScript = new Script;
     pNewScript->Name = "boss_grobbulus";
     pNewScript->GetAI = &GetAI_boss_grobbulus;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_grobbulus_poison_cloud";
-    pNewScript->GetAI = &GetAI_npc_grobbulus_poison_cloud;
     pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -68,9 +68,9 @@ static const SpawnLocation aGandlingSpawnLocs[1] =
 
 struct GandlingEventData
 {
-    GandlingEventData() : m_bIsActive(false), m_uiDoorGUID(0) {}
+    GandlingEventData() : m_bIsActive(false) {}
     bool m_bIsActive;
-    uint64 m_uiDoorGUID;
+    ObjectGuid m_doorGuid;
     std::set<uint32> m_sAddGuids;
 };
 
@@ -84,35 +84,29 @@ class MANGOS_DLL_DECL instance_scholomance : public ScriptedInstance
         instance_scholomance(Map* pMap);
         ~instance_scholomance() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        void OnCreatureEnterCombat(Creature* pCreature);
+        void OnCreatureEnterCombat(Creature* pCreature) override;
         void OnCreatureEvade(Creature* pCreature);
-        void OnCreatureDeath(Creature* pCreature);
+        void OnCreatureDeath(Creature* pCreature) override;
 
-        void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
-        void OnPlayerEnter(Player* pPlayer);
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
+        void OnPlayerEnter(Player* pPlayer) override;
 
         void HandlePortalEvent(uint32 uiEventId, uint32 uiData);
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
     private:
         void DoSpawnGandlingIfCan(bool bByPlayerEnter);
 
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string m_strInstData;
-
-        uint64 m_uiDarkmasterGandlingGUID;
-
-        uint64 m_uiGateKirtonosGUID;
-        uint64 m_uiGateRasGUID;
-        uint64 m_uiGateGandlingGUID;
 
         uint32 m_uiGandlingEvent;
         GandlingEventMap m_mGandlingData;

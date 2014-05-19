@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,399 +16,291 @@
 
 /* ScriptData
 SDName: instance_ruby_sanctum
-SD%Complete: 50%
-SDComment: by notagain, corrected by /dev/rsa
-SDCategory: ruby_sanctum
+SD%Complete: 30%
+SDComment: Basic instance script
+SDCategory: Ruby Sanctum
 EndScriptData */
-
-//TODO:  Trash mobs, spawn and removal of fire ring/walls, spawn of halion
 
 #include "precompiled.h"
 #include "ruby_sanctum.h"
 
-struct MANGOS_DLL_DECL instance_ruby_sanctum : public ScriptedInstance
+instance_ruby_sanctum::instance_ruby_sanctum(Map* pMap) : ScriptedInstance(pMap),
+    m_uiHalionSummonTimer(0),
+    m_uiHalionSummonStage(0),
+    m_uiHalionResetTimer(0)
 {
-    instance_ruby_sanctum(Map* pMap) : ScriptedInstance(pMap) 
+    Initialize();
+}
+
+void instance_ruby_sanctum::Initialize()
+{
+    memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+}
+
+bool instance_ruby_sanctum::IsEncounterInProgress() const
+{
+    for (uint8 i = 1; i < MAX_ENCOUNTER ; ++i)
     {
-        Initialize();
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            return true;
     }
 
-    bool needSave;
-    std::string strSaveData;
+    return false;
+}
 
-    //Creatures GUID
-    uint32 m_auiEncounter[MAX_ENCOUNTERS+1];
+void instance_ruby_sanctum::OnPlayerEnter(Player* /*pPlayer*/)
+{
+    // Return if Halion already dead, or Zarithrian alive
+    if (m_auiEncounter[TYPE_ZARITHRIAN] != DONE || m_auiEncounter[TYPE_HALION] == DONE)
+        return;
 
-    uint32 m_auiEventTimer;
-    uint32 m_auiHalionEvent;
+    // Return if already summoned
+    if (GetSingleCreatureFromStorage(NPC_HALION_REAL, true))
+        return;
 
-    uint32 m_auiOrbDirection;
-    uint32 m_auiOrbNState;
-    uint32 m_auiOrbSState;
+    if (Creature* pSummoner = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
+        pSummoner->SummonCreature(NPC_HALION_REAL, pSummoner->GetPositionX(), pSummoner->GetPositionY(), pSummoner->GetPositionZ(), 3.159f, TEMPSUMMON_DEAD_DESPAWN, 0);
+}
 
-    uint64 m_uiHalion_pGUID;
-    uint64 m_uiHalion_tGUID;
-    uint64 m_uiHalionControlGUID;
-    uint64 m_uiRagefireGUID;
-    uint64 m_uiZarithianGUID;
-    uint64 m_uiBaltharusGUID;
-    uint64 m_uiCloneGUID;
-    uint64 m_uiXerestraszaGUID;
-
-    uint64 m_uiOrbNGUID;
-    uint64 m_uiOrbSGUID;
-    uint64 m_uiOrbFocusGUID;
-    uint64 m_uiOrbCarrierGUID;
-
-    //object GUID
-    uint64 m_uiHalionPortal1GUID;
-    uint64 m_uiHalionPortal2GUID;
-    uint64 m_uiHalionPortal3GUID;
-    uint64 m_uiHalionFireWallSGUID;
-    uint64 m_uiHalionFireWallMGUID;
-    uint64 m_uiHalionFireWallLGUID;
-    uint64 m_uiBaltharusTargetGUID;
-
-    uint64 m_uiFireFieldGUID;
-    uint64 m_uiFlameWallsGUID;
-    uint64 m_uiFlameRingGUID;
-
-    void OpenDoor(uint64 guid)
+void instance_ruby_sanctum::OnCreatureCreate(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
     {
-        if(!guid)
+        case NPC_XERESTRASZA:
+            // Special case for Xerestrasza: she only needs to have questgiver flag if Baltharus is killed
+            if (m_auiEncounter[TYPE_BALTHARUS] != DONE)
+                pCreature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case NPC_ZARITHRIAN:
+            if (m_auiEncounter[TYPE_SAVIANA] == DONE && m_auiEncounter[TYPE_BALTHARUS] == DONE)
+                pCreature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            // no break;
+        case NPC_BALTHARUS:
+        case NPC_HALION_REAL:
+        case NPC_HALION_TWILIGHT:
+        case NPC_HALION_CONTROLLER:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case NPC_ZARITHRIAN_SPAWN_STALKER:
+            m_lSpawnStalkersGuidList.push_back(pCreature->GetObjectGuid());
+            break;
+    }
+}
+
+void instance_ruby_sanctum::OnObjectCreate(GameObject* pGo)
+{
+    switch (pGo->GetEntry())
+    {
+        case GO_FLAME_WALLS:
+            if (m_auiEncounter[TYPE_SAVIANA] == DONE && m_auiEncounter[TYPE_BALTHARUS] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_FIRE_FIELD:
+            if (m_auiEncounter[TYPE_BALTHARUS] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_FLAME_RING:
+            break;
+        case GO_BURNING_TREE_1:
+        case GO_BURNING_TREE_2:
+        case GO_BURNING_TREE_3:
+        case GO_BURNING_TREE_4:
+            if (m_auiEncounter[TYPE_ZARITHRIAN] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_TWILIGHT_PORTAL_ENTER_1:
+        case GO_TWILIGHT_PORTAL_ENTER_2:
+        case GO_TWILIGHT_PORTAL_LEAVE:
+            break;
+        default:
             return;
-
-        GameObject* pGo = instance->GetGameObject(guid);
-        if(pGo)
-            pGo->SetGoState(GO_STATE_ACTIVE_ALTERNATIVE);
     }
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+}
 
-    void CloseDoor(uint64 guid)
+// Wrapper to unlock the flame wall in from of Zarithrian
+void instance_ruby_sanctum::DoHandleZarithrianDoor()
+{
+    if (m_auiEncounter[TYPE_SAVIANA] == DONE && m_auiEncounter[TYPE_BALTHARUS] == DONE)
     {
-        if(!guid)
-            return;
+        DoUseDoorOrButton(GO_FLAME_WALLS);
 
-        GameObject* pGo = instance->GetGameObject(guid);
-        if(pGo)
-            pGo->SetGoState(GO_STATE_READY);
+        // Also remove not_selectable unit flag
+        if (Creature* pZarithrian = GetSingleCreatureFromStorage(NPC_ZARITHRIAN))
+            pZarithrian->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
     }
+}
 
-    void Initialize()
+void instance_ruby_sanctum::SetData(uint32 uiType, uint32 uiData)
+{
+    switch (uiType)
     {
-        for (uint8 i = 0; i < MAX_ENCOUNTERS; ++i)
-            m_auiEncounter[i] = NOT_STARTED;
-
-        m_auiEventTimer = 1000;
-
-        m_uiHalion_pGUID = 0;
-        m_uiHalion_tGUID = 0;
-        m_uiRagefireGUID = 0;
-        m_uiZarithianGUID = 0;
-        m_uiBaltharusGUID = 0;
-        m_uiCloneGUID = 0;
-        m_uiHalionPortal1GUID = 0;
-        m_uiHalionPortal2GUID = 0;
-        m_uiHalionPortal3GUID = 0;
-        m_uiXerestraszaGUID = 0;
-        m_uiHalionFireWallSGUID = 0;
-        m_uiHalionFireWallMGUID = 0;
-        m_uiHalionFireWallLGUID = 0;
-        m_uiBaltharusTargetGUID = 0;
-        m_auiOrbDirection = 0;
-        m_uiOrbNGUID = 0;
-        m_uiOrbSGUID = 0;
-        m_uiOrbFocusGUID = 0;
-        m_auiOrbNState = NOT_STARTED;
-        m_auiOrbSState = NOT_STARTED;
-
-    }
-
-    bool IsEncounterInProgress() const
-    {
-        for(uint8 i = 1; i < MAX_ENCOUNTERS ; ++i)
-            if (m_auiEncounter[i] == IN_PROGRESS)
-                return true;
-
-        return false;
-    }
-
-    void UpdateWorldState(bool command, uint32 value)
-    {
-        Map::PlayerList const &players = instance->GetPlayers();
-    
-        if (command)
-        {
-            for (Map::PlayerList::const_iterator i = players.begin(); i != players.end(); ++i)
+        case TYPE_SAVIANA:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoHandleZarithrianDoor();
+            break;
+        case TYPE_BALTHARUS:
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
             {
-                if(Player* pPlayer = i->getSource())
+                DoHandleZarithrianDoor();
+                DoUseDoorOrButton(GO_FIRE_FIELD);
+
+                // Start outro event by DB script
+                if (Creature* pXerestrasza = GetSingleCreatureFromStorage(NPC_XERESTRASZA))
+                    pXerestrasza->GetMotionMaster()->MoveWaypoint();
+            }
+            break;
+        case TYPE_ZARITHRIAN:
+            m_auiEncounter[uiType] = uiData;
+            DoUseDoorOrButton(GO_FLAME_WALLS);
+            if (uiData == DONE)
+            {
+                // Start Halion summoning process
+                if (Creature* pSummoner = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
                 {
-                    if(pPlayer->isAlive())
-                    {
-                        pPlayer->SendUpdateWorldState(UPDATE_STATE_UI_SHOW,0);
-                        if (pPlayer->HasAura(74807))
-                        {
-                            pPlayer->SendUpdateWorldState(UPDATE_STATE_UI_COUNT_T, 100 - value);
-                        }
-                        else 
-                        {
-                            pPlayer->SendUpdateWorldState(UPDATE_STATE_UI_COUNT_R, value);
-                        }
-                        pPlayer->SendUpdateWorldState(UPDATE_STATE_UI_SHOW,1);
-                    }
+                    pSummoner->CastSpell(pSummoner, SPELL_FIRE_PILLAR, false);
+                    m_uiHalionSummonTimer = 5000;
                 }
             }
+            break;
+        case TYPE_HALION:
+            // Don't set the same data twice
+            if (m_auiEncounter[uiType] == uiData)
+                return;
+            m_auiEncounter[uiType] = uiData;
+            DoUseDoorOrButton(GO_FLAME_RING);
+            switch (uiData)
+            {
+                case FAIL:
+                    // Despawn the boss
+                    if (Creature* pHalion = GetSingleCreatureFromStorage(NPC_HALION_REAL))
+                        pHalion->ForcedDespawn();
+                    if (Creature* pHalion = GetSingleCreatureFromStorage(NPC_HALION_TWILIGHT))
+                        pHalion->ForcedDespawn();
+                    // Note: rest of the cleanup is handled by creature_linking
+
+                    m_uiHalionResetTimer = 30000;
+                    // no break;
+                case DONE:
+                    // clear debuffs
+                    if (Creature* pController = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
+                        pController->CastSpell(pController, SPELL_CLEAR_DEBUFFS, true);
+
+                    // Despawn the portals
+                    if (GameObject* pPortal = GetSingleGameObjectFromStorage(GO_TWILIGHT_PORTAL_ENTER_1))
+                        pPortal->SetLootState(GO_JUST_DEACTIVATED);
+
+                    // ToDo: despawn the other portals as well, and disable world state
+                    break;
+            }
+            break;
+    }
+
+    if (uiData == DONE)
+    {
+        OUT_SAVE_INST_DATA;
+
+        std::ostringstream saveStream;
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3];
+
+        strInstData = saveStream.str();
+
+        SaveToDB();
+        OUT_SAVE_INST_DATA_COMPLETE;
+    }
+}
+
+uint32 instance_ruby_sanctum::GetData(uint32 uiType) const
+{
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
+}
+
+void instance_ruby_sanctum::Update(uint32 uiDiff)
+{
+    if (m_uiHalionSummonTimer)
+    {
+        if (m_uiHalionSummonTimer <= uiDiff)
+        {
+            switch (m_uiHalionSummonStage)
+            {
+                case 0:
+                    // Burn the first line of trees
+                    DoUseDoorOrButton(GO_BURNING_TREE_1);
+                    DoUseDoorOrButton(GO_BURNING_TREE_2);
+                    m_uiHalionSummonTimer = 5000;
+                    break;
+                case 1:
+                    // Burn the second line of trees
+                    DoUseDoorOrButton(GO_BURNING_TREE_3);
+                    DoUseDoorOrButton(GO_BURNING_TREE_4);
+                    m_uiHalionSummonTimer = 4000;
+                    break;
+                case 2:
+                    // Cast Fiery explosion
+                    if (Creature* pSummoner = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
+                        pSummoner->CastSpell(pSummoner, SPELL_FIERY_EXPLOSION, true);
+                    m_uiHalionSummonTimer = 2000;
+                case 3:
+                    // Spawn Halion
+                    if (Creature* pSummoner = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
+                    {
+                        if (Creature* pHalion = pSummoner->SummonCreature(NPC_HALION_REAL, pSummoner->GetPositionX(), pSummoner->GetPositionY(), pSummoner->GetPositionZ(), 3.159f, TEMPSUMMON_DEAD_DESPAWN, 0))
+                            DoScriptText(SAY_HALION_SPAWN, pHalion);
+                    }
+                    m_uiHalionSummonTimer = 0;
+                    break;
+            }
+            ++m_uiHalionSummonStage;
         }
         else
-        {
-            for (Map::PlayerList::const_iterator i = players.begin(); i != players.end(); ++i)
-            {
-                if(Player* pPlayer = i->getSource())
-                {
-                    if(pPlayer->isAlive())
-                    {
-                        pPlayer->SendUpdateWorldState(UPDATE_STATE_UI_SHOW,0);
-                    }
-                }
-            }
-        }
+            m_uiHalionSummonTimer -= uiDiff;
     }
 
-    void OpenAllDoors()
+    // Resummon Halion if the encounter resets
+    if (m_uiHalionResetTimer)
     {
-        if (m_auiEncounter[TYPE_RAGEFIRE] == DONE && 
-            m_auiEncounter[TYPE_BALTHARUS] == DONE && 
-            m_auiEncounter[TYPE_XERESTRASZA] == DONE)
-                 OpenDoor(m_uiFlameWallsGUID);
-        else CloseDoor(m_uiFlameWallsGUID);
-    }
+        if (m_uiHalionResetTimer <= uiDiff)
+        {
+            if (Creature* pSummoner = GetSingleCreatureFromStorage(NPC_HALION_CONTROLLER))
+                pSummoner->SummonCreature(NPC_HALION_REAL, pSummoner->GetPositionX(), pSummoner->GetPositionY(), pSummoner->GetPositionZ(), 3.159f, TEMPSUMMON_DEAD_DESPAWN, 0);
 
-    void OnCreatureCreate(Creature* pCreature)
+            if (Creature* pHalion = GetSingleCreatureFromStorage(NPC_HALION_TWILIGHT))
+                pHalion->Respawn();
+
+            m_uiHalionResetTimer = 0;
+        }
+        else
+            m_uiHalionResetTimer -= uiDiff;
+    }
+}
+
+void instance_ruby_sanctum::Load(const char* chrIn)
+{
+    if (!chrIn)
     {
-        switch(pCreature->GetEntry())
-        {
-            case NPC_HALION_REAL:        m_uiHalion_pGUID = pCreature->GetGUID();        break;
-            case NPC_HALION_TWILIGHT:    m_uiHalion_tGUID = pCreature->GetGUID();        break;
-            case NPC_HALION_CONTROL:     m_uiHalionControlGUID = pCreature->GetGUID();   break;
-            case NPC_RAGEFIRE:           m_uiRagefireGUID = pCreature->GetGUID();        break;
-            case NPC_ZARITHIAN:          m_uiZarithianGUID = pCreature->GetGUID();       break;
-            case NPC_BALTHARUS:          m_uiBaltharusGUID = pCreature->GetGUID();       break;
-            case NPC_BALTHARUS_TARGET:   m_uiBaltharusTargetGUID = pCreature->GetGUID(); break;
-            case NPC_CLONE:              m_uiCloneGUID = pCreature->GetGUID();           break;
-            case NPC_XERESTRASZA:        m_uiXerestraszaGUID = pCreature->GetGUID();     break;
-            case NPC_SHADOW_PULSAR_N:    m_uiOrbNGUID = pCreature->GetGUID();            break;
-            case NPC_SHADOW_PULSAR_S:    m_uiOrbSGUID = pCreature->GetGUID();            break;
-            case NPC_ORB_ROTATION_FOCUS: m_uiOrbFocusGUID = pCreature->GetGUID();        break;
-            case NPC_ORB_CARRIER:        m_uiOrbCarrierGUID = pCreature->GetGUID();      break;
-        }
+        OUT_LOAD_INST_DATA_FAIL;
+        return;
     }
 
-    void OnObjectCreate(GameObject* pGo)
+    OUT_LOAD_INST_DATA(chrIn);
+
+    std::istringstream loadStream(chrIn);
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3];
+
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
-        switch(pGo->GetEntry())
-        {
-            case GO_HALION_PORTAL_1:  m_uiHalionPortal1GUID = pGo->GetGUID();  break;
-            case GO_HALION_PORTAL_2:  m_uiHalionPortal2GUID = pGo->GetGUID();  break;
-            case GO_HALION_PORTAL_3:  m_uiHalionPortal3GUID = pGo->GetGUID();  break;
-            case GO_FLAME_WALLS:      m_uiFlameWallsGUID = pGo->GetGUID();     break;
-            case GO_FLAME_RING:       m_uiFlameRingGUID = pGo->GetGUID();      break;
-            case GO_FIRE_FIELD:       m_uiFireFieldGUID = pGo->GetGUID();      break;
-        }
-        OpenAllDoors();
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            m_auiEncounter[i] = NOT_STARTED;
     }
 
-    void SetData(uint32 uiType, uint32 uiData)
-    {
-        switch(uiType)
-        {
-            case TYPE_EVENT:        m_auiEncounter[uiType] = uiData; uiData = NOT_STARTED; break;
-            case TYPE_RAGEFIRE:     m_auiEncounter[uiType] = uiData; 
-                                       OpenAllDoors();
-                                    break;
-            case TYPE_BALTHARUS:    m_auiEncounter[uiType] = uiData; 
-                                       OpenAllDoors();
-                                    break;
-            case TYPE_XERESTRASZA:  m_auiEncounter[uiType] = uiData;
-                                    if (uiData == IN_PROGRESS)
-                                       OpenDoor(m_uiFireFieldGUID);
-                                    else if (uiData == NOT_STARTED)
-                                    {
-                                       CloseDoor(m_uiFireFieldGUID);
-                                       OpenAllDoors();
-                                    }
-                                    else if (uiData == DONE)
-                                    {
-                                       OpenAllDoors();
-                                       if (m_auiEncounter[TYPE_ZARITHIAN] == DONE)
-                                       {
-                                           m_auiEncounter[TYPE_EVENT] = 200;
-                                           m_auiEventTimer = 30000;
-                                       };
-                                    }
-                                    break;
-            case TYPE_ZARITHIAN:    m_auiEncounter[uiType] = uiData;
-                                    if (uiData == DONE)
-                                    {
-                                       OpenDoor(m_uiFlameWallsGUID);
-                                       m_auiEncounter[TYPE_EVENT] = 200;
-                                       m_auiEventTimer = 30000;
-                                    }
-                                    else if (uiData == IN_PROGRESS)
-                                       CloseDoor(m_uiFlameWallsGUID);
-                                    else if (uiData == FAIL)
-                                       OpenDoor(m_uiFlameWallsGUID);
-                                    break;
-            case TYPE_HALION:       m_auiEncounter[uiType] = uiData;
-                                    if (uiData == IN_PROGRESS)
-                                    {
-                                        CloseDoor(m_uiFlameRingGUID);
-                                    }
-                                    else
-                                    {
-                                          OpenDoor(m_uiFlameRingGUID);
-                                    }
-                                    break;
-            case TYPE_HALION_EVENT: m_auiHalionEvent  = uiData; uiData = NOT_STARTED; break;
-            case TYPE_EVENT_TIMER:  m_auiEventTimer = uiData; uiData = NOT_STARTED; break;
-
-            case DATA_ORB_DIRECTION:        m_auiOrbDirection = uiData; uiData = NOT_STARTED; break;
-            case DATA_ORB_N:                m_auiOrbNState = uiData; uiData = NOT_STARTED; break;
-            case DATA_ORB_S:                m_auiOrbSState = uiData; uiData = NOT_STARTED; break;
-            case TYPE_COUNTER:
-                                    if (uiData == COUNTER_OFF)
-                                    {
-                                        UpdateWorldState(false,0);
-                                    }
-                                    else 
-                                    {
-                                        UpdateWorldState(true,uiData);
-                                    }
-                                    uiData = NOT_STARTED;
-                                    break;
-        }
-
-        if (uiData == DONE)
-        {
-            OUT_SAVE_INST_DATA;
-
-            std::ostringstream saveStream;
-
-            for(uint8 i = 0; i < MAX_ENCOUNTERS; ++i)
-                saveStream << m_auiEncounter[i] << " ";
-
-            strSaveData = saveStream.str();
-
-            SaveToDB();
-            OUT_SAVE_INST_DATA_COMPLETE;
-        }
-    }
-
-    const char* Save()
-    {
-        return strSaveData.c_str();
-    }
-
-    uint32 GetData(uint32 uiType)
-    {
-        switch(uiType)
-        {
-            case TYPE_RAGEFIRE:      return m_auiEncounter[uiType];
-            case TYPE_BALTHARUS:     return m_auiEncounter[uiType];
-            case TYPE_XERESTRASZA:   return m_auiEncounter[uiType];
-            case TYPE_ZARITHIAN:     return m_auiEncounter[uiType];
-            case TYPE_HALION:        return m_auiEncounter[uiType];
-
-            case TYPE_EVENT:         return m_auiEncounter[uiType];
-
-            case TYPE_HALION_EVENT:  return m_auiHalionEvent;
-
-            case TYPE_EVENT_TIMER:   return m_auiEventTimer;
-            case TYPE_EVENT_NPC:     switch (m_auiEncounter[TYPE_EVENT])
-                                     {
-                                          case 10:
-                                          case 20:
-                                          case 30:
-                                          case 40:
-                                          case 50:
-                                          case 60:
-                                          case 70:
-                                          case 80:
-                                          case 90:
-                                          case 100:
-                                          case 110:
-                                          case 200:
-                                          case 210:
-                                                 return NPC_XERESTRASZA;
-                                                 break;
-                                          default:
-                                                 break;
-                                     };
-                                     return 0;
-
-            case DATA_ORB_DIRECTION:        return m_auiOrbDirection;
-            case DATA_ORB_N:                return m_auiOrbNState;
-            case DATA_ORB_S:                return m_auiOrbSState;
-
-        }
-        return 0;
-    }
-
-    uint64 GetData64(uint32 uiData)
-    {
-        switch(uiData)
-        {
-            case NPC_BALTHARUS:  return m_uiBaltharusGUID;
-            case NPC_CLONE:      return m_uiCloneGUID;
-            case NPC_ZARITHIAN:  return m_uiZarithianGUID;
-            case NPC_RAGEFIRE:   return m_uiRagefireGUID;
-            case NPC_HALION_REAL:               return m_uiHalion_pGUID;
-            case NPC_HALION_TWILIGHT:           return m_uiHalion_tGUID;
-            case NPC_HALION_CONTROL:   return m_uiHalionControlGUID;
-            case NPC_XERESTRASZA:               return m_uiXerestraszaGUID;
-            case NPC_BALTHARUS_TARGET:          return m_uiBaltharusTargetGUID;
-
-            case GO_FLAME_WALLS: return m_uiFlameWallsGUID;
-            case GO_FLAME_RING:  return m_uiFlameRingGUID;
-            case GO_FIRE_FIELD:  return m_uiFireFieldGUID;
-
-            case GO_HALION_PORTAL_1: return m_uiHalionPortal1GUID;
-            case GO_HALION_PORTAL_2: return m_uiHalionPortal2GUID;
-            case GO_HALION_PORTAL_3: return m_uiHalionPortal3GUID;
-
-            case NPC_SHADOW_PULSAR_N:    return m_uiOrbNGUID;
-            case NPC_SHADOW_PULSAR_S:    return m_uiOrbSGUID;
-            case NPC_ORB_ROTATION_FOCUS: return m_uiOrbFocusGUID;
-            case NPC_ORB_CARRIER:        return m_uiOrbCarrierGUID;
-        }
-        return 0;
-    }
-
-    void Load(const char* chrIn)
-    {
-        if (!chrIn)
-        {
-            OUT_LOAD_INST_DATA_FAIL;
-            return;
-        }
-
-        OUT_LOAD_INST_DATA(chrIn);
-
-        std::istringstream loadStream(chrIn);
-
-        for(uint8 i = 0; i < MAX_ENCOUNTERS; ++i)
-        {
-            loadStream >> m_auiEncounter[i];
-
-            if (m_auiEncounter[i] == IN_PROGRESS
-                || m_auiEncounter[i] == FAIL)
-                m_auiEncounter[i] = NOT_STARTED;
-        }
-
-        m_auiEncounter[TYPE_XERESTRASZA] = NOT_STARTED;
-
-        OUT_LOAD_INST_DATA_COMPLETE;
-        OpenAllDoors();
-    }
-};
+    OUT_LOAD_INST_DATA_COMPLETE;
+}
 
 InstanceData* GetInstanceData_instance_ruby_sanctum(Map* pMap)
 {
@@ -418,6 +310,7 @@ InstanceData* GetInstanceData_instance_ruby_sanctum(Map* pMap)
 void AddSC_instance_ruby_sanctum()
 {
     Script* pNewScript;
+
     pNewScript = new Script;
     pNewScript->Name = "instance_ruby_sanctum";
     pNewScript->GetInstanceData = &GetInstanceData_instance_ruby_sanctum;

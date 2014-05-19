@@ -1,470 +1,389 @@
-/* Copyright (C) 2008 - 2010 TrinityCore <http://www.trinitycore.org>
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
 
 /* ScriptData
-SDName: Boss_Varos
-SD%Complete: 70%
-SDComment:
-SDAuthor: originally from TC, reworked by MaxXx2021 Aka Mioka, corrected by /dev/rsa
+SDName: boss_varos
+SD%Complete: 90
+SDComment: Energize Cores spells requires additional research.
 SDCategory: Oculus
 EndScriptData */
 
 #include "precompiled.h"
 #include "oculus.h"
+#include "TemporarySummon.h"
 
 enum
 {
-    SAY_AGGRO                                     = -1578022,
-    SAY_KILL_1                                    = -1578023,
-    SAY_KILL_2                                    = -1578024,
-    SAY_DEATH                                     = -1578025,
-    SAY_STRIKE_1                                  = -1578026,
-    SAY_STRIKE_2                                  = -1578027,
-    SAY_STRIKE_3                                  = -1578028,
+    SAY_AGGRO                   = -1578020,
+    SAY_CALL_CAPTAIN_1          = -1578021,
+    SAY_CALL_CAPTAIN_2          = -1578022,
+    SAY_CALL_CAPTAIN_3          = -1578023,
+    SAY_KILL_1                  = -1578026,
+    SAY_KILL_2                  = -1578027,
+    SAY_DEATH                   = -1578028,
+    EMOTE_CAPTAIN               = -1578029,
 
-    SPELL_ARCANE_SHIELD                           = 50053,
-    SPELL_ENERGIZE_CORES                          = 50785, //Damage 5938 to 6562, effec2 Triggers 54069, effect3 Triggers 56251
-    SPELL_ENERGIZE_CORES_TRIGGER_1                = 54069,
-    SPELL_ENERGIZE_CORES_TRIGGER_2                = 56251,
-    SPELL_ENERGIZE_CORES_2                        = 59372, //Damage 9025 to 9975, effect2 Triggers 54069, effect 56251
-    SPELL_CALL_AZURE_RING_CAPTAIN                 = 51002, //Effect    Send Event (12229)
-    SPELL_CALL_AZURE_RING_CAPTAIN_2               = 51006, //Effect    Send Event (10665)
-    SPELL_CALL_AZURE_RING_CAPTAIN_3               = 51007, //Effect    Send Event (18454)
-    SPELL_CALL_AZURE_RING_CAPTAIN_4               = 51008, //Effect    Send Event (18455)
-    SPELL_CALL_AMPLIFY_MAGIC                      = 51054,
-    SPELL_CALL_AMPLIFY_MAGIC_2                    = 59371,
+    // spells
+    SPELL_CENTRIFUGE_SHIELD     = 50053,
+    SPELL_AMPLIFY_MAGIC         = 51054,
+    SPELL_AMPLIFY_MAGIC_H       = 59371,
+    SPELL_ENERGIZE_CORES        = 50785,
+    SPELL_ENERGIZE_CORES_H      = 59372,
+    SPELL_CALL_CAPTAIN_1        = 51008,                // sends event 18455
+    SPELL_CALL_CAPTAIN_2        = 51002,                // sends event 12229
+    SPELL_CALL_CAPTAIN_3        = 51006,                // sends event 10665
+    SPELL_CALL_CAPTAIN_4        = 51007,                // sends event 18454
 
-    NPC_AZURE_CAPTAIN                             = 28236,
-    NPC_BEAM                                      = 28239,
-    NPC_VAROS_CORE                                = 28183,
+    // events
+    EVENT_ID_CALL_CAPTAIN_1     = 18455,
+    EVENT_ID_CALL_CAPTAIN_2     = 12229,
+    EVENT_ID_CALL_CAPTAIN_3     = 10665,
+    EVENT_ID_CALL_CAPTAIN_4     = 18454,
 
-    SPELL_CORE_VISUAL                             = 50798,
-    SPELL_CORE_MISSILE                            = 61407, //need core fix max target 4, and spell script on 28183
-    SPELL_BEAM                                    = 51024, //need spell scrip on 28239
-    SPELL_BEAM_DMG_AURA                           = 51019,
-    SPELL_BEAM_VISUAL_SOUND                       = 51022, //need script target 28239
-    SPELL_SUMMON_BEAM                             = 51017
+    MAX_CAPTAIN_EVENTS          = 4,
+
+    // other spells
+    SPELL_SUMMON_ARCANE_BEAM    = 51014,
+    SPELL_ARCANE_BEAM_PERIODIC  = 51019,
+    SPELL_ARCANE_BEAM_SPAWN     = 51022,
+
+    NPC_AZURE_RING_CAPTAIN      = 28236,
+    NPC_ARCANE_BEAM             = 28239,
 };
 
-struct dLocations
+struct CaptainData
 {
-    float x1, y1, x2, y2;
-    uint32 id;
+    uint32 uiEventId;
+    float fX, fY, fZ, fO, fDestX, fDestY, fDestZ;
 };
 
-struct dLocations Regions[]=
+static const CaptainData aVarosCaptainData[4] =
 {
-    {0, 0, 0},
-    {1323.0f, 1056.0f, 1333.0f, 1066.0f}, //first orb 1
-    {1319.3f, 1084.0f, 1329.5f, 1094.0f}, //second orb 2
-    {1288.3f, 1108.8f, 1298.3f, 1118.8f}, //third orb 3
-    {1260.3f, 1104.2f, 1270.3f, 1114.2f}, //four orb 4
-    {1237.7f, 1074.5f, 1247.7f, 1084.5f}, //fifth orb 5
-    {1241.8f, 1046.1f, 1251.8f, 1056.1f}, // 6
-    {1272.0f, 1022.1f, 1282.0f, 1032.1f}, // 7
-    {1300.5f, 1026.2f, 1310.5f, 1036.2f}  // 8
+    {EVENT_ID_CALL_CAPTAIN_1, 1205.74f,  1060.24f,  480.083f, 1.15f, 1239.198f, 1064.537f, 455.587f},
+    {EVENT_ID_CALL_CAPTAIN_2, 1273.78f,  1159.366f, 480.083f, 4.79f, 1278.488f, 1119.482f, 455.634f},       // this one is guesswork
+    {EVENT_ID_CALL_CAPTAIN_3, 1356.845f, 1077.118f, 480.083f, 3.28f, 1331.333f, 1076.381f, 455.69f},
+    {EVENT_ID_CALL_CAPTAIN_4, 1296.89f,  1002.76f,  480.083f, 1.71f, 1291.95f,  1024.354f, 455.739f},
 };
+
+/*######
+## boss_varos
+######*/
 
 struct MANGOS_DLL_DECL boss_varosAI : public ScriptedAI
 {
-    boss_varosAI(Creature *pCreature) : ScriptedAI(pCreature)
+    boss_varosAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_oculus*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_oculus* m_pInstance;
     bool m_bIsRegularMode;
 
-    uint8 MinOrb;
-    uint8 MaxOrb;
+    uint32 m_uiShieldTimer;
+    uint32 m_uiAmplifyMagicTimer;
+    uint32 m_uiEnergizeCoresTimer;
+    uint32 m_uiCallCaptainTimer;
 
-    uint32 m_uiCoreTimer;
-    uint32 m_uiOrbCast;
-    uint32 m_uiDragonAttackTimer;
-    uint32 m_uiDragonMoveTimer;
-    uint32 m_uiCheckTimer;
-
-    uint64 m_uiAzureDrakeGUID;
-
-    bool m_bIsCastChain;
-
-    float angle01;
-    float angle02;
-
-    void Reset()
+    void Reset() override
     {
-        MinOrb = 1;
-        MaxOrb = 4;
-        angle01 = 0;
-        angle02 = 0;
-        m_uiOrbCast = 7000;
-        m_uiCheckTimer = 2000;
-        m_uiDragonAttackTimer = 10000;
-        m_uiCoreTimer = urand(7000, 15000);
-        m_uiDragonMoveTimer = 16000;
-        m_bIsCastChain = false;
-        if(m_pInstance)
-        {
-           m_pInstance->SetData(TYPE_VAROS, NOT_STARTED);
-           if(m_pInstance->GetData(TYPE_ROBOTS) == 0)
-           {
-              m_creature->RemoveAurasDueToSpell(SPELL_ARCANE_SHIELD);
-              m_creature->InterruptNonMeleeSpells(false);
-              m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-           }
-           else 
-           {
-              m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-              DoCast(m_creature, SPELL_ARCANE_SHIELD);
-           }
-           if(Creature* Dragon = m_pInstance->instance->GetCreature(m_uiAzureDrakeGUID))
-              Dragon->DealDamage(Dragon, Dragon->GetMaxHealth(),NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-        }
-        m_uiAzureDrakeGUID = 0;
+        m_uiShieldTimer         = 2000;
+        m_uiAmplifyMagicTimer   = urand(8000, 15000);
+        m_uiEnergizeCoresTimer  = urand(5000, 7000);
+        m_uiCallCaptainTimer    = urand(10000, 15000);
     }
 
-    void CheckVehicle()
-    {
-        Map* map = m_creature->GetMap();
-        if(map && map->IsDungeon())
-        {
-           Map::PlayerList const &PlayerList = map->GetPlayers();
-
-           if(PlayerList.isEmpty())
-              return;
-
-           for(Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
-           {
-              if(i->getSource()->isAlive() && i->getSource()->GetVehicle())
-                 EnterEvadeMode();
-           }
-        }
-    }
-
-    void Aggro(Unit* who)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
-        if(m_pInstance)
-           m_pInstance->SetData(TYPE_VAROS, IN_PROGRESS);
-
-        if(Creature* Dragon = m_creature->SummonCreature(NPC_AZURE_CAPTAIN, (m_creature->GetPositionX()-45)+rand()%90, (m_creature->GetPositionY()-45)+rand()%90, m_creature->GetPositionZ() + 30.0f, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 100))
-        {
-           Dragon->AddSplineFlag(SPLINEFLAG_FLYING);
-           Dragon->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-           m_uiAzureDrakeGUID = Dragon->GetGUID();
-        }
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_VAROS, IN_PROGRESS);
     }
 
-    void AttackStart(Unit* pWho)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
-        if(m_pInstance)
-           if(m_pInstance->GetData(TYPE_ROBOTS) != 0)
-              return;
-
-        ScriptedAI::AttackStart(pWho);
-
+        DoScriptText(urand(0, 1) ? SAY_KILL_1 : SAY_KILL_2, m_creature);
     }
 
-    void JustDied(Unit* killer)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
+        DoCastSpellIfCan(m_creature, SPELL_DEATH_SPELL, CAST_TRIGGERED);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_VAROS, DONE);
     }
 
-    void KilledUnit(Unit *victim)
+    void JustReachedHome() override
     {
-        DoScriptText(urand(0,1) ? SAY_KILL_1 : SAY_KILL_2, m_creature);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_VAROS, FAIL);
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void UpdateAI(const uint32 uiDiff) override
     {
-        if(pSummoned->GetEntry() == NPC_BEAM)
+        if (m_uiShieldTimer)
         {
-           pSummoned->setFaction(14);
-           pSummoned->SetDisplayId(11686);
-           pSummoned->CastSpell(pSummoned, SPELL_BEAM_VISUAL_SOUND, false);
-           pSummoned->CastSpell(pSummoned, SPELL_BEAM_DMG_AURA, false);
-           pSummoned->SetInCombatWithZone();
-           if(Unit* pTarget = pSummoned->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-              pSummoned->AI()->AttackStart(pTarget);
-           if(m_pInstance)
-              if(Creature* Dragon = m_pInstance->instance->GetCreature(m_uiAzureDrakeGUID))
-              {
-                 Dragon->GetMotionMaster()->MovementExpired(false);
-                 Dragon->GetMotionMaster()->Clear(false);
-                 Dragon->CastSpell(pSummoned, SPELL_BEAM, true);
-              }
-        }
-    }
+            if (m_uiShieldTimer <= uiDiff)
+            {
+                if (!m_pInstance)
+                    return;
 
-    void SelectFourOrb() //huck work perfecly
-    {
-        MinOrb = MinOrb+2;
-        MaxOrb = MaxOrb+2;
-        if(MinOrb > 8)
-           MinOrb = 1;
-        if(MaxOrb > 8)
-           MaxOrb = 2;
+                // Check for shield first
+                if (m_pInstance->IsShieldBroken())
+                {
+                    m_uiShieldTimer = 0;
+                    return;
+                }
 
-        std::list<Creature*> m_pSpheres;
-        GetCreatureListWithEntryInGrid(m_pSpheres, m_creature, NPC_VAROS_CORE, DEFAULT_VISIBILITY_INSTANCE);
-
-        if(!m_pSpheres.empty())
-           for(std::list<Creature*>::iterator iter = m_pSpheres.begin(); iter != m_pSpheres.end(); ++iter)
-           {
-              for(uint8 i = 1; i < 9; i++)
-                 if((i <= MaxOrb && i >= MinOrb) || (MinOrb == 7 && (i <= MaxOrb || i >= MinOrb)))
-                    if((*iter)->GetPositionX() > Regions[i].x1 && (*iter)->GetPositionX() < Regions[i].x2)
-                       if((*iter)->GetPositionY() > Regions[i].y1 && (*iter)->GetPositionY() < Regions[i].y2)
-                          if(SpellEntry* pTempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(SPELL_CORE_MISSILE))
-                          {
-                             pTempSpell->EffectImplicitTargetA[0] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[0] = 0;
-                             pTempSpell->EffectImplicitTargetA[1] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[1] = 0;
-                             pTempSpell->EffectImplicitTargetA[2] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[2] = 0;
-                             (*iter)->CastSpell(m_creature, pTempSpell, true);
-                          }
-           }
-    }
-
-    void CastEnergy()
-    {
-        std::list<Creature*> m_pSpheres;
-        GetCreatureListWithEntryInGrid(m_pSpheres, m_creature, NPC_VAROS_CORE, DEFAULT_VISIBILITY_INSTANCE);
-
-        if(!m_pSpheres.empty())
-           for(std::list<Creature*>::iterator iter = m_pSpheres.begin(); iter != m_pSpheres.end(); ++iter)
-           {
-              for(uint8 i = 1; i < 9; i++)
-                 if((i <= MaxOrb && i >= MinOrb) || (MinOrb == 7 && (i <= MaxOrb || i >= MinOrb)))
-                    if((*iter)->GetPositionX() > Regions[i].x1 && (*iter)->GetPositionX() < Regions[i].x2)
-                       if((*iter)->GetPositionY() > Regions[i].y1 && (*iter)->GetPositionY() < Regions[i].y2)
-                       {
-                          if(SpellEntry* pTempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(SPELL_ENERGIZE_CORES_TRIGGER_1))
-                          {
-                             pTempSpell->EffectImplicitTargetA[0] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[0] = 0;
-                             pTempSpell->EffectImplicitTargetA[1] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[1] = 0;
-                             pTempSpell->EffectImplicitTargetA[2] = TARGET_EFFECT_SELECT;
-                             pTempSpell->EffectImplicitTargetB[2] = 0;
-                             (*iter)->CastSpell(m_creature, pTempSpell, true);
-                          }
-
-                          if(i == MinOrb)
-                             angle01 = m_creature->GetAngle((*iter));
-                          if(i == MaxOrb)
-                             angle02 = m_creature->GetAngle((*iter));
-
-                          Map *map = m_creature->GetMap();
-                          if(map->IsDungeon())
-                          {
-                             Map::PlayerList const &PlayerList = map->GetPlayers();
-
-                             if(PlayerList.isEmpty())
-                                return;
-
-                             for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
-                             {
-                                if (i->getSource()->isAlive())
-                                {
-                                   float pAngle = m_creature->GetAngle(i->getSource());
-                                   if(angle01 < angle02)
-                                      if(pAngle < angle02 && pAngle > angle01)
-                                         DoEnergy(i->getSource());
-                                   if(angle01 > angle02)
-                                      if(pAngle < angle02 || pAngle > angle01)
-                                         DoEnergy(i->getSource());
-                                }
-                             }
-                          }
-                       }
-           }
-    }
-
-    void DoEnergy(Unit* pTarget)
-    {
-        if(SpellEntry* pTempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(m_bIsRegularMode ? SPELL_ENERGIZE_CORES : SPELL_ENERGIZE_CORES_2))
-        {
-            pTempSpell->EffectImplicitTargetA[0] = TARGET_EFFECT_SELECT;
-            pTempSpell->EffectImplicitTargetB[0] = 0;
-            pTempSpell->EffectImplicitTargetA[1] = TARGET_EFFECT_SELECT;
-            pTempSpell->EffectImplicitTargetB[1] = 0;
-            pTempSpell->EffectImplicitTargetA[2] = TARGET_EFFECT_SELECT;
-            pTempSpell->EffectImplicitTargetB[2] = 0;
-            m_creature->CastSpell(pTarget, pTempSpell, true);
+                if (DoCastSpellIfCan(m_creature, SPELL_CENTRIFUGE_SHIELD) == CAST_OK)
+                {
+                    m_creature->ApplySpellImmune(0, IMMUNITY_DAMAGE, SPELL_SCHOOL_MASK_ALL, true);
+                    m_uiShieldTimer = 0;
+                }
+            }
+            else
+                m_uiShieldTimer -= uiDiff;
         }
 
-    }
-
-    /*void SpellHitTarget(Unit *target, const SpellEntry *spell)
-    {
-        if(spell->Id == (m_bIsRegularMode ? SPELL_ENERGIZE_CORES : SPELL_ENERGIZE_CORES_2) && target->GetTypeId() == TYPEID_PLAYER)
-        {
-           int32 uiDmg = m_bIsRegularMode ? urand(5938, 6562) : urand(9025, 9975);
-           m_creature->DealDamage(target, uiDmg,NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_ARCANE, NULL, false);
-        }
-    }*/
-
-    void UpdateAI(const uint32 uiDiff)
-    {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if(m_uiCheckTimer < uiDiff)
+        if (m_uiAmplifyMagicTimer < uiDiff)
         {
-            CheckVehicle();
-            m_uiCheckTimer = 2000;
-        } else m_uiCheckTimer -= uiDiff;
-
-        if(m_uiDragonAttackTimer <= uiDiff)
-        {
-           DoCast(m_creature, SPELL_SUMMON_BEAM, true);
-           m_uiDragonAttackTimer = 25000;
-           m_uiDragonMoveTimer = 16000;
-           uint8 uiText = urand(0, 2);
-           switch (uiText)
-           {
-              case 0: DoScriptText(SAY_STRIKE_1, m_creature); break;
-              case 1: DoScriptText(SAY_STRIKE_2, m_creature); break;
-              case 2: DoScriptText(SAY_STRIKE_3, m_creature); break;
-           }
-        } else m_uiDragonAttackTimer -= uiDiff;
-
-        if(m_uiDragonMoveTimer <= uiDiff)
-        {
-           if(m_pInstance)
-              if(Creature* Dragon = m_pInstance->instance->GetCreature(m_uiAzureDrakeGUID))
-              {
-                 Dragon->GetMotionMaster()->MovementExpired(false);
-                 Dragon->GetMotionMaster()->Clear(false);
-                 Dragon->GetMotionMaster()->MovePoint(0, (m_creature->GetPositionX()-45)+rand()%90, (m_creature->GetPositionY()-45)+rand()%90, m_creature->GetPositionZ() + 30.0f);
-              }
-           m_uiDragonMoveTimer = 25000;
-        } else m_uiDragonMoveTimer -= uiDiff;
-
-        if(!m_bIsCastChain)
-        {
-           if(m_uiOrbCast <= uiDiff)
-           {
-              m_uiOrbCast = 1000;
-              m_bIsCastChain = true;
-              SelectFourOrb();
-              m_uiCoreTimer = 5000;
-           } else m_uiOrbCast -= uiDiff; 
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_AMPLIFY_MAGIC : SPELL_AMPLIFY_MAGIC_H) == CAST_OK)
+                    m_uiAmplifyMagicTimer = urand(15000, 20000);
+            }
         }
         else
+            m_uiAmplifyMagicTimer -= uiDiff;
+
+        if (m_uiEnergizeCoresTimer < uiDiff)
         {
-           if(m_uiCoreTimer <= uiDiff)
-           {
-              m_uiCoreTimer = 5000;
-              m_bIsCastChain = false;
-              CastEnergy();
-              m_uiOrbCast = 1000;
-           } else m_uiCoreTimer -= uiDiff; 
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_ENERGIZE_CORES : SPELL_ENERGIZE_CORES_H) == CAST_OK)
+                m_uiEnergizeCoresTimer = urand(5000, 7000);
         }
+        else
+            m_uiEnergizeCoresTimer -= uiDiff;
+
+        if (m_uiCallCaptainTimer < uiDiff)
+        {
+            // choose a random captain spell
+            uint32 uiSpellId = 0;
+            switch (urand(0, 3))
+            {
+                case 0: uiSpellId = SPELL_CALL_CAPTAIN_1; break;
+                case 1: uiSpellId = SPELL_CALL_CAPTAIN_2; break;
+                case 2: uiSpellId = SPELL_CALL_CAPTAIN_3; break;
+                case 3: uiSpellId = SPELL_CALL_CAPTAIN_4; break;
+            }
+
+            if (DoCastSpellIfCan(m_creature, uiSpellId) == CAST_OK)
+            {
+                switch (urand(0, 2))
+                {
+                    case 0: DoScriptText(SAY_CALL_CAPTAIN_1, m_creature); break;
+                    case 1: DoScriptText(SAY_CALL_CAPTAIN_2, m_creature); break;
+                    case 2: DoScriptText(SAY_CALL_CAPTAIN_3, m_creature); break;
+                }
+
+                DoScriptText(EMOTE_CAPTAIN, m_creature);
+                m_uiCallCaptainTimer = urand(13000, 23000);
+            }
+        }
+        else
+            m_uiCallCaptainTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
 
-struct MANGOS_DLL_DECL npc_varos_orbAI : public ScriptedAI
-{
-    npc_varos_orbAI(Creature *pCreature) : ScriptedAI(pCreature) 
-    {
-       Reset();
-    }
-
-    void Reset()
-    {
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-        m_creature->setFaction(14);
-        DoCast(m_creature, SPELL_CORE_VISUAL, true);
-    }
-
-    void AttackStart(Unit* pWho)
-    {
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-    }
-};
-
-struct MANGOS_DLL_DECL npc_varos_beam_targetAI : public ScriptedAI
-{
-    npc_varos_beam_targetAI(Creature *pCreature) : ScriptedAI(pCreature) 
-    {
-       Reset();
-    }
-    uint32 uiDeathTimer;
-
-    void Reset()
-    {
-        m_creature->SetSpeedRate(MOVE_RUN, 0.5f, true);
-        uiDeathTimer = 15000;
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (uiDeathTimer < diff)
-            m_creature->ForcedDespawn();
-        else uiDeathTimer -= diff;
-    }
-};
-
 CreatureAI* GetAI_boss_varos(Creature* pCreature)
 {
-    return new boss_varosAI (pCreature);
+    return new boss_varosAI(pCreature);
 }
 
-CreatureAI* GetAI_npc_varos_orb(Creature* pCreature)
+/*######
+## event_spell_call_captain
+######*/
+
+bool ProcessEventId_event_spell_call_captain(uint32 uiEventId, Object* pSource, Object* /*pTarget*/, bool bIsStart)
 {
-    return new npc_varos_orbAI (pCreature);
+    if (bIsStart && pSource->GetTypeId() == TYPEID_UNIT)
+    {
+        Creature* pVaros = (Creature*)pSource;
+        if (!pVaros)
+            return false;
+
+        // each guardian has it's own spawn position
+        for (uint8 i = 0; i < MAX_CAPTAIN_EVENTS; ++i)
+        {
+            if (uiEventId == aVarosCaptainData[i].uiEventId)
+            {
+                if (Creature* pGuardian = pVaros->SummonCreature(NPC_AZURE_RING_CAPTAIN, aVarosCaptainData[i].fX, aVarosCaptainData[i].fY, aVarosCaptainData[i].fZ, aVarosCaptainData[i].fO, TEMPSUMMON_DEAD_DESPAWN, 0))
+                {
+                    pGuardian->SetWalk(false);
+                    pGuardian->GetMotionMaster()->MovePoint(1, aVarosCaptainData[i].fDestX, aVarosCaptainData[i].fDestY, aVarosCaptainData[i].fDestZ);
+                }
+
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
-CreatureAI* GetAI_npc_varos_beam_target(Creature* pCreature)
+/*######
+## npc_azure_ring_captain
+######*/
+
+struct MANGOS_DLL_DECL npc_azure_ring_captainAI : public ScriptedAI
 {
-    return new npc_varos_beam_targetAI (pCreature);
+    npc_azure_ring_captainAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        SetCombatMovement(false);
+        Reset();
+    }
+
+    ObjectGuid m_arcaneBeamGuid;
+
+    void Reset() override { }
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        if (pSummoned->GetEntry() == NPC_ARCANE_BEAM)
+        {
+            pSummoned->CastSpell(pSummoned, SPELL_ARCANE_BEAM_PERIODIC, true);
+            pSummoned->CastSpell(pSummoned, SPELL_ARCANE_BEAM_SPAWN, true);
+            m_arcaneBeamGuid = pSummoned->GetObjectGuid();
+        }
+    }
+
+    void JustDied(Unit* /*pKiller*/) override
+    {
+        // Despawn the arcane beam in case of getting killed
+        if (Creature* pTemp = m_creature->GetMap()->GetCreature(m_arcaneBeamGuid))
+            pTemp->ForcedDespawn();
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    {
+        if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
+            return;
+
+        // Spawn arcane beam when the position is reached. Also prepare to despawn after the beam event is finished
+        if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_ARCANE_BEAM) == CAST_OK)
+            m_creature->ForcedDespawn(11000);
+    }
+
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_azure_ring_captain(Creature* pCreature)
+{
+    return new npc_azure_ring_captainAI(pCreature);
+}
+
+/*######
+## npc_arcane_beam
+######*/
+
+struct MANGOS_DLL_DECL npc_arcane_beamAI : public ScriptedAI
+{
+    npc_arcane_beamAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+
+    void Reset() override
+    {
+        // Start following the summoner (player)
+        if (m_creature->IsTemporarySummon())
+        {
+            TemporarySummon* pTemporary = (TemporarySummon*)m_creature;
+
+            if (Player* pSummoner = m_creature->GetMap()->GetPlayer(pTemporary->GetSummonerGuid()))
+                m_creature->GetMotionMaster()->MoveFollow(pSummoner, 0, 0);
+        }
+
+        // despawn manually because of combat bug
+        m_creature->ForcedDespawn(10000);
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_arcane_beam(Creature* pCreature)
+{
+    return new npc_arcane_beamAI(pCreature);
+}
+
+/*######
+## npc_centrifuge_core
+######*/
+
+// TODO Remove this 'script' when combat can be proper prevented from core-side
+struct MANGOS_DLL_DECL npc_centrifuge_coreAI : public Scripted_NoMovementAI
+{
+    npc_centrifuge_coreAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
+
+    // Note: visual already handled in creature_template_addon
+    void Reset() override { }
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_centrifuge_core(Creature* pCreature)
+{
+    return new npc_centrifuge_coreAI(pCreature);
 }
 
 void AddSC_boss_varos()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_varos";
-    newscript->GetAI = &GetAI_boss_varos;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_varos";
+    pNewScript->GetAI = &GetAI_boss_varos;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_varos_orb";
-    newscript->GetAI = &GetAI_npc_varos_orb;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "event_spell_call_captain";
+    pNewScript->pProcessEventId = &ProcessEventId_event_spell_call_captain;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_varos_beam_target";
-    newscript->GetAI = &GetAI_npc_varos_beam_target;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_azure_ring_captain";
+    pNewScript->GetAI = &GetAI_npc_azure_ring_captain;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_arcane_beam";
+    pNewScript->GetAI = &GetAI_npc_arcane_beam;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_centrifuge_core";
+    pNewScript->GetAI = &GetAI_npc_centrifuge_core;
+    pNewScript->RegisterSelf();
 }

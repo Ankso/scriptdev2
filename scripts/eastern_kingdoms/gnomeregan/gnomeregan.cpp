@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,18 +16,20 @@
 
 /* ScriptData
 SDName: gnomeregan
-SD%Complete: 100
-SDComment:  Grubbis Encounter
+SD%Complete: 90
+SDComment:  Grubbis Encounter, quest 2904 (A fine mess)
 SDCategory: Gnomeregan
 EndScriptData */
 
 /* ContentData
 npc_blastmaster_emi_shortfuse
+npc_kernobee
 EndContentData */
 
 #include "precompiled.h"
 #include "gnomeregan.h"
 #include "escort_ai.h"
+#include "follower_ai.h"
 
 /*######
 ## npc_blastmaster_emi_shortfuse
@@ -141,13 +143,13 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
 
     uint8 m_uiPhase;
     uint32 m_uiPhaseTimer;
-    uint64 m_uiPlayerGUID;
+    ObjectGuid m_playerGuid;
     bool m_bDidAggroText, m_bSouthernCaveInOpened, m_bNorthernCaveInOpened;
-    GUIDList m_luiSummonedMobGUIDs;
+    GuidList m_luiSummonedMobGUIDs;
 
-    void Reset()
+    void Reset() override
     {
-        m_bDidAggroText = false;                             // Used for 'defend' text, is triggered when the npc is attacked
+        m_bDidAggroText = false;                            // Used for 'defend' text, is triggered when the npc is attacked
 
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -170,17 +172,17 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         switch (pSummoned->GetEntry())
         {
             case NPC_CAVERNDEEP_BURROWER:
             case NPC_CAVERNDEEP_AMBUSHER:
             {
-                if (GameObject* pDoor = m_creature->GetMap()->GetGameObject(m_pInstance->GetData64(m_uiPhase > 20 ? GO_CAVE_IN_NORTH : GO_CAVE_IN_SOUTH)))
+                if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(m_uiPhase > 20 ? GO_CAVE_IN_NORTH : GO_CAVE_IN_SOUTH))
                 {
                     float fX, fY, fZ;
-                    pDoor->GetNearPoint(pDoor, fX, fY, fZ, 0.0f, 2.0f, frand(0.0f, 2*M_PI_F));
+                    pDoor->GetNearPoint(pDoor, fX, fY, fZ, 0.0f, 2.0f, frand(0.0f, 2 * M_PI_F));
                     pSummoned->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
                 }
                 break;
@@ -190,10 +192,10 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                 DoScriptText(SAY_GRUBBIS_SPAWN, pSummoned);
                 break;
         }
-        m_luiSummonedMobGUIDs.push_back(pSummoned->GetGUID());
+        m_luiSummonedMobGUIDs.push_back(pSummoned->GetObjectGuid());
     }
 
-    void SummonedCreatureJustDied(Creature* pSummoned)
+    void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_GRUBBIS)
         {
@@ -201,7 +203,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                 m_pInstance->SetData(TYPE_GRUBBIS, DONE);
             m_uiPhaseTimer = 1000;
         }
-        m_luiSummonedMobGUIDs.remove(pSummoned->GetGUID());
+        m_luiSummonedMobGUIDs.remove(pSummoned->GetObjectGuid());
     }
 
     bool IsPreparingExplosiveCharge()
@@ -209,7 +211,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         return m_uiPhase == 11 || m_uiPhase == 13 || m_uiPhase == 26 || m_uiPhase == 28;
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         // In case we are preparing the explosive charges, we won't start attacking mobs
         if (IsPreparingExplosiveCharge())
@@ -218,7 +220,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         npc_escortAI::MoveInLineOfSight(pWho);
     }
 
-    void AttackStart(Unit* pWho)
+    void AttackStart(Unit* pWho) override
     {
         // In case we are preparing the explosive charges, we won't start attacking mobs
         if (IsPreparingExplosiveCharge())
@@ -227,7 +229,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         npc_escortAI::AttackStart(pWho);
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         // Possibility for Aggro-Text only once per combat
         if (m_bDidAggroText)
@@ -239,7 +241,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
             DoScriptText(urand(0, 1) ? SAY_AGGRO_1 : SAY_AGGRO_2, m_creature, pAttacker);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (!m_pInstance)
             return;
@@ -247,18 +249,18 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         m_pInstance->SetData(TYPE_GRUBBIS, FAIL);
 
         if (m_bSouthernCaveInOpened)                        // close southern cave-in door
-            m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_SOUTH));
+            m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_SOUTH);
         if (m_bNorthernCaveInOpened)                        // close northern cave-in door
-            m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_NORTH));
+            m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_NORTH);
 
-        for (GUIDList::const_iterator itr = m_luiSummonedMobGUIDs.begin(); itr != m_luiSummonedMobGUIDs.end(); ++itr)
+        for (GuidList::const_iterator itr = m_luiSummonedMobGUIDs.begin(); itr != m_luiSummonedMobGUIDs.end(); ++itr)
         {
             if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
                 pSummoned->ForcedDespawn();
         }
     }
 
-    void StartEvent(uint64 uiPlayerGUID)
+    void StartEvent(Player* pPlayer)
     {
         if (!m_pInstance)
             return;
@@ -267,17 +269,17 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
 
         m_uiPhase = 1;
         m_uiPhaseTimer = 1000;
-        m_uiPlayerGUID = uiPlayerGUID;
+        m_playerGuid = pPlayer->GetObjectGuid();
     }
 
-    void WaypointStart(uint32 uiPointId)
+    void WaypointStart(uint32 uiPointId) override
     {
         switch (uiPointId)
         {
             case 10:
                 // Open Southern Cave-In
                 if (m_pInstance && !m_bSouthernCaveInOpened)
-                    m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_SOUTH));
+                    m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_SOUTH);
                 m_bSouthernCaveInOpened = true;
                 break;
             case 12:
@@ -287,15 +289,15 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                 DoScriptText(SAY_CHARGE_3, m_creature);
                 // Open Northern Cave-In
                 if (m_pInstance && !m_bNorthernCaveInOpened)
-                    m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_NORTH));
+                    m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_NORTH);
                 m_bNorthernCaveInOpened = true;
                 break;
         }
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 4:
                 m_uiPhaseTimer = 1000;
@@ -315,7 +317,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                 SetEscortPaused(true);
                 if (m_pInstance)
                 {
-                    if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_CAVE_IN_SOUTH)))
+                    if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_CAVE_IN_SOUTH))
                         m_creature->SetFacingToObject(pDoor);
                 }
                 DoScriptText(SAY_BLOW_1_10, m_creature);
@@ -336,7 +338,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(uint32 const uiDiff)
+    void UpdateEscortAI(uint32 const uiDiff) override
     {
         // the phases are handled OOC (keeps them in sync with the waypoints)
         if (m_uiPhaseTimer && !m_creature->getVictim())
@@ -347,7 +349,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                 {
                     case 1:
                         DoScriptText(SAY_START, m_creature);
-                        m_creature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+                        m_creature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
                         m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
                         m_creature->SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
                         m_uiPhaseTimer = 5000;
@@ -357,7 +359,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 3500;              // 6s delay, but 2500ms for escortstarting
                         break;
                     case 3:
-                        Start(false, m_creature->GetMap()->GetPlayer(m_uiPlayerGUID), NULL, false, false);
+                        Start(false, m_creature->GetMap()->GetPlayer(m_playerGuid), NULL, false, false);
                         m_uiPhaseTimer = 0;
                         break;
 
@@ -377,7 +379,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                     case 7:
                         if (m_pInstance)
                         {
-                            if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_CAVE_IN_SOUTH)))
+                            if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_CAVE_IN_SOUTH))
                                 m_creature->SetFacingToObject(pDoor);
                         }
                         m_uiPhaseTimer = 2000;
@@ -425,7 +427,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         m_uiPhaseTimer = 1;
                         break;
                     case 15:                                // shortly before starting WP 14
-                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_uiPlayerGUID))
+                        if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                             m_creature->SetFacingToObject(pPlayer);
                         DoScriptText(SAY_CHARGE_2, m_creature);
                         m_uiPhaseTimer = 0;
@@ -447,7 +449,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         // Close southern cave-in and let charges explode
                         if (m_pInstance)
                         {
-                            m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_SOUTH));
+                            m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_SOUTH);
                             m_bSouthernCaveInOpened = false;
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_USE);
                         }
@@ -468,7 +470,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                     case 23:
                         if (m_pInstance)
                         {
-                            if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_CAVE_IN_NORTH)))
+                            if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_CAVE_IN_NORTH))
                                 m_creature->SetFacingToObject(pDoor);
                         }
                         m_uiPhaseTimer = 3000;
@@ -520,7 +522,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                     case 31:                                // shortly after reaching WP 19
                         if (m_pInstance)
                         {
-                            if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_CAVE_IN_NORTH)))
+                            if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_CAVE_IN_NORTH))
                                 m_creature->SetFacingToObject(pDoor);
                         }
                         DoScriptText(SAY_BLOW_2_10, m_creature);
@@ -538,7 +540,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                     case 34:                                // 1 sek after Death of Grubbis
                         if (m_pInstance)
                         {
-                            if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_CAVE_IN_NORTH)))
+                            if (GameObject* pDoor = m_pInstance->GetSingleGameObjectFromStorage(GO_CAVE_IN_NORTH))
                                 m_creature->SetFacingToObject(pDoor);
                         }
                         m_creature->HandleEmote(EMOTE_ONESHOT_CHEER);
@@ -564,7 +566,7 @@ struct MANGOS_DLL_DECL npc_blastmaster_emi_shortfuseAI : public npc_escortAI
                         // Close northern cave-in and let charges explode
                         if (m_pInstance)
                         {
-                            m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(GO_CAVE_IN_NORTH));
+                            m_pInstance->DoUseDoorOrButton(GO_CAVE_IN_NORTH);
                             m_bNorthernCaveInOpened = false;
                             m_pInstance->SetData(TYPE_EXPLOSIVE_CHARGE, DATA_EXPLOSIVE_CHARGE_USE);
                         }
@@ -600,27 +602,103 @@ bool GossipHello_npc_blastmaster_emi_shortfuse(Player* pPlayer, Creature* pCreat
     {
         if (pInstance->GetData(TYPE_GRUBBIS) == NOT_STARTED || pInstance->GetData(TYPE_GRUBBIS) == FAIL)
         {
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
             pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
         }
     }
     return true;
 }
 
-bool GossipSelect_npc_blastmaster_emi_shortfuse(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_blastmaster_emi_shortfuse(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         if (instance_gnomeregan* pInstance = (instance_gnomeregan*)pCreature->GetInstanceData())
         {
             if (pInstance->GetData(TYPE_GRUBBIS) == NOT_STARTED || pInstance->GetData(TYPE_GRUBBIS) == FAIL)
             {
                 if (npc_blastmaster_emi_shortfuseAI* pEmiAI = dynamic_cast<npc_blastmaster_emi_shortfuseAI*>(pCreature->AI()))
-                    pEmiAI->StartEvent(pPlayer->GetGUID());
+                    pEmiAI->StartEvent(pPlayer);
             }
         }
     }
     pPlayer->CLOSE_GOSSIP_MENU();
+
+    return true;
+}
+
+/*######
+## npc_kernobee
+## TODO: It appears there are some things missing, including his? alarm-bot
+######*/
+
+enum
+{
+    QUEST_A_FINE_MESS           = 2904,
+    TRIGGER_GNOME_EXIT          = 324,                      // Add scriptlib support for it, atm simply use hardcoded values
+};
+
+static const float aKernobeePositions[2][3] =
+{
+    { -330.92f, -3.03f, -152.85f},                          // End position
+    { -297.32f, -7.32f, -152.85f}                           // Walk out of the door
+};
+
+struct MANGOS_DLL_DECL npc_kernobeeAI : public FollowerAI
+{
+    npc_kernobeeAI(Creature* pCreature) : FollowerAI(pCreature)
+    {
+        m_uiCheckEndposTimer = 10000;
+        Reset();
+    }
+
+    uint32 m_uiCheckEndposTimer;
+
+    void Reset() override {}
+
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
+    {
+        if (eventType == AI_EVENT_START_EVENT && pInvoker->GetTypeId() == TYPEID_PLAYER)
+        {
+            // No idea why he has UNIT_STAND_STATE_DEAD in UDB ..
+            m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+            StartFollow((Player*)pInvoker, 0, GetQuestTemplateStore(uiMiscValue));
+        }
+    }
+
+    void UpdateFollowerAI(const uint32 uiDiff)
+    {
+        FollowerAI::UpdateFollowerAI(uiDiff);               // Do combat handling
+
+        if (m_creature->isInCombat() || !HasFollowState(STATE_FOLLOW_INPROGRESS) || HasFollowState(STATE_FOLLOW_COMPLETE))
+            return;
+
+        if (m_uiCheckEndposTimer < uiDiff)
+        {
+            m_uiCheckEndposTimer = 500;
+            if (m_creature->IsWithinDist3d(aKernobeePositions[0][0], aKernobeePositions[0][1], aKernobeePositions[0][2], 2 * INTERACTION_DISTANCE))
+            {
+                SetFollowComplete(true);
+                if (Player* pPlayer = GetLeaderForFollower())
+                    pPlayer->GroupEventHappens(QUEST_A_FINE_MESS, m_creature);
+                m_creature->GetMotionMaster()->MovePoint(1, aKernobeePositions[1][0], aKernobeePositions[1][1], aKernobeePositions[1][2], false);
+                m_creature->ForcedDespawn(2000);
+            }
+        }
+        else
+            m_uiCheckEndposTimer -= uiDiff;
+    }
+};
+
+CreatureAI* GetAI_npc_kernobee(Creature* pCreature)
+{
+    return new npc_kernobeeAI(pCreature);
+}
+
+bool QuestAccept_npc_kernobee(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+{
+    if (pQuest->GetQuestId() == QUEST_A_FINE_MESS)
+        pCreature->AI()->SendAIEvent(AI_EVENT_START_EVENT, pPlayer, pCreature, pQuest->GetQuestId());
 
     return true;
 }
@@ -634,5 +712,11 @@ void AddSC_gnomeregan()
     pNewScript->GetAI = &GetAI_npc_blastmaster_emi_shortfuse;
     pNewScript->pGossipHello = &GossipHello_npc_blastmaster_emi_shortfuse;
     pNewScript->pGossipSelect = &GossipSelect_npc_blastmaster_emi_shortfuse;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kernobee";
+    pNewScript->GetAI = &GetAI_npc_kernobee;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kernobee;
     pNewScript->RegisterSelf();
 }

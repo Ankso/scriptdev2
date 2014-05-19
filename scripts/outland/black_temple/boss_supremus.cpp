@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Supremus
 SD%Complete: 90
-SDComment: Fixating the target is hacky, unknown if other speed-changes happen, remove AI for trigger mobs in next step
+SDComment: Unknown if other speed-changes happen, remove AI for trigger mobs in next step
 SDCategory: Black Temple
 EndScriptData */
 
@@ -64,10 +64,10 @@ struct MANGOS_DLL_DECL molten_flameAI : public Scripted_NoMovementAI
 {
     molten_flameAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
 
-    void Reset() {}
-    void AttackStart(Unit* pWho) {}
-    void MoveInLineOfSight(Unit* pWho) {}
-    void UpdateAI(const uint32 uiDiff) {}
+    void Reset() override {}
+    void AttackStart(Unit* /*pWho*/) override {}
+    void MoveInLineOfSight(Unit* /*pWho*/) override {}
+    void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
 
 // TODO Remove this 'script' when combat movement can be proper prevented from core-side
@@ -75,10 +75,10 @@ struct MANGOS_DLL_DECL npc_volcanoAI : public Scripted_NoMovementAI
 {
     npc_volcanoAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
 
-    void Reset() {}
-    void AttackStart(Unit* pWho) {}
-    void MoveInLineOfSight(Unit* pWho) {}
-    void UpdateAI(const uint32 uiDiff) {}
+    void Reset() override {}
+    void AttackStart(Unit* /*pWho*/) override {}
+    void MoveInLineOfSight(Unit* /*pWho*/) override {}
+    void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
 
 struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
@@ -99,50 +99,46 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
     uint32 m_uiBerserkTimer;
     uint32 m_uiMoltenPunchTimer;
 
-    uint64 m_uiLastGazeTargetGUID;
-
     bool m_bTankPhase;
 
-    GUIDList m_lSummonedGUIDs;
+    GuidList m_lSummonedGUIDs;
 
-    void Reset()
+    void Reset() override
     {
         m_uiHatefulStrikeTimer = 5000;
         m_uiSummonFlameTimer   = 20000;
         m_uiPhaseSwitchTimer   = 60000;
         m_uiMoltenPunchTimer   = 8000;
-        m_uiBerserkTimer       = 15*MINUTE*IN_MILLISECONDS;
-
-        m_uiLastGazeTargetGUID = 0;
+        m_uiBerserkTimer       = 15 * MINUTE * IN_MILLISECONDS;
 
         m_bTankPhase = true;
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_SUPREMUS, NOT_STARTED);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_SUPREMUS, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_SUPREMUS, DONE);
 
-        for (GUIDList::const_iterator itr = m_lSummonedGUIDs.begin(); itr != m_lSummonedGUIDs.end(); ++itr)
+        for (GuidList::const_iterator itr = m_lSummonedGUIDs.begin(); itr != m_lSummonedGUIDs.end(); ++itr)
         {
             if (Creature* pSummoned = m_creature->GetMap()->GetCreature(*itr))
                 pSummoned->ForcedDespawn();
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_STALKER)
         {
@@ -185,13 +181,14 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
         return pTarget;
     }
 
-    void KilledUnit(Unit* pKilled)
+    void KilledUnit(Unit* pKilled) override
     {
-        if (!m_bTankPhase && pKilled->GetGUID() == m_uiLastGazeTargetGUID)
+        // The current target is the fixated target - repick a new one
+        if (!m_bTankPhase && pKilled == m_creature->getVictim())
             m_uiSwitchTargetTimer = 0;
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -222,6 +219,7 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
             {
                 m_bTankPhase = true;
                 m_creature->RemoveAurasDueToSpell(SPELL_SLOW_SELF);
+                m_creature->FixateTarget(NULL);
             }
             else
             {
@@ -232,8 +230,7 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
                 DoCastSpellIfCan(m_creature, SPELL_SLOW_SELF, CAST_INTERRUPT_PREVIOUS);
             }
 
-            m_uiPhaseSwitchTimer = MINUTE*IN_MILLISECONDS;
-            DoResetThreat();
+            m_uiPhaseSwitchTimer = MINUTE * IN_MILLISECONDS;
         }
         else
             m_uiPhaseSwitchTimer -= uiDiff;
@@ -257,12 +254,9 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
             {
                 if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 {
-                    DoResetThreat();
-                    // This way to simulate some fixating is to be considered a hack
-                    m_creature->AddThreat(pTarget, 5000000.0f);
+                    m_creature->FixateTarget(pTarget);
                     DoScriptText(EMOTE_NEW_TARGET, m_creature);
                     m_uiSwitchTargetTimer = 10000;
-                    m_uiLastGazeTargetGUID = pTarget->GetGUID();
                 }
             }
             else
@@ -283,7 +277,7 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
 
             if (m_uiMoltenPunchTimer < uiDiff)
             {
-                if (m_creature->GetCombatDistance(m_creature->getVictim()) < RANGE_MOLTEN_PUNCH)
+                if (m_creature->GetCombatDistance(m_creature->getVictim(), false) < RANGE_MOLTEN_PUNCH)
                 {
                     DoCastSpellIfCan(m_creature->getVictim(), SPELL_CHARGE);
                     DoScriptText(EMOTE_PUNCH_GROUND, m_creature);

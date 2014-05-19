@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,54 +16,13 @@
 
 /* ScriptData
 SDName: Stonetalon_Mountains
-SD%Complete: 95
-SDComment: Quest support: 6627 (Braug Dimspirits questions/'answers' might have more to it, need more info),6523
+SD%Complete: 100
+SDComment: Quest support: 6523.
 SDCategory: Stonetalon Mountains
 EndScriptData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
-
-/*######
-## npc_braug_dimspirit
-######*/
-
-bool GossipHello_npc_braug_dimspirit(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestStatus(6627) == QUEST_STATUS_INCOMPLETE)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Ysera", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Neltharion", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Nozdormu", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Alexstrasza", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Malygos", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-
-        pPlayer->SEND_GOSSIP_MENU(5820, pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(5819, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_braug_dimspirit(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->CastSpell(pPlayer,6766,false);
-
-    }
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->AreaExploredOrEventHappens(6627);
-    }
-    return true;
-}
 
 /*######
 ## npc_kaya
@@ -86,28 +45,28 @@ struct MANGOS_DLL_DECL npc_kayaAI : public npc_escortAI
 {
     npc_kayaAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
-            //Ambush
+                // Ambush
             case 16:
-                //note about event here:
-                //apparently NPC say _after_ the ambush is over, and is most likely a bug at you-know-where.
-                //we simplify this, and make say when the ambush actually start.
+                // note about event here:
+                // apparently NPC say _after_ the ambush is over, and is most likely a bug at you-know-where.
+                // we simplify this, and make say when the ambush actually start.
                 DoScriptText(SAY_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_GRIMTOTEM_RUFFIAN, -50.75f, -500.77f, -46.13f, 0.4f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_GRIMTOTEM_BRUTE, -40.05f, -510.89f, -46.05f, 1.7f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_GRIMTOTEM_SORCERER, -32.21f, -499.20f, -45.35f, 2.8f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 break;
-            // Award quest credit
+                // Award quest credit
             case 18:
                 DoScriptText(SAY_END, m_creature);
 
@@ -125,12 +84,12 @@ CreatureAI* GetAI_npc_kaya(Creature* pCreature)
 
 bool QuestAccept_npc_kaya(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
 {
-    //Casting Spell and Starting the Escort quest is buggy, so this is a hack. Use the spell when it is possible.
+    // Casting Spell and Starting the Escort quest is buggy, so this is a hack. Use the spell when it is possible.
 
     if (pQuest->GetQuestId() == QUEST_PROTECT_KAYA)
     {
-        pCreature->setFaction(FACTION_ESCORT_H_PASSIVE);
-        DoScriptText(SAY_START,pCreature);
+        pCreature->SetFactionTemporary(FACTION_ESCORT_H_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
+        DoScriptText(SAY_START, pCreature);
 
         if (npc_kayaAI* pEscortAI = dynamic_cast<npc_kayaAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -144,17 +103,11 @@ bool QuestAccept_npc_kaya(Player* pPlayer, Creature* pCreature, Quest const* pQu
 
 void AddSC_stonetalon_mountains()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_braug_dimspirit";
-    newscript->pGossipHello = &GossipHello_npc_braug_dimspirit;
-    newscript->pGossipSelect = &GossipSelect_npc_braug_dimspirit;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_kaya";
-    newscript->GetAI = &GetAI_npc_kaya;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_kaya;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kaya";
+    pNewScript->GetAI = &GetAI_npc_kaya;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kaya;
+    pNewScript->RegisterSelf();
 }

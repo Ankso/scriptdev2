@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -58,14 +58,14 @@ struct MANGOS_DLL_DECL npc_deathstalker_erlandAI : public npc_escortAI
 {
     npc_deathstalker_erlandAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 i) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(i)
+        switch (i)
         {
             case 0:
                 DoScriptText(SAY_START_2, m_creature, pPlayer);
@@ -97,11 +97,11 @@ struct MANGOS_DLL_DECL npc_deathstalker_erlandAI : public npc_escortAI
         }
     }
 
-    void Reset() {}
+    void Reset() override {}
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* who) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO_1, m_creature, who); break;
             case 1: DoScriptText(SAY_AGGRO_2, m_creature, who); break;
@@ -166,18 +166,18 @@ struct SpawnPoint
 
 SpawnPoint SpawnPoints[] =
 {
-    {-397.45f, 1509.56f, 18.87f, 4.73f},
-    {-398.35f, 1510.75f, 18.87f, 4.76f},
-    {-396.41f, 1511.06f, 18.87f, 4.74f}
+    { -397.45f, 1509.56f, 18.87f, 4.73f},
+    { -398.35f, 1510.75f, 18.87f, 4.76f},
+    { -396.41f, 1511.06f, 18.87f, 4.74f}
 };
 
-static float m_afMoveCoords[] = {-410.69f, 1498.04f, 19.77f};
+static float m_afMoveCoords[] = { -410.69f, 1498.04f, 19.77f};
 
 struct MANGOS_DLL_DECL npc_deathstalker_faerleiaAI : public ScriptedAI
 {
     npc_deathstalker_faerleiaAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    void Reset() {}
+    void Reset() override {}
 
     ObjectGuid m_playerGuid;
     uint32 m_uiWaveTimer;
@@ -203,7 +203,7 @@ struct MANGOS_DLL_DECL npc_deathstalker_faerleiaAI : public ScriptedAI
         m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
             pPlayer->SendQuestFailed(QUEST_PYREWOOD_AMBUSH);
@@ -211,7 +211,7 @@ struct MANGOS_DLL_DECL npc_deathstalker_faerleiaAI : public ScriptedAI
         FinishEvent();
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         ++m_uiSummonCount;
 
@@ -221,7 +221,7 @@ struct MANGOS_DLL_DECL npc_deathstalker_faerleiaAI : public ScriptedAI
         pSummoned->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
     }
 
-    void SummonedCreatureJustDied(Creature* pKilled)
+    void SummonedCreatureJustDied(Creature* /*pKilled*/) override
     {
         --m_uiSummonCount;
 
@@ -242,13 +242,13 @@ struct MANGOS_DLL_DECL npc_deathstalker_faerleiaAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bEventStarted && !m_uiSummonCount)
         {
             if (m_uiWaveTimer < uiDiff)
             {
-                switch(m_uiWaveCount)
+                switch (m_uiWaveCount)
                 {
                     case 0:
                         m_creature->SummonCreature(NPC_COUNCILMAN_SMITHERS,  SpawnPoints[1].fX, SpawnPoints[1].fY, SpawnPoints[1].fZ, SpawnPoints[1].fO, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 20000);
@@ -304,17 +304,17 @@ CreatureAI* GetAI_npc_deathstalker_faerleia(Creature* pCreature)
 
 void AddSC_silverpine_forest()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_deathstalker_erland";
-    newscript->GetAI = &GetAI_npc_deathstalker_erland;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_deathstalker_erland;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_deathstalker_erland";
+    pNewScript->GetAI = &GetAI_npc_deathstalker_erland;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_deathstalker_erland;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_deathstalker_faerleia";
-    newscript->GetAI = &GetAI_npc_deathstalker_faerleia;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_deathstalker_faerleia;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_deathstalker_faerleia";
+    pNewScript->GetAI = &GetAI_npc_deathstalker_faerleia;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_deathstalker_faerleia;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -22,6 +22,7 @@ SDCategory: Karazhan
 EndScriptData */
 
 #include "precompiled.h"
+#include "karazhan.h"
 
 enum
 {
@@ -41,24 +42,30 @@ enum
 
 struct MANGOS_DLL_DECL boss_maiden_of_virtueAI : public ScriptedAI
 {
-    boss_maiden_of_virtueAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
-
-    uint32 m_uiRepentance_Timer;
-    uint32 m_uiHolyfire_Timer;
-    uint32 m_uiHolywrath_Timer;
-    uint32 m_uiHolyground_Timer;
-
-    void Reset()
+    boss_maiden_of_virtueAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiRepentance_Timer    = urand(25000, 40000);
-        m_uiHolyfire_Timer      = urand(8000, 25000);
-        m_uiHolywrath_Timer     = urand(15000, 25000);
-        m_uiHolyground_Timer    = 3000;
+        m_pInstance  = (ScriptedInstance*)pCreature->GetInstanceData();
+        Reset();
     }
 
-    void KilledUnit(Unit* pVictim)
+    ScriptedInstance* m_pInstance;
+
+    uint32 m_uiRepentanceTimer;
+    uint32 m_uiHolyfireTimer;
+    uint32 m_uiHolywrathTimer;
+    uint32 m_uiHolygroundTimer;
+
+    void Reset() override
     {
-        switch(urand(0, 5))                                    // 50% chance to say something out of 3 texts
+        m_uiRepentanceTimer    = urand(25000, 40000);
+        m_uiHolyfireTimer      = urand(8000, 25000);
+        m_uiHolywrathTimer     = urand(15000, 25000);
+        m_uiHolygroundTimer    = 3000;
+    }
+
+    void KilledUnit(Unit* /*pVictim*/) override
+    {
+        switch (urand(0, 5))                                // 50% chance to say something out of 3 texts
         {
             case 0: DoScriptText(SAY_SLAY1, m_creature); break;
             case 1: DoScriptText(SAY_SLAY2, m_creature); break;
@@ -66,79 +73,72 @@ struct MANGOS_DLL_DECL boss_maiden_of_virtueAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MAIDEN, DONE);
     }
 
-    void Aggro(Unit *pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MAIDEN, IN_PROGRESS);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void JustReachedHome() override
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_MAIDEN, FAIL);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (m_uiHolyground_Timer < uiDiff)
+        if (m_uiHolygroundTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_HOLYGROUND, CAST_TRIGGERED);     //Triggered so it doesn't interrupt her at all
-            m_uiHolyground_Timer = 3000;
+            if (DoCastSpellIfCan(m_creature, SPELL_HOLYGROUND, CAST_TRIGGERED) == CAST_OK)
+                m_uiHolygroundTimer = 3000;
         }
         else
-            m_uiHolyground_Timer -= uiDiff;
+            m_uiHolygroundTimer -= uiDiff;
 
-        if (m_uiRepentance_Timer < uiDiff)
+        if (m_uiRepentanceTimer < uiDiff)
         {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_REPENTANCE) == CAST_OK)
+            if (DoCastSpellIfCan(m_creature, SPELL_REPENTANCE) == CAST_OK)
             {
                 DoScriptText(urand(0, 1) ? SAY_REPENTANCE1 : SAY_REPENTANCE2, m_creature);
-
-                //A little randomness on that spell
-                m_uiRepentance_Timer = urand(25000, 35000);
+                m_uiRepentanceTimer = urand(25000, 35000);
             }
         }
         else
-            m_uiRepentance_Timer -= uiDiff;
+            m_uiRepentanceTimer -= uiDiff;
 
-        if (m_uiHolyfire_Timer < uiDiff)
+        if (m_uiHolyfireTimer < uiDiff)
         {
-            //Time for an omgwtfpwn code to make maiden cast holy fire only on units outside the holy ground's 18 yard range
-            Unit* pTarget = NULL;
-            std::vector<Unit *> target_list;
-
-            ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-            for (ThreatList::const_iterator itr = tList.begin();itr != tList.end(); ++itr)
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, SPELL_HOLYFIRE, SELECT_FLAG_NOT_IN_MELEE_RANGE))
             {
-                pTarget = m_creature->GetMap()->GetUnit((*itr)->getUnitGuid());
-
-                if (pTarget && !pTarget->IsWithinDist(m_creature, 12.0f, false))
-                    target_list.push_back(pTarget);
-
-                pTarget = NULL;
+                if (DoCastSpellIfCan(pTarget, SPELL_HOLYFIRE) == CAST_OK)
+                    m_uiHolyfireTimer = urand(8000, 23000);
             }
-
-            if (target_list.size())
-            {
-                if (pTarget = *(target_list.begin()+rand()%target_list.size()))
-                    DoCastSpellIfCan(pTarget,SPELL_HOLYFIRE);
-            }
-
-            m_uiHolyfire_Timer = urand(8000, 23000);        //Anywhere from 8 to 23 seconds, good luck having several of those in a row!
         }
         else
-            m_uiHolyfire_Timer -= uiDiff;
+            m_uiHolyfireTimer -= uiDiff;
 
-        if (m_uiHolywrath_Timer < uiDiff)
+        if (m_uiHolywrathTimer < uiDiff)
         {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
                 DoCastSpellIfCan(pTarget, SPELL_HOLYWRATH);
 
-            m_uiHolywrath_Timer = urand(20000, 25000);      //20-25 secs sounds nice
+            m_uiHolywrathTimer = urand(20000, 25000);
         }
         else
-            m_uiHolywrath_Timer -= uiDiff;
+            m_uiHolywrathTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -151,9 +151,10 @@ CreatureAI* GetAI_boss_maiden_of_virtue(Creature* pCreature)
 
 void AddSC_boss_maiden_of_virtue()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "boss_maiden_of_virtue";
-    newscript->GetAI = &GetAI_boss_maiden_of_virtue;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_maiden_of_virtue";
+    pNewScript->GetAI = &GetAI_boss_maiden_of_virtue;
+    pNewScript->RegisterSelf();
 }

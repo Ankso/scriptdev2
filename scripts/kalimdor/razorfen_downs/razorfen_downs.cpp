@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,63 +17,16 @@
 /* ScriptData
 SDName: Razorfen_Downs
 SD%Complete: 100
-SDComment: Support for Henry Stern(2 recipes), Quest 3525
+SDComment: Quest 3525
 SDCategory: Razorfen Downs
 EndScriptData */
 
 /* ContentData
-npc_henry_stern
 npc_belnistrasz
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
-
-/*###
-# npc_henry_stern
-####*/
-
-enum
-{
-    SPELL_GOLDTHORN_TEA                         = 13028,
-    SPELL_TEACHING_GOLDTHORN_TEA                = 13029,
-    SPELL_MIGHT_TROLLS_BLOOD_POTION             = 3451,
-    SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION   = 13030,
-    GOSSIP_TEXT_TEA_ANSWER                      = 2114,
-    GOSSIP_TEXT_POTION_ANSWER                   = 2115,
-};
-
-#define GOSSIP_ITEM_TEA     "Teach me the cooking recipe"
-#define GOSSIP_ITEM_POTION  "Teach me the alchemy recipe"
-
-bool GossipHello_npc_henry_stern (Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetBaseSkillValue(SKILL_COOKING) >= 175 && !pPlayer->HasSpell(SPELL_GOLDTHORN_TEA))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TEA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-
-    if (pPlayer->GetBaseSkillValue(SKILL_ALCHEMY) >= 180 && !pPlayer->HasSpell(SPELL_MIGHT_TROLLS_BLOOD_POTION))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_POTION, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_henry_stern (Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
-    {
-        pCreature->CastSpell(pPlayer, SPELL_TEACHING_GOLDTHORN_TEA, true);
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_TEA_ANSWER, pCreature->GetObjectGuid());
-    }
-
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 2)
-    {
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXT_POTION_ANSWER, pCreature->GetObjectGuid());
-        pCreature->CastSpell(pPlayer, SPELL_TEACHING_MIGHTY_TROLLS_BLOOD_POTION, true);
-    }
-
-    return true;
-}
 
 /*###
 # npc_belnistrasz
@@ -107,12 +60,12 @@ enum
     SPELL_IDOL_SHUTDOWN             = 12774,
 
     // summon spells only exist in 1.x
-    //SPELL_SUMMON_1                  = 12694,              // NPC_WITHERED_BATTLE_BOAR
-    //SPELL_SUMMON_2                  = 14802,              // NPC_DEATHS_HEAD_GEOMANCER
-    //SPELL_SUMMON_3                  = 14801,              // NPC_WITHERED_QUILGUARD
+    // SPELL_SUMMON_1                  = 12694,             // NPC_WITHERED_BATTLE_BOAR
+    // SPELL_SUMMON_2                  = 14802,             // NPC_DEATHS_HEAD_GEOMANCER
+    // SPELL_SUMMON_3                  = 14801,             // NPC_WITHERED_QUILGUARD
 };
 
-static float m_fSpawnerCoord[3][4]=
+static float m_fSpawnerCoord[3][4] =
 {
     {2582.79f, 954.392f, 52.4821f, 3.78736f},
     {2569.42f, 956.380f, 52.2732f, 5.42797f},
@@ -136,19 +89,19 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
     uint32 m_uiFireballTimer;
     uint32 m_uiFrostNovaTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiFireballTimer  = 1000;
         m_uiFrostNovaTimer = 6000;
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (HasEscortState(STATE_ESCORT_PAUSED))
         {
             if (!m_bAggro)
             {
-                DoScriptText(urand(0,1) ? SAY_BELNISTRASZ_AGGRO_1 : SAY_BELNISTRASZ_AGGRO_1, m_creature, pAttacker);
+                DoScriptText(urand(0, 1) ? SAY_BELNISTRASZ_AGGRO_1 : SAY_BELNISTRASZ_AGGRO_1, m_creature, pAttacker);
                 m_bAggro = true;
             }
 
@@ -162,11 +115,11 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
     {
         if (m_uiRitualPhase > 7)
         {
-            pSummoner->SummonCreature(NPC_PLAGUEMAW_THE_ROTTING, pSummoner->GetPositionX(), pSummoner->GetPositionY(), pSummoner->GetPositionZ(), pSummoner->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+            pSummoner->SummonCreature(NPC_PLAGUEMAW_THE_ROTTING, pSummoner->GetPositionX(), pSummoner->GetPositionY(), pSummoner->GetPositionZ(), pSummoner->GetOrientation(), TEMPSUMMON_TIMED_OOC_DESPAWN, 60000);
             return;
         }
 
-        for(int i = 0; i < 4; ++i)
+        for (int i = 0; i < 4; ++i)
         {
             uint32 uiEntry = 0;
 
@@ -175,7 +128,7 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
             float fX, fZ, fY;
             pSummoner->GetClosePoint(fX, fZ, fY, 0.0f, 2.0f, angle);
 
-            switch(i)
+            switch (i)
             {
                 case 0:
                 case 1:
@@ -189,11 +142,11 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
                     break;
             }
 
-            pSummoner->SummonCreature(uiEntry, fX, fZ, fY, 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 60000);
+            pSummoner->SummonCreature(uiEntry, fX, fZ, fY, 0.0f, TEMPSUMMON_TIMED_OOC_DESPAWN, 60000);
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         SpawnerSummon(pSummoned);
     }
@@ -203,7 +156,7 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
         m_creature->SummonCreature(NPC_IDOL_ROOM_SPAWNER, m_fSpawnerCoord[iType][0], m_fSpawnerCoord[iType][1], m_fSpawnerCoord[iType][2], m_fSpawnerCoord[iType][3], TEMPSUMMON_TIMED_DESPAWN, 10000);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         if (uiPointId == 24)
         {
@@ -212,13 +165,13 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
         if (HasEscortState(STATE_ESCORT_PAUSED))
         {
             if (m_uiRitualTimer < uiDiff)
             {
-                switch(m_uiRitualPhase)
+                switch (m_uiRitualPhase)
                 {
                     case 0:
                         DoCastSpellIfCan(m_creature, SPELL_IDOL_SHUTDOWN);
@@ -271,7 +224,7 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
                             {
                                 if (!pGo->isSpawned())
                                 {
-                                    pGo->SetRespawnTime(HOUR*IN_MILLISECONDS);
+                                    pGo->SetRespawnTime(HOUR * IN_MILLISECONDS);
                                     pGo->Refresh();
                                 }
                             }
@@ -297,7 +250,7 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
         if (m_uiFireballTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL);
-            m_uiFireballTimer  = urand(2000,3000);
+            m_uiFireballTimer  = urand(2000, 3000);
         }
         else
             m_uiFireballTimer -= uiDiff;
@@ -305,7 +258,7 @@ struct MANGOS_DLL_DECL npc_belnistraszAI : public npc_escortAI
         if (m_uiFrostNovaTimer < uiDiff)
         {
             DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROST_NOVA);
-            m_uiFrostNovaTimer = urand(10000,15000);
+            m_uiFrostNovaTimer = urand(10000, 15000);
         }
         else
             m_uiFrostNovaTimer -= uiDiff;
@@ -327,7 +280,7 @@ bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Que
         {
             pEscortAI->Start(true, pPlayer, pQuest);
             DoScriptText(SAY_BELNISTRASZ_READY, pCreature, pPlayer);
-            pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_ACTIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
         }
     }
 
@@ -337,12 +290,6 @@ bool QuestAccept_npc_belnistrasz(Player* pPlayer, Creature* pCreature, const Que
 void AddSC_razorfen_downs()
 {
     Script* pNewScript;
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_henry_stern";
-    pNewScript->pGossipHello = &GossipHello_npc_henry_stern;
-    pNewScript->pGossipSelect = &GossipSelect_npc_henry_stern;
-    pNewScript->RegisterSelf();
 
     pNewScript = new Script;
     pNewScript->Name = "npc_belnistrasz";

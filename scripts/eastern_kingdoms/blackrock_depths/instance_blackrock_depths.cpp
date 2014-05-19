@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,40 +25,10 @@ EndScriptData */
 #include "blackrock_depths.h"
 
 instance_blackrock_depths::instance_blackrock_depths(Map* pMap) : ScriptedInstance(pMap),
-    m_uiEmperorGUID(0),
-    m_uiPrincessGUID(0),
-    m_uiPhalanxGUID(0),
-    m_uiHaterelGUID(0),
-    m_uiAngerrelGUID(0),
-    m_uiVilerelGUID(0),
-    m_uiGloomrelGUID(0),
-    m_uiSeethrelGUID(0),
-    m_uiDoomrelGUID(0),
-    m_uiDoperelGUID(0),
-
-    m_uiGoArena1GUID(0),
-    m_uiGoArena2GUID(0),
-    m_uiGoArena3GUID(0),
-    m_uiGoArena4GUID(0),
-    m_uiGoShadowLockGUID(0),
-    m_uiGoShadowMechGUID(0),
-    m_uiGoShadowGiantGUID(0),
-    m_uiGoShadowDummyGUID(0),
-    m_uiGoBarKegGUID(0),
-    m_uiGoBarKegTrapGUID(0),
-    m_uiGoBarDoorGUID(0),
-    m_uiGoTombEnterGUID(0),
-    m_uiGoTombExitGUID(0),
-    m_uiGoLyceumGUID(0),
-    m_uiGoGolemNGUID(0),
-    m_uiGoGolemSGUID(0),
-    m_uiGoThroneGUID(0),
-
-    m_uiSpectralChaliceGUID(0),
-    m_uiSevensChestGUID(0),
-    m_uiArenaSpoilsGUID(0),
-
     m_uiBarAleCount(0),
+    m_uiCofferDoorsOpened(0),
+    m_uiDwarfRound(0),
+    m_uiDwarfFightTimer(0),
 
     m_fArenaCenterX(0.0f),
     m_fArenaCenterY(0.0f),
@@ -74,59 +44,114 @@ void instance_blackrock_depths::Initialize()
 
 void instance_blackrock_depths::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
-        case NPC_EMPEROR:  m_uiEmperorGUID =  pCreature->GetGUID(); break;
-        case NPC_PRINCESS: m_uiPrincessGUID = pCreature->GetGUID(); break;
-        case NPC_PHALANX:  m_uiPhalanxGUID =  pCreature->GetGUID(); break;
-        case NPC_HATEREL:  m_uiHaterelGUID =  pCreature->GetGUID(); break;
-        case NPC_ANGERREL: m_uiAngerrelGUID = pCreature->GetGUID(); break;
-        case NPC_VILEREL:  m_uiVilerelGUID =  pCreature->GetGUID(); break;
-        case NPC_GLOOMREL: m_uiGloomrelGUID = pCreature->GetGUID(); break;
-        case NPC_SEETHREL: m_uiSeethrelGUID = pCreature->GetGUID(); break;
-        case NPC_DOOMREL:  m_uiDoomrelGUID =  pCreature->GetGUID(); break;
-        case NPC_DOPEREL:  m_uiDoperelGUID =  pCreature->GetGUID(); break;
+        case NPC_EMPEROR:
+        case NPC_PRINCESS:
+        case NPC_PHALANX:
+        case NPC_HATEREL:
+        case NPC_ANGERREL:
+        case NPC_VILEREL:
+        case NPC_GLOOMREL:
+        case NPC_SEETHREL:
+        case NPC_DOOMREL:
+        case NPC_DOPEREL:
+        case NPC_SHILL:
+        case NPC_CREST:
+        case NPC_JAZ:
+        case NPC_TOBIAS:
+        case NPC_DUGHAL:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+
+        case NPC_WARBRINGER_CONST:
+            // Golems not in the Relict Vault?
+            if (std::abs(pCreature->GetPositionZ() - aVaultPositions[2]) > 1.0f || !pCreature->IsWithinDist2d(aVaultPositions[0], aVaultPositions[1], 20.0f))
+                break;
+            // Golems in Relict Vault need to have a stoned aura, set manually to prevent reapply when reached home
+            pCreature->CastSpell(pCreature, SPELL_STONED, true);
+            // Store the Relict Vault Golems into m_sVaultNpcGuids
+        case NPC_WATCHER_DOOMGRIP:
+            m_sVaultNpcGuids.insert(pCreature->GetObjectGuid());
+            break;
     }
 }
 
 void instance_blackrock_depths::OnObjectCreate(GameObject* pGo)
 {
-    switch(pGo->GetEntry())
+    switch (pGo->GetEntry())
     {
-        case GO_ARENA_1:            m_uiGoArena1GUID = pGo->GetGUID(); break;
-        case GO_ARENA_2:            m_uiGoArena2GUID = pGo->GetGUID(); break;
-        case GO_ARENA_3:            m_uiGoArena3GUID = pGo->GetGUID(); break;
-        case GO_ARENA_4:            m_uiGoArena4GUID = pGo->GetGUID(); break;
-        case GO_SHADOW_LOCK:        m_uiGoShadowLockGUID = pGo->GetGUID(); break;
-        case GO_SHADOW_MECHANISM:   m_uiGoShadowMechGUID = pGo->GetGUID(); break;
-        case GO_SHADOW_GIANT_DOOR:  m_uiGoShadowGiantGUID = pGo->GetGUID(); break;
-        case GO_SHADOW_DUMMY:       m_uiGoShadowDummyGUID = pGo->GetGUID(); break;
-        case GO_BAR_KEG_SHOT:       m_uiGoBarKegGUID = pGo->GetGUID(); break;
-        case GO_BAR_KEG_TRAP:       m_uiGoBarKegTrapGUID = pGo->GetGUID(); break;
-        case GO_BAR_DOOR:           m_uiGoBarDoorGUID = pGo->GetGUID(); break;
-        case GO_TOMB_ENTER:         m_uiGoTombEnterGUID = pGo->GetGUID(); break;
-        case GO_TOMB_EXIT:          m_uiGoTombExitGUID = pGo->GetGUID(); break;
-        case GO_LYCEUM:             m_uiGoLyceumGUID = pGo->GetGUID(); break;
-        case GO_GOLEM_ROOM_N:       m_uiGoGolemNGUID = pGo->GetGUID(); break;
-        case GO_GOLEM_ROOM_S:       m_uiGoGolemSGUID = pGo->GetGUID(); break;
-        case GO_THRONE_ROOM:        m_uiGoThroneGUID = pGo->GetGUID(); break;
-        case GO_SPECTRAL_CHALICE:   m_uiSpectralChaliceGUID = pGo->GetGUID(); break;
-        case GO_CHEST_SEVEN:        m_uiSevensChestGUID = pGo->GetGUID(); break;
-        case GO_ARENA_SPOILS:       m_uiArenaSpoilsGUID = pGo->GetGUID(); break;
+        case GO_ARENA_1:
+        case GO_ARENA_2:
+        case GO_ARENA_3:
+        case GO_ARENA_4:
+        case GO_SHADOW_LOCK:
+        case GO_SHADOW_MECHANISM:
+        case GO_SHADOW_GIANT_DOOR:
+        case GO_SHADOW_DUMMY:
+        case GO_BAR_KEG_SHOT:
+        case GO_BAR_KEG_TRAP:
+        case GO_BAR_DOOR:
+        case GO_TOMB_ENTER:
+        case GO_TOMB_EXIT:
+        case GO_LYCEUM:
+        case GO_GOLEM_ROOM_N:
+        case GO_GOLEM_ROOM_S:
+        case GO_THRONE_ROOM:
+        case GO_SPECTRAL_CHALICE:
+        case GO_CHEST_SEVEN:
+        case GO_ARENA_SPOILS:
+        case GO_SECRET_DOOR:
+        case GO_JAIL_DOOR_SUPPLY:
+        case GO_JAIL_SUPPLY_CRATE:
+            break;
+
+        default:
+            return;
     }
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_RING_OF_LAW:
             // If finished the arena event after theldren fight
             if (uiData == DONE && m_auiEncounter[0] == SPECIAL)
-                DoRespawnGameObject(m_uiArenaSpoilsGUID, HOUR*IN_MILLISECONDS);
+                DoRespawnGameObject(GO_ARENA_SPOILS, HOUR);
             m_auiEncounter[0] = uiData;
             break;
         case TYPE_VAULT:
+            if (uiData == SPECIAL)
+            {
+                ++m_uiCofferDoorsOpened;
+
+                if (m_uiCofferDoorsOpened == MAX_RELIC_DOORS)
+                {
+                    SetData(TYPE_VAULT, IN_PROGRESS);
+
+                    Creature* pConstruct = NULL;
+
+                    // Activate vault constructs
+                    for (GuidSet::const_iterator itr = m_sVaultNpcGuids.begin(); itr != m_sVaultNpcGuids.end(); ++itr)
+                    {
+                        pConstruct = instance->GetCreature(*itr);
+                        if (pConstruct)
+                            pConstruct->RemoveAurasDueToSpell(SPELL_STONED);
+                    }
+
+                    if (!pConstruct)
+                        return;
+
+                    // Summon doomgrip
+                    pConstruct->SummonCreature(NPC_WATCHER_DOOMGRIP, aVaultPositions[0], aVaultPositions[1], aVaultPositions[2], aVaultPositions[3], TEMPSUMMON_DEAD_DESPAWN, 0);
+                }
+                // No need to store in this case
+                return;
+            }
+            if (uiData == DONE)
+                DoUseDoorOrButton(GO_SECRET_DOOR);
             m_auiEncounter[1] = uiData;
             break;
         case TYPE_BAR:
@@ -136,50 +161,66 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
                 m_auiEncounter[2] = uiData;
             break;
         case TYPE_TOMB_OF_SEVEN:
-            switch(uiData)
+            // Don't set the same data twice
+            if (uiData == m_auiEncounter[3])
+                break;
+            // Combat door
+            DoUseDoorOrButton(GO_TOMB_ENTER);
+            // Start the event
+            if (uiData == IN_PROGRESS)
+                DoCallNextDwarf();
+            if (uiData == FAIL)
             {
-                case IN_PROGRESS:
-                    DoUseDoorOrButton(m_uiGoTombEnterGUID);
-                    break;
-                case FAIL:
-                    if (m_auiEncounter[3] == IN_PROGRESS)//prevent use more than one time
-                        DoUseDoorOrButton(m_uiGoTombEnterGUID);
-                    break;
-                case DONE:
-                    DoRespawnGameObject(m_uiSevensChestGUID, HOUR*IN_MILLISECONDS);
-                    DoUseDoorOrButton(m_uiGoTombExitGUID);
-                    DoUseDoorOrButton(m_uiGoTombEnterGUID);
-                    break;
+                // Reset dwarfes
+                for (uint8 i = 0; i < MAX_DWARFS; ++i)
+                {
+                    if (Creature* pDwarf = GetSingleCreatureFromStorage(aTombDwarfes[i]))
+                    {
+                        if (!pDwarf->isAlive())
+                            pDwarf->Respawn();
+                    }
+                }
+
+                m_uiDwarfRound = 0;
+                m_uiDwarfFightTimer = 0;
+            }
+            if (uiData == DONE)
+            {
+                DoRespawnGameObject(GO_CHEST_SEVEN, HOUR);
+                DoUseDoorOrButton(GO_TOMB_EXIT);
             }
             m_auiEncounter[3] = uiData;
             break;
         case TYPE_LYCEUM:
             if (uiData == DONE)
             {
-                DoUseDoorOrButton(m_uiGoGolemNGUID);
-                DoUseDoorOrButton(m_uiGoGolemSGUID);
+                DoUseDoorOrButton(GO_GOLEM_ROOM_N);
+                DoUseDoorOrButton(GO_GOLEM_ROOM_S);
             }
             m_auiEncounter[4] = uiData;
             break;
         case TYPE_IRON_HALL:
-            switch(uiData)
+            switch (uiData)
             {
                 case IN_PROGRESS:
-                    DoUseDoorOrButton(m_uiGoGolemNGUID);
-                    DoUseDoorOrButton(m_uiGoGolemSGUID);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_N);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_S);
                     break;
                 case FAIL:
-                    DoUseDoorOrButton(m_uiGoGolemNGUID);
-                    DoUseDoorOrButton(m_uiGoGolemSGUID);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_N);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_S);
                     break;
                 case DONE:
-                    DoUseDoorOrButton(m_uiGoGolemNGUID);
-                    DoUseDoorOrButton(m_uiGoGolemSGUID);
-                    DoUseDoorOrButton(m_uiGoThroneGUID);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_N);
+                    DoUseDoorOrButton(GO_GOLEM_ROOM_S);
+                    DoUseDoorOrButton(GO_THRONE_ROOM);
                     break;
             }
             m_auiEncounter[5] = uiData;
             break;
+        case TYPE_QUEST_JAIL_BREAK:
+            m_auiEncounter[6] = uiData;
+            return;
     }
 
     if (uiData == DONE)
@@ -188,7 +229,7 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-            << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5];
+                   << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " " << m_auiEncounter[6];
 
         m_strInstData = saveStream.str();
 
@@ -197,9 +238,9 @@ void instance_blackrock_depths::SetData(uint32 uiType, uint32 uiData)
     }
 }
 
-uint32 instance_blackrock_depths::GetData(uint32 uiType)
+uint32 instance_blackrock_depths::GetData(uint32 uiType) const
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_RING_OF_LAW:
             return m_auiEncounter[0];
@@ -216,36 +257,8 @@ uint32 instance_blackrock_depths::GetData(uint32 uiType)
             return m_auiEncounter[4];
         case TYPE_IRON_HALL:
             return m_auiEncounter[5];
-        default:
-            return 0;
-    }
-}
-
-uint64 instance_blackrock_depths::GetData64(uint32 uiData)
-{
-    switch(uiData)
-    {
-        case NPC_EMPEROR:           return m_uiEmperorGUID;
-        case NPC_PRINCESS:          return m_uiPrincessGUID;
-        case NPC_PHALANX:           return m_uiPhalanxGUID;
-        case NPC_HATEREL:           return m_uiHaterelGUID;
-        case NPC_ANGERREL:          return m_uiAngerrelGUID;
-        case NPC_VILEREL:           return m_uiVilerelGUID;
-        case NPC_GLOOMREL:          return m_uiGloomrelGUID;
-        case NPC_SEETHREL:          return m_uiSeethrelGUID;
-        case NPC_DOOMREL:           return m_uiDoomrelGUID;
-        case NPC_DOPEREL:           return m_uiDoperelGUID;
-
-        case GO_ARENA_1:            return m_uiGoArena1GUID;
-        case GO_ARENA_2:            return m_uiGoArena2GUID;
-        case GO_ARENA_3:            return m_uiGoArena3GUID;
-        case GO_ARENA_4:            return m_uiGoArena4GUID;
-        case GO_BAR_KEG_SHOT:       return m_uiGoBarKegGUID;
-        case GO_BAR_KEG_TRAP:       return m_uiGoBarKegTrapGUID;
-        case GO_BAR_DOOR:           return m_uiGoBarDoorGUID;
-        case GO_SPECTRAL_CHALICE:   return m_uiSpectralChaliceGUID;
-        case GO_TOMB_EXIT:          return m_uiGoTombExitGUID;
-
+        case TYPE_QUEST_JAIL_BREAK:
+            return m_auiEncounter[6];
         default:
             return 0;
     }
@@ -263,27 +276,128 @@ void instance_blackrock_depths::Load(const char* chrIn)
 
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-        >> m_auiEncounter[4] >> m_auiEncounter[5];
+               >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6];
 
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;
 
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
+void instance_blackrock_depths::OnCreatureEnterCombat(Creature* pCreature)
+{
+    if (pCreature->GetEntry() == NPC_MAGMUS)
+        SetData(TYPE_IRON_HALL, IN_PROGRESS);
+}
+
 void instance_blackrock_depths::OnCreatureEvade(Creature* pCreature)
 {
     if (GetData(TYPE_RING_OF_LAW) == IN_PROGRESS || GetData(TYPE_RING_OF_LAW) == SPECIAL)
     {
-        for (uint8 i = 0; i < sizeof(aArenaNPCs)/sizeof(uint32); ++i)
+        for (uint8 i = 0; i < countof(aArenaNPCs); ++i)
         {
             if (pCreature->GetEntry() == aArenaNPCs[i])
             {
-                 SetData(TYPE_RING_OF_LAW, FAIL);
-                 return;
-             }
+                SetData(TYPE_RING_OF_LAW, FAIL);
+                return;
+            }
         }
+    }
+
+    switch (pCreature->GetEntry())
+    {
+            // Handle Tomb of the Seven reset in case of wipe
+        case NPC_HATEREL:
+        case NPC_ANGERREL:
+        case NPC_VILEREL:
+        case NPC_GLOOMREL:
+        case NPC_SEETHREL:
+        case NPC_DOPEREL:
+        case NPC_DOOMREL:
+            SetData(TYPE_TOMB_OF_SEVEN, FAIL);
+            break;
+        case NPC_MAGMUS:
+            SetData(TYPE_IRON_HALL, FAIL);
+            break;
+    }
+}
+
+void instance_blackrock_depths::OnCreatureDeath(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
+    {
+        case NPC_WARBRINGER_CONST:
+        case NPC_WATCHER_DOOMGRIP:
+            if (GetData(TYPE_VAULT) == IN_PROGRESS)
+            {
+                m_sVaultNpcGuids.erase(pCreature->GetObjectGuid());
+
+                // If all event npcs dead then set event to done
+                if (m_sVaultNpcGuids.empty())
+                    SetData(TYPE_VAULT, DONE);
+            }
+            break;
+        case NPC_OGRABISI:
+        case NPC_SHILL:
+        case NPC_CREST:
+        case NPC_JAZ:
+            if (GetData(TYPE_QUEST_JAIL_BREAK) == IN_PROGRESS)
+                SetData(TYPE_QUEST_JAIL_BREAK, SPECIAL);
+            break;
+            // Handle Tomb of the Seven dwarf death event
+        case NPC_HATEREL:
+        case NPC_ANGERREL:
+        case NPC_VILEREL:
+        case NPC_GLOOMREL:
+        case NPC_SEETHREL:
+        case NPC_DOPEREL:
+            // Only handle the event when event is in progress
+            if (GetData(TYPE_TOMB_OF_SEVEN) != IN_PROGRESS)
+                return;
+            // Call the next dwarf only if it's the last one which joined the fight
+            if (pCreature->GetEntry() == aTombDwarfes[m_uiDwarfRound - 1])
+                DoCallNextDwarf();
+            break;
+        case NPC_DOOMREL:
+            SetData(TYPE_TOMB_OF_SEVEN, DONE);
+            break;
+        case NPC_MAGMUS:
+            SetData(TYPE_IRON_HALL, DONE);
+            break;
+    }
+}
+
+void instance_blackrock_depths::DoCallNextDwarf()
+{
+    if (Creature* pDwarf = GetSingleCreatureFromStorage(aTombDwarfes[m_uiDwarfRound]))
+    {
+        if (Player* pPlayer = GetPlayerInMap())
+        {
+            pDwarf->SetFactionTemporary(FACTION_DWARF_HOSTILE, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_RESTORE_REACH_HOME);
+            pDwarf->AI()->AttackStart(pPlayer);
+        }
+    }
+    m_uiDwarfFightTimer = 30000;
+    ++m_uiDwarfRound;
+}
+
+void instance_blackrock_depths::Update(uint32 uiDiff)
+{
+    if (m_uiDwarfFightTimer)
+    {
+        if (m_uiDwarfFightTimer <= uiDiff)
+        {
+            if (m_uiDwarfRound < MAX_DWARFS)
+            {
+                DoCallNextDwarf();
+                m_uiDwarfFightTimer = 30000;
+            }
+            else
+                m_uiDwarfFightTimer = 0;
+        }
+        else
+            m_uiDwarfFightTimer -= uiDiff;
     }
 }
 

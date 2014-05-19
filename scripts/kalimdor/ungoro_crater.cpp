@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -22,6 +22,7 @@ SDCategory: Un'Goro Crater
 EndScriptData */
 
 /* ContentData
+npc_ame01
 npc_ringo
 EndContentData */
 
@@ -49,11 +50,11 @@ struct MANGOS_DLL_DECL npc_ame01AI : public npc_escortAI
 {
     npc_ame01AI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() {}
+    void Reset() override {}
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 0:
                 DoScriptText(SAY_AME_START, m_creature);
@@ -69,7 +70,7 @@ struct MANGOS_DLL_DECL npc_ame01AI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (pWho->GetTypeId() == TYPEID_PLAYER)
             return;
@@ -79,11 +80,11 @@ struct MANGOS_DLL_DECL npc_ame01AI : public npc_escortAI
             if (pPlayer->getVictim() && pPlayer->getVictim() == pWho)
                 return;
 
-            switch(urand(0, 2))
+            switch (urand(0, 2))
             {
-                case 0: DoScriptText(SAY_AME_AGGRO1, m_creature); break;
-                case 1: DoScriptText(SAY_AME_AGGRO2, m_creature); break;
-                case 2: DoScriptText(SAY_AME_AGGRO3, m_creature); break;
+                case 0: DoScriptText(SAY_AME_AGGRO1, m_creature, pWho); break;
+                case 1: DoScriptText(SAY_AME_AGGRO2, m_creature, pWho); break;
+                case 2: DoScriptText(SAY_AME_AGGRO3, m_creature, pWho); break;
             }
         }
     }
@@ -98,9 +99,9 @@ bool QuestAccept_npc_ame01(Player* pPlayer, Creature* pCreature, const Quest* pQ
             pCreature->SetStandState(UNIT_STAND_STATE_STAND);
 
             if (pPlayer->GetTeam() == ALLIANCE)
-                pCreature->setFaction(FACTION_ESCORT_A_PASSIVE);
+                pCreature->SetFactionTemporary(FACTION_ESCORT_A_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
             else if (pPlayer->GetTeam() == HORDE)
-                pCreature->setFaction(FACTION_ESCORT_H_PASSIVE);
+                pCreature->SetFactionTemporary(FACTION_ESCORT_H_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
 
             pAmeAI->Start(false, pPlayer, pQuest);
         }
@@ -156,7 +157,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
 
     Unit* pSpraggle;
 
-    void Reset()
+    void Reset() override
     {
         m_uiFaintTimer = urand(30000, 60000);
         m_uiEndEventProgress = 0;
@@ -164,7 +165,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
         pSpraggle = NULL;
     }
 
-    void MoveInLineOfSight(Unit *pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         FollowerAI::MoveInLineOfSight(pWho);
 
@@ -184,7 +185,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
         }
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
         if (HasFollowState(STATE_FOLLOW_INPROGRESS | STATE_FOLLOW_PAUSED) && pSpell->Id == SPELL_REVIVE_RINGO)
             ClearFaint();
@@ -196,7 +197,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
         {
             SetFollowPaused(true);
 
-            switch(urand(0, 3))
+            switch (urand(0, 3))
             {
                 case 0: DoScriptText(SAY_FAINT_1, m_creature); break;
                 case 1: DoScriptText(SAY_FAINT_2, m_creature); break;
@@ -205,7 +206,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
             }
         }
 
-        //what does actually happen here? Emote? Aura?
+        // what does actually happen here? Emote? Aura?
         m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
     }
 
@@ -216,7 +217,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
         if (HasFollowState(STATE_FOLLOW_POSTEVENT))
             return;
 
-        switch(urand(0, 3))
+        switch (urand(0, 3))
         {
             case 0: DoScriptText(SAY_WAKE_1, m_creature); break;
             case 1: DoScriptText(SAY_WAKE_2, m_creature); break;
@@ -227,7 +228,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
         SetFollowPaused(false);
     }
 
-    void UpdateFollowerAI(const uint32 uiDiff)
+    void UpdateFollowerAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
@@ -241,7 +242,7 @@ struct MANGOS_DLL_DECL npc_ringoAI : public FollowerAI
                         return;
                     }
 
-                    switch(m_uiEndEventProgress)
+                    switch (m_uiEndEventProgress)
                     {
                         case 1:
                             DoScriptText(SAY_RIN_END_1, m_creature);

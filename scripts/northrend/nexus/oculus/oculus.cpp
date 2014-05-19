@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -15,218 +15,141 @@
  */
 
 /* ScriptData
-SDName: oculus
-SD%Complete: ?%
-SDComment: by /dev/rsa
-SDCategory: Oculus - mobs and special
+SDName: Oculus
+SD%Complete: 80
+SDComment: Make use of the passenger boarding wrappers when supported by the core.
+SDCategory: Oculus
 EndScriptData */
 
 #include "precompiled.h"
 #include "oculus.h"
-enum Spells
+#include "TemporarySummon.h"
+
+enum
 {
-        SPELL_GREEN_SEAT                        = 49346,
-        SPELL_YELLOW_SEAT                       = 49460,
-        SPELL_RED_SEAT                          = 49464,
+    EMOTE_FLY_AWAY                          = -1578030,
+
+    SPELL_RIDE_RUBY_DRAKE_QUE               = 49463,
+    SPELL_RIDE_EMERAL_DRAKE_QUE             = 49427,
+    SPELL_RIDE_AMBER_DRAKE_QUE              = 49459,
+
+    SPELL_DRAKE_FLAG_VISUAL                 = 53797,
+    SPELL_PARACHUTE                         = 50550,                // triggers 50553
+    SPELL_FLIGHT                            = 50296,
+    SPELL_SOAR                              = 50325,
+    SPELL_EVASIVE_AURA                      = 50248,
 };
 
-enum NPC
+/*######
+## npc_oculus_drake
+######*/
+
+struct MANGOS_DLL_DECL npc_oculus_drakeAI : public ScriptedAI
 {
-        NPC_GREEN_DRAGON                        = 27692,
-        NPC_YELLOW_DRAGON                       = 27755,
-        NPC_RED_DRAGON                          = 27756,
-};
-
-struct MANGOS_DLL_DECL mob_oculus_dragonAI : public ScriptedAI
-{
-    mob_oculus_dragonAI(Creature* pCreature) : ScriptedAI(pCreature)
+    npc_oculus_drakeAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        Reset();
-    }
-
-    bool Active;
-    ObjectGuid ownerGUID;
-    uint32 seatSpell;
-    uint32 StartTimer;
-
-    void Reset()
-    {
-        Active = false;
-        ownerGUID = ObjectGuid();
-        StartTimer = 2000;
-        switch (m_creature->GetEntry())
+        if (m_creature->IsTemporarySummon())
         {
-            case NPC_GREEN_DRAGON:
-                seatSpell = SPELL_GREEN_SEAT;
-                break;
-            case NPC_RED_DRAGON:
-                seatSpell = SPELL_RED_SEAT;
-                break;
-            case NPC_YELLOW_DRAGON:
-                seatSpell = SPELL_YELLOW_SEAT;
-                break;
-            default:
-                seatSpell = 0;
-                break;
-        }
-        ownerGUID = m_creature->GetCreatorGuid();
+            TemporarySummon* pTemporary = (TemporarySummon*)m_creature;
 
-        if (Unit* owner = m_creature->GetMap()->GetUnit(ownerGUID))
-            owner->RemoveAurasDueToSpell(53797);
-    }
-
-    void AttackStart(Unit *) {}
-    void MoveInLineOfSight(Unit*) {}
-
-    void JustSummoned()
-    {
-    }
-
-    void JustDied(Unit* killer)
-    {
-        if (!m_creature || m_creature->GetTypeId() != TYPEID_UNIT)
-            return;
-
-        if (ownerGUID.IsEmpty())
-            ownerGUID = m_creature->GetCreatorGuid();
-
-        Unit* owner = m_creature->GetMap()->GetUnit(ownerGUID);
-
-        if (!owner || owner->GetTypeId() != TYPEID_PLAYER)
-            return;
-
-        owner->RemoveAurasDueToSpell(seatSpell);
-        owner->RemoveAurasDueToSpell(53797);
-        m_creature->SetCreatorGuid(ObjectGuid());
-    }
-
-    void MovementInform(uint32 uiType, uint32 uiPointId)
-    {
-        if (uiType != POINT_MOTION_TYPE && uiPointId == 0)
-            return;
-
-        if (Unit* owner = m_creature->GetMap()->GetUnit(ownerGUID))
-        {
-             m_creature->setFaction(owner->getFaction());
-             owner->CastSpell(m_creature, seatSpell, true);
-             owner->CastSpell(owner, 53797, true);
-        }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-
-        if (ownerGUID.IsEmpty())
-            ownerGUID = m_creature->GetCreatorGuid();
-
-        if (!ownerGUID.IsEmpty())
-        {
-            if (StartTimer < uiDiff && !Active)
+            uint32 uiMountSpell = 0;
+            switch (m_creature->GetEntry())
             {
-               if (Unit* owner = m_creature->GetMap()->GetUnit(ownerGUID))
-               {
-                   float x, y, z;
-                   owner->GetClosePoint(x, y, z, owner->GetObjectBoundingRadius(), 1.0f, owner->GetAngle(m_creature));
-                   m_creature->GetMotionMaster()->MovePoint(0, x, y, z);
-                   Active = true;
-               }
+                case NPC_RUBY_DRAKE:    uiMountSpell = SPELL_RIDE_RUBY_DRAKE_QUE;   break;
+                case NPC_AMBER_DRAKE:   uiMountSpell = SPELL_RIDE_AMBER_DRAKE_QUE;  break;
+                case NPC_EMERALD_DRAKE: uiMountSpell = SPELL_RIDE_EMERAL_DRAKE_QUE; break;
             }
-            else
-                StartTimer -= uiDiff;
+
+            // Force player to mount
+            if (Player* pSummoner = m_creature->GetMap()->GetPlayer(pTemporary->GetSummonerGuid()))
+            {
+                pSummoner->CastSpell(pSummoner, uiMountSpell, true);
+
+                // The dragon moves near the player after spawn
+                float fX, fY, fZ;
+                pSummoner->GetContactPoint(m_creature, fX, fY, fZ);
+                m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ);
+            }
         }
-        else
-            if (StartTimer < uiDiff)
-                m_creature->ForcedDespawn();
-    }
-};
 
-CreatureAI* GetAI_mob_oculus_dragon(Creature* pCreature)
-{
-    return new mob_oculus_dragonAI(pCreature);
-}
-
-/*#####
-# npc_robot
-#####*/
-
-struct MANGOS_DLL_DECL npc_oculus_robotAI : public ScriptedAI
-{
-    npc_oculus_robotAI(Creature *pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        SetCombatMovement(false);
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
-
-    void Reset()
+    void Reset() override
     {
+        DoCastSpellIfCan(m_creature, SPELL_SOAR, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+
+        // Another aura for the Ruby drake
+        if (m_creature->GetEntry() == NPC_RUBY_DRAKE)
+            DoCastSpellIfCan(m_creature, SPELL_EVASIVE_AURA, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
-        if(m_pInstance)
-           m_pInstance->SetData(TYPE_ROBOTS, 1);
+        // Handle player parachute
+        if (m_creature->IsTemporarySummon())
+        {
+            TemporarySummon* pTemporary = (TemporarySummon*)m_creature;
+            if (Player* pSummoner = m_creature->GetMap()->GetPlayer(pTemporary->GetSummonerGuid()))
+            {
+                pSummoner->RemoveAurasDueToSpell(SPELL_DRAKE_FLAG_VISUAL);
+                pSummoner->CastSpell(pSummoner, SPELL_PARACHUTE, true);
+            }
+        }
     }
 
-    void UpdateAI(const uint32 diff)
+    // TODO: Temporary workaround - please remove when the boarding wrappers are implemented in core
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
-        if(!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (pCaster->GetTypeId() != TYPEID_PLAYER)
             return;
 
-        DoMeleeAttackIfReady();
-    }
-};
-
-CreatureAI* GetAI_npc_oculus_robot(Creature* pCreature)
-{
-    return new npc_oculus_robotAI (pCreature);
-}
-
-struct MANGOS_DLL_DECL npc_belgar_imageAI : public ScriptedAI
-{
-    npc_belgar_imageAI(Creature *pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
+        if (pSpell->Id == 49464 || pSpell->Id == 49346 || pSpell->Id == 49460)
+            DoCastSpellIfCan(m_creature, SPELL_FLIGHT, CAST_TRIGGERED);
     }
 
-    ScriptedInstance* m_pInstance;
-
-    void Reset()
+    // TODO: Enable the wrappers below, when they will be properly supported by the core
+    /*
+    void PassengerBoarded(Unit* pPassenger, uint8 uiSeat) override
     {
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if(!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (pPassenger->GetTypeId() != TYPEID_PLAYER)
             return;
 
+        // Set vehicle auras
+        DoCastSpellIfCan(m_creature, SPELL_FLIGHT, CAST_TRIGGERED);
+
+        // Set passenger auras
+        pPassenger->CastSpell(pPassenger, SPELL_DRAKE_FLAG_VISUAL, true);
     }
+
+    void PassengerUnBoarded(Unit* pPassenger) override
+    {
+        pPassenger->RemoveAurasDueToSpell(SPELL_DRAKE_FLAG_VISUAL);
+        pPassenger->CastSpell(pPassenger, SPELL_PARACHUTE, true);
+
+        DoScriptText(EMOTE_FLY_AWAY, m_creature);
+
+        // The dragon runs away and despawns
+        float fX, fY, fZ;
+        m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 20, frand(0, 2 * M_PI_F));
+        m_creature->GetMotionMaster()->MovePoint(0, fX, fY, fZ + 20.0f);
+        m_creature->ForcedDespawn(5000);
+    }
+    */
 };
 
-CreatureAI* GetAI_npc_belgar_image(Creature* pCreature)
+CreatureAI* GetAI_npc_oculus_drake(Creature* pCreature)
 {
-    return new npc_belgar_imageAI (pCreature);
+    return new npc_oculus_drakeAI(pCreature);
 }
 
 void AddSC_oculus()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_oculus_dragon";
-    newscript->GetAI = &GetAI_mob_oculus_dragon;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_oculus_robot";
-    newscript->GetAI = &GetAI_npc_oculus_robot;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_belgar_image";
-    newscript->GetAI = &GetAI_npc_belgar_image;
-    newscript->RegisterSelf();
-
+    pNewScript = new Script;
+    pNewScript->Name = "npc_oculus_drake";
+    pNewScript->GetAI = &GetAI_npc_oculus_drake;
+    pNewScript->RegisterSelf();
 }

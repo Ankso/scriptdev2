@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -33,7 +33,7 @@ enum
     SAY_SLAY2                       = -1564004,
     SAY_SPECIAL1                    = -1564005,
     SAY_SPECIAL2                    = -1564006,
-    SAY_ENRAGE1                     = -1564007,             //is this text actually in use?
+    SAY_ENRAGE1                     = -1564007,             // is this text actually in use?
     SAY_ENRAGE2                     = -1564008,
     SAY_DEATH                       = -1564009,
 
@@ -65,12 +65,12 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
 
     bool m_bIsShielded;
 
-    void Reset()
+    void Reset() override
     {
         m_bIsShielded = false;
 
         m_uiNeedleSpineTimer = 10000;
-        m_uiEnrageTimer = MINUTE*8*IN_MILLISECONDS;
+        m_uiEnrageTimer = MINUTE * 8 * IN_MILLISECONDS;
         m_uiSpecialYellTimer = urand(45000, 120000);
         m_uiTidalShieldTimer = 60000;
         m_uiImpalingSpineTimer = 20000;
@@ -78,18 +78,18 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         SetCombatMovement(true);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NAJENTUS, NOT_STARTED);
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NAJENTUS, DONE);
@@ -97,7 +97,7 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         DoScriptText(SAY_DEATH, m_creature);
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
         if (m_bIsShielded && pSpell->Id == SPELL_HURL_SPINE)
         {
@@ -113,7 +113,7 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NAJENTUS, IN_PROGRESS);
@@ -121,7 +121,7 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -129,17 +129,17 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         // If shield expired after 45s, attack again
         if (m_bIsShielded && m_uiTidalShieldTimer < 16000 && !m_creature->HasAura(SPELL_TIDAL_SHIELD))
         {
-                m_bIsShielded = false;
+            m_bIsShielded = false;
 
-                SetCombatMovement(true);
-                m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+            SetCombatMovement(true);
+            m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
         }
 
         if (m_uiEnrageTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BERSERK, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
             {
-                m_uiEnrageTimer = MINUTE*8*IN_MILLISECONDS;
+                m_uiEnrageTimer = MINUTE * 8 * IN_MILLISECONDS;
                 DoScriptText(SAY_ENRAGE2, m_creature);
             }
         }
@@ -156,12 +156,12 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
 
         if (m_uiImpalingSpineTimer < uiDiff)
         {
-            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1);
+            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, SPELL_IMPALING_SPINE, SELECT_FLAG_PLAYER);
 
             if (!pTarget)
                 pTarget = m_creature->getVictim();
 
-            if (pTarget && (pTarget->GetTypeId() == TYPEID_PLAYER))
+            if (pTarget && pTarget->GetTypeId() == TYPEID_PLAYER)
             {
                 DoCastSpellIfCan(pTarget, SPELL_IMPALING_SPINE);
                 m_uiImpalingSpineTimer = 20000;
@@ -197,7 +197,6 @@ struct MANGOS_DLL_DECL boss_najentusAI : public ScriptedAI
         }
         else
             m_uiNeedleSpineTimer -= uiDiff;
-
 
         DoMeleeAttackIfReady();
     }

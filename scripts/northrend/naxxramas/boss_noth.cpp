@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -42,7 +42,10 @@ enum
     SPELL_TELEPORT                      = 29216,
     SPELL_TELEPORT_RETURN               = 29231,
 
-    SPELL_BLINK                         = 29211,
+    SPELL_BLINK_1                       = 29208,
+    SPELL_BLINK_2                       = 29209,
+    SPELL_BLINK_3                       = 29210,
+    SPELL_BLINK_4                       = 29211,
 
     SPELL_CRIPPLE                       = 29212,
     SPELL_CRIPPLE_H                     = 54814,
@@ -81,11 +84,6 @@ enum
     PHASE_SKELETON_3                    = 3
 };
 
-#define BALCONY_X 2631.370f
-#define BALCONY_Y -3529.680f
-#define BALCONY_Z 274.040f
-#define BALCONY_O 6.277f
-
 struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
 {
     boss_nothAI(Creature* pCreature) : ScriptedAI(pCreature)
@@ -106,7 +104,7 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
     uint32 m_uiCurseTimer;
     uint32 m_uiSummonTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiPhase = PHASE_GROUND;
         m_uiPhaseSub = PHASE_GROUND;
@@ -115,13 +113,11 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
         m_uiBlinkTimer = 25000;
         m_uiCurseTimer = 4000;
         m_uiSummonTimer = 12000;
-
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO1, m_creature); break;
             case 1: DoScriptText(SAY_AGGRO2, m_creature); break;
@@ -132,17 +128,17 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
             m_pInstance->SetData(TYPE_NOTH, IN_PROGRESS);
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->SetInCombatWithZone();
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -150,19 +146,19 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
             m_pInstance->SetData(TYPE_NOTH, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NOTH, FAIL);
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pCaster == m_creature && pSpell->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_LEAP)
-            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_CRIPPLE : SPELL_CRIPPLE_H,CAST_TRIGGERED);
+            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_CRIPPLE : SPELL_CRIPPLE_H);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -173,17 +169,14 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
             {
                 if (m_uiPhaseTimer <= uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_TELEPORT, CAST_TRIGGERED) == CAST_OK)
+                    if (DoCastSpellIfCan(m_creature, SPELL_TELEPORT) == CAST_OK)
                     {
-                        m_creature->GetMap()->CreatureRelocation(m_creature, BALCONY_X, BALCONY_Y, BALCONY_Z, BALCONY_O);
-                        m_creature->SendMonsterMove(BALCONY_X, BALCONY_Y, BALCONY_Z, SPLINETYPE_NORMAL, SPLINEFLAG_DONE, 0);
                         DoScriptText(EMOTE_TELEPORT, m_creature);
                         m_creature->GetMotionMaster()->MoveIdle();
-                        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                         m_uiPhase = PHASE_BALCONY;
                         ++m_uiPhaseSub;
 
-                        switch(m_uiPhaseSub)                // Set Duration of Skeleton phase
+                        switch (m_uiPhaseSub)               // Set Duration of Skeleton phase
                         {
                             case PHASE_SKELETON_1: m_uiPhaseTimer = 70000;  break;
                             case PHASE_SKELETON_2: m_uiPhaseTimer = 97000;  break;
@@ -200,7 +193,12 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
             {
                 if (m_uiBlinkTimer < uiDiff)
                 {
-                    if (DoCastSpellIfCan(m_creature, SPELL_BLINK) == CAST_OK)
+                    static uint32 const auiSpellBlink[4] =
+                    {
+                        SPELL_BLINK_1, SPELL_BLINK_2, SPELL_BLINK_3, SPELL_BLINK_4
+                    };
+
+                    if (DoCastSpellIfCan(m_creature, auiSpellBlink[urand(0, 3)]) == CAST_OK)
                     {
                         DoResetThreat();
                         m_uiBlinkTimer = 25000;
@@ -230,8 +228,8 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
                         SPELL_SUMMON_WARRIOR_1, SPELL_SUMMON_WARRIOR_2, SPELL_SUMMON_WARRIOR_3
                     };
 
-                    for(uint8 i = 0; i < 2; ++i)
-                        DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedWarrior[urand(0,2)], CAST_TRIGGERED);
+                    for (uint8 i = 0; i < 2; ++i)
+                        DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedWarrior[urand(0, 2)], CAST_TRIGGERED);
                 }
                 else
                 {
@@ -249,10 +247,9 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
         {
             if (m_uiPhaseTimer < uiDiff)
             {
-                if (DoCastSpellIfCan(m_creature, SPELL_TELEPORT_RETURN, CAST_TRIGGERED) == CAST_OK)
+                if (DoCastSpellIfCan(m_creature, SPELL_TELEPORT_RETURN) == CAST_OK)
                 {
                     DoScriptText(EMOTE_TELEPORT_RETURN, m_creature);
-                    m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
                     switch (m_uiPhaseSub)
                     {
@@ -287,12 +284,12 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
                 };
 
                 // A bit unclear how many in each sub phase
-                switch(m_uiPhaseSub)
+                switch (m_uiPhaseSub)
                 {
                     case PHASE_SKELETON_1:
                     {
                         for (uint8 i = 0; i < (m_bIsRegularMode ? 2 : 4); ++i)
-                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedChampion[urand(0,9)], CAST_TRIGGERED);
+                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedChampion[urand(0, 9)], CAST_TRIGGERED);
 
                         break;
                     }
@@ -300,15 +297,15 @@ struct MANGOS_DLL_DECL boss_nothAI : public ScriptedAI
                     {
                         for (uint8 i = 0; i < (m_bIsRegularMode ? 1 : 2); ++i)
                         {
-                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedChampion[urand(0,9)], CAST_TRIGGERED);
-                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedGuardian[urand(0,3)], CAST_TRIGGERED);
+                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedChampion[urand(0, 9)], CAST_TRIGGERED);
+                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedGuardian[urand(0, 3)], CAST_TRIGGERED);
                         }
                         break;
                     }
                     case PHASE_SKELETON_3:
                     {
                         for (uint8 i = 0; i < (m_bIsRegularMode ? 2 : 4); ++i)
-                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedGuardian[urand(0,3)], CAST_TRIGGERED);
+                            DoCastSpellIfCan(m_creature, auiSpellSummonPlaguedGuardian[urand(0, 3)], CAST_TRIGGERED);
 
                         break;
                     }

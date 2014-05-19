@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,6 @@ EndScriptData */
 #include "onyxias_lair.h"
 
 instance_onyxias_lair::instance_onyxias_lair(Map* pMap) : ScriptedInstance(pMap),
-    m_uiOnyxTriggerGUID(0),
     m_uiAchievWhelpsCount(0)
 {
     Initialize();
@@ -44,10 +43,10 @@ bool instance_onyxias_lair::IsEncounterInProgress() const
 
 void instance_onyxias_lair::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
         case NPC_ONYXIA_TRIGGER:
-            m_uiOnyxTriggerGUID = pCreature->GetGUID();
+            m_mNpcEntryGuidStore[NPC_ONYXIA_TRIGGER] = pCreature->GetObjectGuid();
             break;
         case NPC_ONYXIA_WHELP:
             if (m_uiEncounter >= DATA_LIFTOFF && time_t(m_tPhaseTwoStart + TIME_LIMIT_MANY_WHELPS) >= time(NULL))
@@ -63,14 +62,17 @@ void instance_onyxias_lair::SetData(uint32 uiType, uint32 uiData)
 
     m_uiEncounter = uiData;
     if (uiData == IN_PROGRESS)
+    {
+        DoStartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, ACHIEV_START_ONYXIA_ID);
         m_uiAchievWhelpsCount = 0;
+    }
     if (uiData == DATA_LIFTOFF)
         m_tPhaseTwoStart = time(NULL);
 
     // Currently no reason to save anything
 }
 
-bool instance_onyxias_lair::CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/)
+bool instance_onyxias_lair::CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* /*pSource*/, Unit const* /*pTarget*/, uint32 /*uiMiscValue1 = 0*/) const
 {
     switch (uiCriteriaId)
     {

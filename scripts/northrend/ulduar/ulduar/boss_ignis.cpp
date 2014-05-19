@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: boss_ignis
-SD%Complete:
-SDComment: slag pot damage missing
+SD%Complete: 100%
+SDComment:
 SDCategory: Ulduar
 EndScriptData */
 
@@ -26,362 +26,106 @@ EndScriptData */
 
 enum
 {
-    //yells
-    SAY_AGGRO       = -1603010,
-    SAY_SCORCH1     = -1603011,
-    SAY_SCORCH2     = -1603012,
-    SAY_SLAGPOT     = -1603013,
-    EMOTE_FLAMEJETS = -1603014,
-    SAY_SUMMON      = -1603015,
-    SAY_SLAY1       = -1603016,
-    SAY_SLAY2       = -1603017,
-    SAY_BERSERK     = -1603018,
-    SAY_DEATH       = -1603019,
+    SAY_AGGRO                           = -1603026,
+    SAY_SLAGPOT_1                       = -1603027,
+    SAY_SLAGPOT_2                       = -1603028,
+    SAY_FLAME_JETS                      = -1603029,
+    SAY_ADDS                            = -1603030,
+    SAY_SLAY_1                          = -1603031,
+    SAY_SLAY_2                          = -1603032,
+    SAY_BERSERK                         = -1603033,
+    SAY_DEATH                           = -1603034,
 
-    //ignis the furnace master
-    SPELL_FLAME_JETS			= 62680,
-    SPELL_FLAME_JETS_H			= 63472,
-    SPELL_SLAG_POT				= 62717,
-    SPELL_SLAG_POT_H			= 63477,
-    SPELL_SLAG_POT_DMG			= 65722,
-    SPELL_SLAG_POT_DMG_H		= 65723,
-    SPELL_SCORCH				= 62546,
-    SPELL_SCORCH_H				= 63474,
-    BUFF_STRENGHT_OF_CREATOR	= 64473,
-    SPELL_STRENGHT_OF_CREATOR2	= 64474,
-    SPELL_STRENGHT_OF_CREATOR3	= 64475,
-    SPELL_HASTE					= 66045,
-    SPELL_ENRAGE                = 26662,
-    //iron construct
-    SPELL_HEAT					= 65667,
-    SPELL_MOLTEN				= 62373,
-    SPELL_BRITTLE				= 62382,
-    SPELL_SHATTER				= 62383,
-    //scorch target
-    AURA_SCORCH					= 62548,
-    AURA_SCORCH_H				= 63476,
-    AURA_HEAT                   = 65667,
-    SPELL_FREEZE_ANIM           = 16245,
-    //NPC ids
-    MOB_IRON_CONSTRUCT			= 33121,
-    MOB_SCORCH_TARGET			= 33221,
+    EMOTE_FLAME_JETS                    = -1603035,
+    EMOTE_EXTINGUISH_SCORCH             = -1603238,
 
-    ACHIEV_STOKIN_THE_FURNACE   = 2930,
-    ACHIEV_STOKIN_THE_FURNACE_H = 2929,
-    ACHIEV_SHATTERED            = 2925,
-    ACHIEV_SHATTERED_H          = 2926,
+    // spells
+    SPELL_FLAME_JETS                    = 62680,
+    SPELL_FLAME_JETS_H                  = 63472,
+    SPELL_SLAG_POT                      = 62717,        // damage aura applied when passenger is switched to second seat
+    // SPELL_SLAG_IMBUED                = 63536,        // buff received if target survives the slag pot
+    SPELL_GRAB                          = 62707,        // charge spells for Slag pot - triggers 62708 which will load the player into Ingis' hand (seat 1)
+    SPELL_GRAB_POT                      = 62711,        // aura triggered after 1,5 sec after the first grab; switches the seats from hand to pot (seat 2)
+    SPELL_SCORCH                        = 62546,
+    SPELL_SCORCH_H                      = 63474,
+    SPELL_SCORCH_SUMMON                 = 62551,        // summons npc 33221
+    SPELL_ACTIVATE_CONSTRUCT            = 62488,        // activates constructs and set them in combat (handled in core)
+    SPELL_KILL_ALL_CONSTRUCTS           = 65109,        // on death
+    SPELL_BERSERK                       = 26662,
+
+    // iron construct
+    SPELL_CONSTRUCT_HITTING_YA          = 65110,        // procs on melee damage; purpose unk
+    SPELL_STONED                        = 62468,        // mechanical stun aura
+    SPELL_HEAT                          = 65667,        // stackable aura which heats the construct
+    SPELL_MOLTEN                        = 62373,        // aura gained by the construct when heated to 10 stacks in Scorch
+    SPELL_CHILL                         = 62381,        // chill a construct when moved in water
+    SPELL_BRITTLE                       = 62382,        // stun a construct when chilled in water
+    SPELL_BRITTLE_H                     = 67114,
+    SPELL_SHATTER                       = 62383,        // sends event 21620 for the achiev check
+    SPELL_STRENGTH_REMOVE               = 64475,        // remove 1 stack of the Strength of Creator on construct death
+    SPELL_WATER_EFFECT                  = 64503,        // spell effect which cools the heated constructs and scorch npcs
+    // SPELL_WATER                      = 64502,        // cast by world triggers, in order to check when the constructs reach the water
+
+    // scorch target
+    SPELL_SCORCH_AURA                   = 62548,
+    SPELL_SCORCH_AURA_H                 = 63476,
+
+    // NPC ids
+    NPC_SCORCH                          = 33221,
+    NPC_IRON_CONSTRUCT                  = 33121,        // constructs which are activated on demand by Ignis
+
+    MAX_HEAT_STACKS                     = 10,
 };
 
-#define HOME_X                      586.747009f
-#define HOME_Y                      381.997986f
+/*######
+## boss_ignis
+######*/
 
-// scorch target
-struct MANGOS_DLL_DECL mob_scorch_targetAI : public ScriptedAI
-{
-    mob_scorch_targetAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        SetCombatMovement(false);
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-    bool m_bIsRegularMode;
-
-    uint32 m_uiDeath_Timer;
-
-    void Reset()
-    {
-        m_uiDeath_Timer = 55000;
-        m_creature->SetDisplayId(11686);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-        DoCast(m_creature,  m_bIsRegularMode ? AURA_SCORCH : AURA_SCORCH_H);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-
-        if (m_uiDeath_Timer < diff)
-            m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-        else m_uiDeath_Timer -= diff;
-    }
-};
-
-CreatureAI* GetAI_mob_scorch_target(Creature* pCreature)
-{
-    return new mob_scorch_targetAI(pCreature);
-}
-
-// iron construct
-struct MANGOS_DLL_DECL mob_iron_constructAI : public ScriptedAI
-{
-    mob_iron_constructAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiDeath_Timer;
-    uint32 m_uiAura_Check_Timer;
-    uint32 m_uiScorchTimer;
-    uint32 m_uiMoltenTimer;
-    uint32 m_uiBrittleTimer;
-    bool m_bIsBrittle;
-    bool m_bIsShatter;
-    bool m_bIsMolten;
-    bool m_bIsInCombat;
-
-    uint32 m_uiWaterCheckTimer;
-
-    void Reset()
-    {
-        m_bIsShatter        = false;
-        m_bIsBrittle        = false;
-        m_bIsMolten         = false;
-        m_bIsInCombat       = false;
-        m_uiWaterCheckTimer = 1000;
-        m_uiScorchTimer     = 5000;
-        m_uiAura_Check_Timer = 1000;
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        DoCast(m_creature, SPELL_FREEZE_ANIM);
-    }
-
-    void JustDied(Unit* pKiller)
-    {
-        if (!m_pInstance)
-            return;
-
-    // remove 1 stack of the buff from Ignis, hacky way, should be done by spell
-        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_IGNIS)))
-        {
-            if (pTemp->isAlive())
-            {
-                if (pTemp->HasAura(BUFF_STRENGHT_OF_CREATOR))
-                {
-                     if(SpellAuraHolder* strenght = pTemp->GetSpellAuraHolder(BUFF_STRENGHT_OF_CREATOR))
-                     {
-                         if(strenght->ModStackAmount(-1))
-                              pTemp->RemoveAurasDueToSpell(BUFF_STRENGHT_OF_CREATOR);
-                     }
-                }
-            }
-        }
-    }
-
-    // shatter if is brittle
-    void DamageTaken(Unit *done_by, uint32 &uiDamage)
-    {
-        if (m_bIsBrittle)
-        {
-            if (uiDamage > 5000)
-            {
-                DoCast(m_creature, SPELL_SHATTER);
-                m_bIsShatter = true;
-                m_bIsBrittle = false;
-                m_uiDeath_Timer = 500;
-            }
-        }
-    }
-
-    void AttackStart(Unit* pWho)
-    {
-        if(!m_bIsInCombat)
-            return;
-
-        if (m_creature->Attack(pWho, true)) 
-        {
-            m_creature->AddThreat(pWho);
-            m_creature->SetInCombatWith(pWho);
-            pWho->SetInCombatWith(m_creature);
-            DoStartMovement(pWho);
-        }
-    }
-
-    // set in combat
-    void GetInCombat()
-    { 
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        if (m_creature->HasAura(SPELL_FREEZE_ANIM, EFFECT_INDEX_0))
-            m_creature->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
-        m_bIsInCombat = true;
-
-        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_IGNIS)))
-        {
-            if (pTemp->isAlive())
-            {
-                m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-                m_creature->GetMotionMaster()->MovePoint(0, pTemp->GetPositionX(), pTemp->GetPositionY(), pTemp->GetPositionZ());
-
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                {
-                    m_creature->AddThreat(pTarget,100.0f);
-                    m_creature->AI()->AttackStart(pTarget);
-                    m_creature->SetInCombatWithZone();
-                }
-            }
-        }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        // death after casted shatter
-        if (m_uiDeath_Timer < uiDiff && m_bIsShatter)
-            m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-        else m_uiDeath_Timer -= uiDiff;   
-
-        // check for aura
-        if (m_uiAura_Check_Timer < uiDiff && !m_bIsMolten)
-        {
-            if(Aura* aura = m_creature->GetAura(SPELL_HEAT,EFFECT_INDEX_0))
-            {
-                if(aura->GetStackAmount() > 9)
-                {
-                    DoCast(m_creature, SPELL_MOLTEN);
-                    m_creature->RemoveAurasDueToSpell(SPELL_HEAT);
-                    m_uiMoltenTimer = 30000;
-                    m_bIsMolten = true;
-                }
-            }
-            m_uiAura_Check_Timer = 1000;
-        }else m_uiAura_Check_Timer -= uiDiff;
-
-        //Water checks
-        if(m_bIsMolten)
-        {
-        // should work with Vmaps3
-            if (m_uiWaterCheckTimer <= uiDiff)
-            {
-                if(m_creature->IsInWater())
-                {
-                    DoCast(m_creature, SPELL_BRITTLE);
-                    m_bIsBrittle = true;
-                    m_bIsMolten = false;
-                }
-                // workaround
-                /* else use workaround
-                if( m_creature->GetDistance2d(524.15f, 277.0f) < 18 || m_creature->GetDistance2d(648.5f, 277.0f) < 18)
-                {
-                    DoCast(m_creature, SPELL_BRITTLE);
-                    m_creature->RemoveAurasDueToSpell(SPELL_MOLTEN);
-                    m_bIsBrittle = true;
-                    m_bIsMolten = false;
-                }*/
-                m_uiWaterCheckTimer = 500;
-            }else m_uiWaterCheckTimer -= uiDiff;
-        }
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-CreatureAI* GetAI_mob_iron_construct(Creature* pCreature)
-{
-    return new mob_iron_constructAI(pCreature);
-}
-
-//ignis the furnace master
 struct MANGOS_DLL_DECL boss_ignisAI : public ScriptedAI
 {
-    boss_ignisAI(Creature* pCreature) : ScriptedAI(pCreature) 
+    boss_ignisAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_ulduar*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_ulduar* m_pInstance;
     bool m_bIsRegularMode;
 
-    std::list<uint64> m_lIronConstructGUIDList;
+    uint32 m_uiBerserkTimer;
+    uint32 m_uiFlameJetsTimer;
+    uint32 m_uiSlagPotTimer;
+    uint32 m_uiScorchTimer;
+    uint32 m_uiConstructTimer;
 
-    uint32 m_uiFlame_Jets_Timer;
-    uint32 m_uiSlag_Pot_Timer;
-    uint32 m_uiSlag_Pot_Dmg_Timer;
-    uint32 m_uiScorch_Timer;
-    uint32 m_uiSummon_Timer;
-    uint32 m_uiPotDmgCount;
-    uint32 m_uiEnrageTimer;
-
-    uint64 m_uiPotTargetGUID;
-    std::list<Creature*> lConstructs;
-
-    uint32 m_uiEncounterTimer;
-    bool m_bHasSlagPotCasted;
-
-    void Reset()
+    void Reset() override
     {
-        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-
-        m_uiFlame_Jets_Timer    = 20000;
-        m_uiSlag_Pot_Timer      = 25000;
-        m_uiSlag_Pot_Dmg_Timer  = 26000;
-        m_uiScorch_Timer        = 13000;
-        m_uiSummon_Timer        = 10000;
-        m_uiEnrageTimer         = 600000;   // 10 MIN
-        m_uiPotDmgCount         = 0;
-        m_uiPotTargetGUID       = 0;
-        m_lIronConstructGUIDList.clear();
-
-        m_uiEncounterTimer      = 0;
-        m_bHasSlagPotCasted     = false;
+        m_uiBerserkTimer        = 10 * MINUTE * IN_MILLISECONDS;
+        m_uiFlameJetsTimer      = 20000;
+        m_uiSlagPotTimer        = 25000;
+        m_uiScorchTimer         = 13000;
+        m_uiConstructTimer      = 10000;
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_IGNIS, DONE);
 
+        DoCastSpellIfCan(m_creature, SPELL_KILL_ALL_CONSTRUCTS, CAST_TRIGGERED);
         DoScriptText(SAY_DEATH, m_creature);
-
-        if (m_uiEncounterTimer < 240000)
-        {
-        // hacky way to complete achievements; use only if you have this function
-            if(m_pInstance)
-                m_pInstance->DoCompleteAchievement(m_bIsRegularMode ? ACHIEV_STOKIN_THE_FURNACE : ACHIEV_STOKIN_THE_FURNACE_H);
-        }
     }
 
-    Creature* SelectRandomConstruct(float fRange)
+    void KilledUnit(Unit* pVictim) override
     {
-        std::list<Creature* > lConstructList;
-        GetCreatureListWithEntryInGrid(lConstructList, m_creature, MOB_IRON_CONSTRUCT, fRange);
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
+            return;
 
-        if (lConstructList.empty()){
-            m_uiSummon_Timer = 5000;
-            return NULL;
-        }
-
-        std::list<Creature* >::iterator iter = lConstructList.begin();
-        advance(iter, urand(0, lConstructList.size()-1));
-
-        if((*iter)->isAlive())
-            return *iter;
-        else
-        {
-            m_uiSummon_Timer = 500;
-            return NULL;
-        }
+        DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void KilledUnit(Unit* pVictim)
-    {
-        if(irand(0,1))
-            DoScriptText(SAY_SLAY1, m_creature);
-        else
-            DoScriptText(SAY_SLAY2, m_creature);
-    }
-
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_IGNIS, IN_PROGRESS);
@@ -389,117 +133,97 @@ struct MANGOS_DLL_DECL boss_ignisAI : public ScriptedAI
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_IGNIS, FAIL);
-
-        // respawn constructs
-        GetCreatureListWithEntryInGrid(lConstructs, m_creature, MOB_IRON_CONSTRUCT, DEFAULT_VISIBILITY_INSTANCE);
-        if (!lConstructs.empty())
-        {
-            for(std::list<Creature*>::iterator iter = lConstructs.begin(); iter != lConstructs.end(); ++iter)
-            {
-                if ((*iter) && !(*iter)->isAlive())
-                    (*iter)->Respawn();
-            }
-        }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void JustSummoned(Creature* pSummoned) override
+    {
+        if (pSummoned->GetEntry() == NPC_SCORCH)
+            pSummoned->CastSpell(pSummoned, m_bIsRegularMode ? SPELL_SCORCH_AURA : SPELL_SCORCH_AURA_H, true);
+    }
+
+    // TODO: Use the vehicle boarding wrappers when they are implemented in core
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    {
+        if (pCaster->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        // Handle the case when passenger is loaded to the second seat
+        if (pSpell->Id == SPELL_GRAB_POT)
+            DoCastSpellIfCan(pCaster, SPELL_SLAG_POT, CAST_TRIGGERED);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        m_uiEncounterTimer += uiDiff;
-
-        // enrage
-        if(m_uiEnrageTimer < uiDiff)
+        if (m_uiBerserkTimer)
         {
-            DoScriptText(SAY_BERSERK, m_creature);
-            DoCast(m_creature, SPELL_ENRAGE);
-            m_uiEnrageTimer = 30000;
-        }
-        else m_uiEnrageTimer -= uiDiff;
-
-        if (m_uiFlame_Jets_Timer < uiDiff)
-        {
-            DoScriptText(EMOTE_FLAMEJETS, m_creature);
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_FLAME_JETS : SPELL_FLAME_JETS_H);
-            m_uiFlame_Jets_Timer = 35000;
-        }else m_uiFlame_Jets_Timer -= uiDiff;   
-
-        // need vehicle support!!!
-        if (m_uiSlag_Pot_Timer < uiDiff)
-        {
-            DoScriptText(SAY_SLAGPOT, m_creature);
-            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
+            if (m_uiBerserkTimer <= uiDiff)
             {
-                DoCast(target, m_bIsRegularMode ? SPELL_SLAG_POT : SPELL_SLAG_POT_H);
-                m_uiPotTargetGUID = target->GetGUID();
-            }
-            m_uiSlag_Pot_Timer      = 30000;
-            m_uiSlag_Pot_Dmg_Timer  = 1000;
-            m_bHasSlagPotCasted     = true;
-            m_uiPotDmgCount         = 0;
-        }else m_uiSlag_Pot_Timer -= uiDiff;  
-
-        // hacky way of doing damage
-        if (m_uiSlag_Pot_Dmg_Timer < uiDiff && m_bHasSlagPotCasted)
-        {
-            if (Unit* pPotTarget = m_creature->GetMap()->GetUnit( m_uiPotTargetGUID))
-            {
-                if (m_uiPotDmgCount < 10)
-                    DoCast(pPotTarget, m_bIsRegularMode ? SPELL_SLAG_POT_DMG : SPELL_SLAG_POT_DMG_H);
-                else if (m_uiPotDmgCount == 10)
+                if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
                 {
-                    if(pPotTarget->isAlive())
-                        pPotTarget->CastSpell(pPotTarget, SPELL_HASTE, false);
-                    m_bHasSlagPotCasted = false;
+                    DoScriptText(SAY_BERSERK, m_creature);
+                    m_uiBerserkTimer = 0;
                 }
             }
-            ++m_uiPotDmgCount;
-            m_uiSlag_Pot_Dmg_Timer = 1000;
-        }else m_uiSlag_Pot_Dmg_Timer -= uiDiff;
-
-        // call the golems
-        if (m_uiSummon_Timer < uiDiff)
-        {
-            DoScriptText(SAY_SUMMON, m_creature);
-
-            if(Creature* pConstruct = SelectRandomConstruct(200.0f))
-            {
-                ((mob_iron_constructAI*)pConstruct->AI())->GetInCombat();
-                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    pConstruct->AddThreat(target, 100.0f);
-            }
-
-            m_uiSummon_Timer = 40000;
-
-            m_creature->InterruptNonMeleeSpells(true);
-            DoCast(m_creature, BUFF_STRENGHT_OF_CREATOR);
-        }else m_uiSummon_Timer -= uiDiff;
-
-        if (m_uiScorch_Timer < uiDiff)
-        {
-            if(irand(0,1))
-                DoScriptText(SAY_SCORCH1, m_creature);
             else
-                DoScriptText(SAY_SCORCH2, m_creature);
+                m_uiBerserkTimer -= uiDiff;
+        }
 
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_SCORCH : SPELL_SCORCH_H);
-            if (Creature* pTemp = m_creature->SummonCreature(MOB_SCORCH_TARGET, m_creature->getVictim()->GetPositionX(), m_creature->getVictim()->GetPositionY(), m_creature->getVictim()->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000))
+        if (m_uiFlameJetsTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_FLAME_JETS : SPELL_FLAME_JETS_H) == CAST_OK)
             {
-                pTemp->AddThreat(m_creature->getVictim(),0.0f);
-                pTemp->AI()->AttackStart(m_creature->getVictim());
+                DoScriptText(EMOTE_FLAME_JETS, m_creature);
+                DoScriptText(SAY_FLAME_JETS, m_creature);
+                m_uiFlameJetsTimer = 35000;
             }
-            m_uiScorch_Timer = 28000;
-        }else m_uiScorch_Timer -= uiDiff;
+        }
+        else
+            m_uiFlameJetsTimer -= uiDiff;
+
+        if (m_uiSlagPotTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, SPELL_GRAB, SELECT_FLAG_PLAYER))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_GRAB) == CAST_OK)
+                {
+                    DoScriptText(urand(0, 1) ? SAY_SLAGPOT_1 : SAY_SLAGPOT_2, m_creature);
+                    m_uiSlagPotTimer = 30000;
+                }
+            }
+        }
+        else
+            m_uiSlagPotTimer -= uiDiff;
+
+        if (m_uiConstructTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_ACTIVATE_CONSTRUCT) == CAST_OK)
+            {
+                DoScriptText(SAY_ADDS, m_creature);
+                m_uiConstructTimer = 40000;
+            }
+        }
+        else
+            m_uiConstructTimer -= uiDiff;
+
+        if (m_uiScorchTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SCORCH : SPELL_SCORCH_H) == CAST_OK)
+            {
+                DoCastSpellIfCan(m_creature, SPELL_SCORCH_SUMMON, CAST_TRIGGERED);
+                m_uiScorchTimer = 25000;
+            }
+        }
+        else
+            m_uiScorchTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
-
-        if (m_creature->GetDistance2d(HOME_X, HOME_Y) > 200)
-            EnterEvadeMode();
     }
 };
 
@@ -508,22 +232,151 @@ CreatureAI* GetAI_boss_ignis(Creature* pCreature)
     return new boss_ignisAI(pCreature);
 }
 
+/*######
+## npc_iron_construct
+######*/
+
+struct MANGOS_DLL_DECL npc_iron_constructAI : public ScriptedAI
+{
+    npc_iron_constructAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+    bool m_bHasShattered;
+
+    void Reset() override
+    {
+        m_bHasShattered = false;
+
+        DoCastSpellIfCan(m_creature, SPELL_STONED, CAST_TRIGGERED);
+        DoCastSpellIfCan(m_creature, SPELL_CONSTRUCT_HITTING_YA, CAST_TRIGGERED);
+    }
+
+    void JustReachedHome() override
+    {
+        // reset flags if necessary
+        if (m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+
+        DoCastSpellIfCan(m_creature, SPELL_STONED, CAST_TRIGGERED);
+        DoCastSpellIfCan(m_creature, SPELL_CONSTRUCT_HITTING_YA, CAST_TRIGGERED);
+    }
+
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
+    {
+        // ToDo: This may need more research related to spell proc
+        if (m_creature->HasAura(m_bIsRegularMode ? SPELL_BRITTLE : SPELL_BRITTLE_H) && !m_bHasShattered)
+        {
+            if (uiDamage > 5000)
+            {
+                DoCastSpellIfCan(m_creature, SPELL_SHATTER, CAST_TRIGGERED);
+                DoCastSpellIfCan(m_creature, SPELL_STRENGTH_REMOVE, CAST_TRIGGERED);
+
+                m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                m_creature->GetMotionMaster()->MoveIdle();
+                m_bHasShattered = true;
+            }
+        }
+    }
+
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
+    {
+        if (pSpell->Id == SPELL_HEAT)
+        {
+            if (SpellAuraHolder* pHeatAura = m_creature->GetSpellAuraHolder(SPELL_HEAT))
+            {
+                if (pHeatAura && pHeatAura->GetStackAmount() == MAX_HEAT_STACKS)
+                    DoCastSpellIfCan(m_creature, SPELL_MOLTEN);
+            }
+        }
+    }
+
+    void UpdateAI(const uint32 /*uiDiff*/) override
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        // stop attacking after shattered
+        if (m_bHasShattered)
+            return;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_iron_construct(Creature* pCreature)
+{
+    return new npc_iron_constructAI(pCreature);
+}
+
+bool EffectScriptEffectCreature_npc_iron_construct(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
+{
+    if (uiSpellId == SPELL_WATER_EFFECT && uiEffIndex == EFFECT_INDEX_0 && pCreatureTarget->GetEntry() == NPC_IRON_CONSTRUCT)
+    {
+        // chill the iron construct if molten (effect handled in core)
+        if (pCreatureTarget->HasAura(SPELL_MOLTEN))
+            pCreatureTarget->CastSpell(pCreatureTarget, SPELL_CHILL, true);
+
+        return true;
+    }
+
+    return false;
+}
+
+/*######
+## npc_scorch
+######*/
+
+// TODO Remove this 'script' when combat can be proper prevented from core-side
+struct MANGOS_DLL_DECL npc_scorchAI : public Scripted_NoMovementAI
+{
+    npc_scorchAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
+
+    void Reset() override { }
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_scorch(Creature* pCreature)
+{
+    return new npc_scorchAI(pCreature);
+}
+
+bool EffectScriptEffectCreature_npc_scorch(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
+{
+    if (uiSpellId == SPELL_WATER_EFFECT && uiEffIndex == EFFECT_INDEX_0 && pCreatureTarget->GetEntry() == NPC_SCORCH)
+    {
+        // despawn the Scorch in water
+        DoScriptText(EMOTE_EXTINGUISH_SCORCH, pCreatureTarget);
+        pCreatureTarget->ForcedDespawn();
+        return true;
+    }
+
+    return false;
+}
+
 void AddSC_boss_ignis()
 {
-    Script* NewScript;
+    Script* pNewScript;
 
-    NewScript = new Script;
-    NewScript->Name = "boss_ignis";
-    NewScript->GetAI = GetAI_boss_ignis;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_ignis";
+    pNewScript->GetAI = GetAI_boss_ignis;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "mob_scorch_target";
-    NewScript->GetAI = &GetAI_mob_scorch_target;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_iron_construct";
+    pNewScript->GetAI = &GetAI_npc_iron_construct;
+    pNewScript->pEffectScriptEffectNPC = &EffectScriptEffectCreature_npc_iron_construct;
+    pNewScript->RegisterSelf();
 
-    NewScript = new Script;
-    NewScript->Name = "mob_iron_construct";
-    NewScript->GetAI = &GetAI_mob_iron_construct;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_scorch";
+    pNewScript->GetAI = &GetAI_npc_scorch;
+    pNewScript->pEffectScriptEffectNPC = &EffectScriptEffectCreature_npc_scorch;
+    pNewScript->RegisterSelf();
 }

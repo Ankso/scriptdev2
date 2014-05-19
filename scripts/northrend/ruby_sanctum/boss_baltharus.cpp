@@ -1,4 +1,4 @@
-/* Copyright (C) 2010 /dev/rsa for ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,247 +16,277 @@
 
 /* ScriptData
 SDName: boss_baltharus
-SD%Complete: 90%
-SDComment: by notagain and /dev/rsa
-SDCategory: ruby_sanctum
+SD%Complete: 90
+SDComment: intro channeled spell NYI.
+SDCategory: Ruby Sanctum
 EndScriptData */
-// Not fully offlike clone work, but Blizz idea is intact.
-// Need correct timers
 
 #include "precompiled.h"
 #include "ruby_sanctum.h"
 
-static Locations SpawnLoc[]=
+enum
 {
-    {3152.329834f, 359.41757f, 85.301605f},    // Baltharus target point
-    {3153.06f, 389.486f, 86.2596f},            // Baltharus initial point
+    // Xerestrasza intro and outro texts
+    SAY_HELP                    = -1724000,
+    SAY_INTRO                   = -1724001,
+
+    SAY_THANKS                  = -1724002,
+    SAY_OUTRO_1                 = -1724003,
+    SAY_OUTRO_2                 = -1724004,
+    SAY_OUTRO_3                 = -1724005,
+    SAY_OUTRO_4                 = -1724006,
+    SAY_OUTRO_5                 = -1724007,
+    SAY_OUTRO_6                 = -1724008,
+    SAY_OUTRO_7                 = -1724009,
+
+    // Baltharus texts
+    SAY_AGGRO                   = -1724010,
+    SAY_SLAY_1                  = -1724011,
+    SAY_SLAY_2                  = -1724012,
+    SAY_DEATH                   = -1724013,
+    SAY_SPLIT                   = -1724014,
+
+    SPELL_BARRIER_CHANNEL       = 76221,            // channeled on the tree
+    SPELL_BLADE_TEMPEST         = 75125,
+    SPELL_CLEAVE                = 40504,
+    SPELL_ENERVATING_BRAND      = 74502,
+    SPELL_REPELLING_WAVE        = 74509,
+    SPELL_ENERVATING_BRAND_PL   = 74505,            // spell triggerd on players by 74502
+    SPELL_SIPHONED_MIGHT        = 74507,            // spell triggered on boss by 74505
+    SPELL_SUMMON_CLONE          = 74511,            // summons 39899
+    SPELL_SIMPLE_TELEPORT       = 64195,            // spell id not confirmed
+
+    NPC_BALTHARUS_CLONE         = 39899,
 };
 
-enum Equipment
+static const DialogueEntry aIntroDialogue[] =
 {
-    EQUIP_MAIN           = 49888,
-    EQUIP_OFFHAND        = EQUIP_NO_CHANGE,
-    EQUIP_RANGED         = EQUIP_NO_CHANGE,
-    EQUIP_DONE           = EQUIP_NO_CHANGE,
-};
-
-enum BossSpells
-{
-    SPELL_BLADE_TEMPEST              = 75125, // every 22 secs
-    SPELL_ENERVATING_BRAND           = 74502, // friendlys in 12yards = 74505
-    SPELL_REPELLING_WAVE             = 74509, // once if call clone
-    SPELL_SABER_LASH                 = 40504, // every 10-15 secs
-    SPELL_SUMMON_CLONE               = 74511, // summons npc 39899 (Clone)
-    SPELL_CHANNEL_SPELL              = 76221, // Channeling dummy spell
+    {SAY_HELP,  NPC_XERESTRASZA,  7000},
+    {SAY_INTRO, NPC_BALTHARUS,    0},
+    {0, 0, 0},
 };
 
 /*######
 ## boss_baltharus
 ######*/
 
-struct MANGOS_DLL_DECL boss_baltharusAI : public BSWScriptedAI
+struct MANGOS_DLL_DECL boss_baltharusAI : public ScriptedAI
 {
-    boss_baltharusAI(Creature* pCreature) : BSWScriptedAI(pCreature)
+    boss_baltharusAI(Creature* pCreature) : ScriptedAI(pCreature),
+        m_introDialogue(aIntroDialogue)
     {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_ruby_sanctum*)pCreature->GetInstanceData();
+        m_introDialogue.InitializeDialogueHelper(m_pInstance);
+
+        // Health check percent depends on difficulty
+        if (m_pInstance)
+            m_fHealthPercentCheck = m_pInstance->Is25ManDifficulty() ? 33.3f : 50;
+        else
+            script_error_log("Instance Ruby Sanctum: ERROR Failed to load instance data for this instace.");
+
+        m_bHasDoneIntro = false;
         Reset();
     }
 
-    ScriptedInstance *pInstance;
-    Creature* pDummyTarget;
-    Creature* pClone;
-    bool inCombat;
-    bool intro;
+    instance_ruby_sanctum* m_pInstance;
+    DialogueHelper m_introDialogue;
 
-    void Reset()
+    bool m_bHasDoneIntro;
+
+    uint8 m_uiPhase;
+    float m_fHealthPercentCheck;
+
+    uint32 m_uiBladeTempestTimer;
+    uint32 m_uiEnervatingBrandTimer;
+    uint32 m_uiCleaveTimer;
+    uint32 m_uiSummonCloneTimer;
+
+    void Reset() override
     {
-        if(!pInstance)
-            return;
-
-        if (m_creature->isAlive()) pInstance->SetData(TYPE_BALTHARUS, NOT_STARTED);
-        m_creature->SetRespawnDelay(7*DAY);
-        resetTimers();
-        setStage(0);
-        pClone = NULL;
-        inCombat = false;
-        intro = false;
-        if (pDummyTarget = m_creature->GetMap()->GetCreature( pInstance->GetData64(NPC_BALTHARUS_TARGET)))
-        {
-            if (!pDummyTarget->isAlive()) pDummyTarget->Respawn();
-
-            pDummyTarget->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            pDummyTarget->GetMotionMaster()->MoveIdle();
-        }
-        else if (pDummyTarget = m_creature->SummonCreature(NPC_BALTHARUS_TARGET, SpawnLoc[0].x, SpawnLoc[0].y, SpawnLoc[0].z, 0.0f, TEMPSUMMON_MANUAL_DESPAWN, 1000))
-        {
-            pDummyTarget->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-            pDummyTarget->GetMotionMaster()->MoveIdle();
-        }
-
-        if(Creature* pTarget = m_creature->GetMap()->GetCreature( pInstance->GetData64(NPC_XERESTRASZA)))
-            m_creature->SetUInt64Value(UNIT_FIELD_TARGET, pTarget->GetGUID());
+        m_uiPhase                   = 1;
+        m_uiSummonCloneTimer        = 0;
+        m_uiBladeTempestTimer       = 15000;
+        m_uiEnervatingBrandTimer    = 14000;
+        m_uiCleaveTimer             = urand(10000, 12000);
     }
 
-    void JustReachedHome()
+    void Aggro(Unit* /*pWho*/) override
     {
-        if (!pInstance) return;
+        DoScriptText(SAY_AGGRO, m_creature);
 
-        pInstance->SetData(TYPE_BALTHARUS, FAIL);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BALTHARUS, IN_PROGRESS);
     }
 
-    void MoveInLineOfSight(Unit* pWho) 
+    void MoveInLineOfSight(Unit* pWho) override
     {
+        if (!m_bHasDoneIntro && pWho->GetTypeId() == TYPEID_PLAYER && !((Player*)pWho)->isGameMaster())
+        {
+            m_introDialogue.StartNextDialogueText(SAY_HELP);
+            m_bHasDoneIntro = true;
+        }
+
         ScriptedAI::MoveInLineOfSight(pWho);
-        if(!pInstance || intro ||
-            pWho->GetTypeId() != TYPEID_PLAYER ||
-            !pWho->IsWithinDistInMap(m_creature, 60.0f)) return;
-
-        pInstance->SetData(TYPE_EVENT, 10);
-        DoScriptText(-1666305,m_creature);
-        intro = true;
     }
 
-    void JustDied(Unit* pKiller)
+    void KilledUnit(Unit* pVictim) override
     {
-        if (!pInstance) return;
-
-        if (pDummyTarget) pDummyTarget->ForcedDespawn();
-        DoScriptText(-1666303,m_creature);
-        pInstance->SetData(TYPE_BALTHARUS, DONE);
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-    switch (urand(0,1)) {
-        case 0:
-               DoScriptText(-1666301,m_creature,pVictim);
-               break;
-        case 1:
-               DoScriptText(-1666302,m_creature,pVictim);
-               break;
-        };
-    }
-
-    void JustSummoned(Creature* summoned)
-    {
-        if(!pInstance || !summoned) return;
-
-        if ( summoned->GetEntry() != NPC_BALTHARUS_TARGET )
-        {
-             if (!pClone) pClone = summoned;
-             else if (!pClone->isAlive()) pClone = summoned;
-             pClone->SetInCombatWithZone();
-        }
-    }
-
-    void SummonedCreatureJustDied(Creature* summoned)
-    {
-         if (!pInstance || !summoned) return;
-
-         if (summoned == pClone) pClone = NULL;
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (!pInstance) return;
-        if (pWho->GetTypeId() != TYPEID_PLAYER) return;
-
-        if (pDummyTarget) pDummyTarget->ForcedDespawn();
-
-        SetEquipmentSlots(false, EQUIP_MAIN, EQUIP_OFFHAND, EQUIP_RANGED);
-
-        inCombat = true;
-        m_creature->InterruptNonMeleeSpells(true);
-        SetCombatMovement(true);
-        pInstance->SetData(TYPE_BALTHARUS, IN_PROGRESS);
-        DoScriptText(-1666300,m_creature);
-    }
-
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
-    {
-        if (!pInstance) return;
-
-        if (!m_creature || !m_creature->isAlive())
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
             return;
 
-        if(pDoneBy->GetGUID() == m_creature->GetGUID()) 
-          return;
+        if (urand(0, 1))
+            DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
+    }
 
-        if (pClone && pClone->isAlive())
+    void JustDied(Unit* /*pKiller*/) override
+    {
+        DoScriptText(SAY_DEATH, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BALTHARUS, DONE);
+    }
+
+    void JustReachedHome() override
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_BALTHARUS, FAIL);
+    }
+
+    void JustSummoned(Creature* pSummoned)
+    {
+        if (pSummoned->GetEntry() == NPC_BALTHARUS_CLONE)
         {
-            pDoneBy->DealDamage(pClone, uiDamage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-            uiDamage = 0;
+            pSummoned->CastSpell(pSummoned, SPELL_SIMPLE_TELEPORT, true);
+            pSummoned->SetInCombatWithZone();
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void SpellHitTarget(Unit* pTarget, SpellEntry const* pSpellEntry) override
     {
-        if (!pInstance) return;
+        if (pTarget->GetTypeId() == TYPEID_PLAYER && pSpellEntry->Id == SPELL_ENERVATING_BRAND_PL)
+            pTarget->CastSpell(m_creature, SPELL_SIPHONED_MIGHT, true);
+    }
 
-        if (!inCombat && !m_creature->IsNonMeleeSpellCasted(false))
-            timedCast(SPELL_CHANNEL_SPELL, uiDiff, pDummyTarget);
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        m_introDialogue.DialogueUpdate(uiDiff);
 
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        switch (getStage())
+        if (m_creature->GetHealthPercent() < 100 - m_fHealthPercentCheck * m_uiPhase)
         {
-            case 0:
-                 if ( m_creature->GetHealthPercent() <= 66.0f) setStage(1);
-                 break;
-
-            case 1:
-                 m_creature->InterruptNonMeleeSpells(true);
-                 if (is25())
-                     doCast(SPELL_SUMMON_CLONE);
-                 setStage(2);
-                 break;
-
-            case 2:
-                 if (m_creature->IsNonMeleeSpellCasted(false)) return;
-                 doCast(SPELL_REPELLING_WAVE);
-                 setStage(3);
-
-            case 3:
-                 if ( m_creature->GetHealthPercent() <= 50.0f) setStage(4);
-                 break;
-
-            case 4:
-                 m_creature->InterruptNonMeleeSpells(true);
-                 if (!is25())
-                        doCast(SPELL_SUMMON_CLONE);
-                 setStage(5);
-                 break;
-
-            case 5:
-                 if (m_creature->IsNonMeleeSpellCasted(false)) return;
-                 doCast(SPELL_REPELLING_WAVE);
-                 setStage(6);
-
-            case 6:
-                 if ( m_creature->GetHealthPercent() <= 33.0f) setStage(7);
-                 break;
-
-            case 7:
-                 m_creature->InterruptNonMeleeSpells(true);
-                 if (is25())
-                     doCast(SPELL_SUMMON_CLONE);
-                 setStage(8);
-                 break;
-
-            case 8:
-                 if (m_creature->IsNonMeleeSpellCasted(false)) return;
-                 doCast(SPELL_REPELLING_WAVE);
-                 setStage(9);
-
-            case 9:
-            default:
-                 break;
+            if (DoCastSpellIfCan(m_creature, SPELL_REPELLING_WAVE, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
+            {
+                m_uiSummonCloneTimer = 3000;
+                ++m_uiPhase;
+            }
         }
 
-//        timedCast(SPELL_BLADE_TEMPEST, uiDiff);
-        timedCast(SPELL_ENERVATING_BRAND, uiDiff);
-        timedCast(SPELL_SABER_LASH, uiDiff);
+        if (m_uiSummonCloneTimer)
+        {
+            if (m_uiSummonCloneTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_CLONE) == CAST_OK)
+                {
+                    DoScriptText(SAY_SPLIT, m_creature);
+                    m_uiSummonCloneTimer = 0;
+                }
+            }
+            else
+                m_uiSummonCloneTimer -= uiDiff;
+
+            // no other actions
+            return;
+        }
+
+        if (m_uiBladeTempestTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_BLADE_TEMPEST) == CAST_OK)
+                m_uiBladeTempestTimer = 22000;
+        }
+        else
+            m_uiBladeTempestTimer -= uiDiff;
+
+        if (m_uiEnervatingBrandTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_ENERVATING_BRAND) == CAST_OK)
+                    m_uiEnervatingBrandTimer = 25000;
+            }
+        }
+        else
+            m_uiEnervatingBrandTimer -= uiDiff;
+
+        if (m_uiCleaveTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_CLEAVE) == CAST_OK)
+                m_uiCleaveTimer = urand(17000, 20000);
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+/*######
+## npc_baltharus_clone
+######*/
+
+struct MANGOS_DLL_DECL npc_baltharus_cloneAI : public ScriptedAI
+{
+    npc_baltharus_cloneAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+
+    uint32 m_uiBladeTempestTimer;
+    uint32 m_uiEnervatingBrandTimer;
+    uint32 m_uiCleaveTimer;
+
+    void Reset() override
+    {
+        m_uiBladeTempestTimer       = 15000;
+        m_uiEnervatingBrandTimer    = 14000;
+        m_uiCleaveTimer             = urand(10000, 12000);
+    }
+
+    void SpellHitTarget(Unit* pTarget, SpellEntry const* pSpellEntry) override
+    {
+        if (pTarget->GetTypeId() == TYPEID_PLAYER && pSpellEntry->Id == SPELL_ENERVATING_BRAND_PL)
+            pTarget->CastSpell(m_creature, SPELL_SIPHONED_MIGHT, true);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (m_uiBladeTempestTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_BLADE_TEMPEST) == CAST_OK)
+                m_uiBladeTempestTimer = 22000;
+        }
+        else
+            m_uiBladeTempestTimer -= uiDiff;
+
+        if (m_uiEnervatingBrandTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_ENERVATING_BRAND) == CAST_OK)
+                    m_uiEnervatingBrandTimer = 25000;
+            }
+        }
+        else
+            m_uiEnervatingBrandTimer -= uiDiff;
+
+        if (m_uiCleaveTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_CLEAVE) == CAST_OK)
+                m_uiCleaveTimer = urand(17000, 20000);
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -267,87 +297,22 @@ CreatureAI* GetAI_boss_baltharus(Creature* pCreature)
     return new boss_baltharusAI(pCreature);
 }
 
-/*######
-## mob_baltharus_clone
-######*/
-
-struct MANGOS_DLL_DECL mob_baltharus_cloneAI : public BSWScriptedAI
+CreatureAI* GetAI_npc_baltharus_clone(Creature* pCreature)
 {
-    mob_baltharus_cloneAI(Creature* pCreature) : BSWScriptedAI(pCreature) 
-    {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    ScriptedInstance *pInstance;
-
-    void Reset()
-    {
-        if(!pInstance) return;
-        resetTimers();
-        m_creature->SetRespawnDelay(7*DAY);
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-    switch (urand(0,1)) {
-        case 0:
-               DoScriptText(-1666301,m_creature,pVictim);
-               break;
-        case 1:
-               DoScriptText(-1666302,m_creature,pVictim);
-               break;
-        };
-    }
-
-    void JustDied(Unit* pKiller)
-    {
-        if (!pInstance) return;
-    }
-
-    void Aggro(Unit* pWho)
-    {
-        if (!pInstance) return;
-
-        SetEquipmentSlots(false, EQUIP_MAIN, EQUIP_OFFHAND, EQUIP_RANGED);
-
-        m_creature->SetInCombatWithZone();
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-
-        if (!pInstance) return;
-
-        if (pInstance->GetData(TYPE_BALTHARUS) != IN_PROGRESS)
-            m_creature->ForcedDespawn();
-
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        doCastAll(uiDiff);
-
-        DoMeleeAttackIfReady();
-
-    }
-};
-
-CreatureAI* GetAI_mob_baltharus_clone(Creature* pCreature)
-{
-    return new mob_baltharus_cloneAI(pCreature);
+    return new npc_baltharus_cloneAI(pCreature);
 }
-
 
 void AddSC_boss_baltharus()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_baltharus";
-    newscript->GetAI = &GetAI_boss_baltharus;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_baltharus_clone";
-    newscript->GetAI = &GetAI_mob_baltharus_clone;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_baltharus";
+    pNewScript->GetAI = &GetAI_boss_baltharus;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_baltharus_clone";
+    pNewScript->GetAI = &GetAI_npc_baltharus_clone;
+    pNewScript->RegisterSelf();
 }

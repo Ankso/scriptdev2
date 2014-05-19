@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -90,7 +90,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
 
     // *** HANDLED FUNCTION ***
     // This is called whenever the core decides we need to evade
-    void Reset()
+    void Reset() override
     {
         m_uiPhase = 1;                                      // Start in phase 1
         m_uiPhaseTimer = 60000;                             // 60 seconds
@@ -102,7 +102,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
 
     // *** HANDLED FUNCTION ***
     // Aggro is called when we enter combat, against an enemy, and haven't been in combat before
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         // Say some stuff
         DoScriptText(SAY_AGGRO, m_creature, pWho);
@@ -110,11 +110,11 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
 
     // *** HANDLED FUNCTION ***
     // Our Recive emote function
-    void ReceiveEmote(Player* pPlayer, uint32 uiTextEmote)
+    void ReceiveEmote(Player* /*pPlayer*/, uint32 uiTextEmote) override
     {
         m_creature->HandleEmote(uiTextEmote);
 
-        switch(uiTextEmote)
+        switch (uiTextEmote)
         {
             case TEXTEMOTE_DANCE:
                 DoScriptText(SAY_DANCE, m_creature);
@@ -127,7 +127,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
 
     // *** HANDLED FUNCTION ***
     // Update AI is called Every single map update (roughly once every 100ms if a player is within the grid)
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         // Out of combat timers
         if (!m_creature->getVictim())
@@ -136,7 +136,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
             if (m_uiSayTimer < uiDiff)
             {
                 // Random switch between 5 outcomes
-                switch(urand(0, 4))
+                switch (urand(0, 4))
                 {
                     case 0: DoScriptText(SAY_RANDOM_0, m_creature); break;
                     case 1: DoScriptText(SAY_RANDOM_1, m_creature); break;
@@ -145,7 +145,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
                     case 4: DoScriptText(SAY_RANDOM_4, m_creature); break;
                 }
 
-                m_uiSayTimer = 45*IN_MILLISECONDS;          // Say something agian in 45 seconds
+                m_uiSayTimer = 45 * IN_MILLISECONDS;        // Say something agian in 45 seconds
             }
             else
                 m_uiSayTimer -= uiDiff;
@@ -155,7 +155,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
             {
                 DoCastSpellIfCan(m_creature, SPELL_BUFF);
                 // Rebuff agian in 15 minutes
-                m_uiRebuffTimer = 15*MINUTE*IN_MILLISECONDS;
+                m_uiRebuffTimer = 15 * MINUTE * IN_MILLISECONDS;
             }
             else
                 m_uiRebuffTimer -= uiDiff;
@@ -170,7 +170,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
         if (m_uiSpellOneTimer < uiDiff)
         {
             // Cast spell one on our current target.
-            if (rand()%50 > 10)
+            if (rand() % 50 > 10)
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_ONE_ALT);
             else if (m_creature->IsWithinDist(m_creature->getVictim(), 25.0f))
                 DoCastSpellIfCan(m_creature->getVictim(), SPELL_ONE);
@@ -185,7 +185,7 @@ struct MANGOS_DLL_DECL example_creatureAI : public ScriptedAI
         {
             // Cast spell two on self (AoE spell with only self-target) if we can
             if (DoCastSpellIfCan(m_creature, SPELL_TWO) == CAST_OK)
-                m_uiSpellTwoTimer = 37*IN_MILLISECONDS;     // Only Update Timer, if we could start casting
+                m_uiSpellTwoTimer = 37 * IN_MILLISECONDS;   // Only Update Timer, if we could start casting
         }
         else
             m_uiSpellTwoTimer -= uiDiff;
@@ -263,13 +263,13 @@ bool GossipHello_example_creature(Player* pPlayer, Creature* pCreature)
 
 // This function is called when the player clicks an option on the gossip menu
 // In this case here the faction change could be handled by world-DB gossip, hence it should be handled there!
-bool GossipSelect_example_creature(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_example_creature(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
         // Set our faction to hostile towards all
-        pCreature->setFaction(FACTION_WORGEN);
+        pCreature->SetFactionTemporary(FACTION_WORGEN, TEMPFACTION_RESTORE_RESPAWN);
         pCreature->AI()->AttackStart(pPlayer);
     }
 

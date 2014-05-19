@@ -1,23 +1,21 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_FORGE_OF_SOULS_H
 #define DEF_FORGE_OF_SOULS_H
-#include "BSW_ai.h"
 
 enum
 {
     MAX_ENCOUNTER               = 2,
-    TYPE_INTRO                  = 0,
     TYPE_BRONJAHM               = 1,
-    TYPE_DEVOURER               = 2,
+    TYPE_DEVOURER_OF_SOULS      = 2,
     TYPE_ACHIEV_PHANTOM_BLAST   = 3,
 
     DATA_SOULFRAGMENT_REMOVE    = 4,                        // on Death and on Use
 
     NPC_BRONJAHM                = 36497,
-    NPC_DEVOURER                = 36502,
+    NPC_DEVOURER_OF_SOULS       = 36502,
     NPC_CORRUPTED_SOUL_FRAGMENT = 36535,
 
     // Event NPCs
@@ -96,35 +94,31 @@ class MANGOS_DLL_DECL instance_forge_of_souls : public ScriptedInstance
         instance_forge_of_souls(Map* pMap);
         ~instance_forge_of_souls() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureCreate(Creature* pCreature) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
-        void SetData64(uint32 uiType, uint64 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
+        void SetData64(uint32 uiType, uint64 uiData) override;
 
-        void OnPlayerEnter(Player* pPlayer);
+        void OnPlayerEnter(Player* pPlayer) override;
         void ProcessEventNpcs(Player* pPlayer, bool bChanged);
-        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/);
+        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/) const override;
 
-        const char* Save() { return strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
     protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string strInstData;
+        std::string m_strInstData;
 
         bool m_bCriteriaPhantomBlastFailed;
 
         uint32 m_uiTeam;                                    // Team of first entered player, used to set if Jaina or Silvana to spawn
 
-        uint64 m_uiBronjahmGUID;
-        uint64 m_uiDevourerOrSoulsGUID;
-
-        std::list<ObjectGuid> m_luiSoulFragmentAliveGUIDs;
-        std::list<ObjectGuid> m_lEventMobGUIDs;
+        GuidList m_luiSoulFragmentAliveGUIDs;
+        GuidList m_lEventMobGUIDs;
 };
 
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,13 +17,12 @@
 /* ScriptData
 SDName: Mulgore
 SD%Complete: 100
-SDComment: Quest support: 11129. Skorn Whitecloud: Just a story if not rewarded for quest
+SDComment: Quest support: 11129.
 SDCategory: Mulgore
 EndScriptData */
 
 /* ContentData
 npc_kyle_the_frenzied
-npc_skorn_whitecloud
 EndContentData */
 
 #include "precompiled.h"
@@ -54,7 +53,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
     uint32 m_uiEventTimer;
     uint8 m_uiEventPhase;
 
-    void Reset()
+    void Reset() override
     {
         m_bEvent = false;
         m_bIsMovingToLunch = false;
@@ -66,7 +65,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
             m_creature->UpdateEntry(NPC_KYLE_FRENZIED);
     }
 
-    void SpellHit(Unit* pCaster, SpellEntry const* pSpell)
+    void SpellHit(Unit* pCaster, SpellEntry const* pSpell) override
     {
         if (!m_creature->getVictim() && !m_bEvent && pSpell->Id == SPELL_LUNCH)
         {
@@ -86,7 +85,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
         }
     }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId)
+    void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
         if (uiType != POINT_MOTION_TYPE || !m_bEvent)
             return;
@@ -95,7 +94,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
             m_bIsMovingToLunch = false;
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 diff) override
     {
         if (m_bEvent)
         {
@@ -107,7 +106,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
                 m_uiEventTimer = 5000;
                 ++m_uiEventPhase;
 
-                switch(m_uiEventPhase)
+                switch (m_uiEventPhase)
                 {
                     case 1:
                         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
@@ -121,7 +120,7 @@ struct MANGOS_DLL_DECL npc_kyle_the_frenziedAI : public ScriptedAI
 
                                 uint32 uiGameobjectEntry = pSpell->EffectMiscValue[EFFECT_INDEX_1];
 
-                                pGo = GetClosestGameObjectWithEntry(pPlayer, uiGameobjectEntry, 2*INTERACTION_DISTANCE);
+                                pGo = GetClosestGameObjectWithEntry(pPlayer, uiGameobjectEntry, 2 * INTERACTION_DISTANCE);
                             }
 
                             if (pGo)
@@ -168,43 +167,12 @@ CreatureAI* GetAI_npc_kyle_the_frenzied(Creature* pCreature)
     return new npc_kyle_the_frenziedAI(pCreature);
 }
 
-/*######
-# npc_skorn_whitecloud
-######*/
-
-bool GossipHello_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (!pPlayer->GetQuestRewardStatus(770))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, "Tell me a story, Skorn.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-
-    pPlayer->SEND_GOSSIP_MENU(522, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_skorn_whitecloud(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF)
-        pPlayer->SEND_GOSSIP_MENU(523, pCreature->GetObjectGuid());
-
-    return true;
-}
-
 void AddSC_mulgore()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kyle_the_frenzied";
-    newscript->GetAI = &GetAI_npc_kyle_the_frenzied;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_skorn_whitecloud";
-    newscript->pGossipHello = &GossipHello_npc_skorn_whitecloud;
-    newscript->pGossipSelect = &GossipSelect_npc_skorn_whitecloud;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kyle_the_frenzied";
+    pNewScript->GetAI = &GetAI_npc_kyle_the_frenzied;
+    pNewScript->RegisterSelf();
 }

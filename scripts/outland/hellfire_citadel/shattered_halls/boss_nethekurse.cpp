@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -35,20 +35,20 @@ struct Say
     int32 id;
 };
 
-static Say PeonAttacked[]=
+static Say PeonAttacked[] =
 {
-    {-1540001},
-    {-1540002},
-    {-1540003},
-    {-1540004},
+    { -1540001},
+    { -1540002},
+    { -1540003},
+    { -1540004},
 };
 
-static Say PeonDies[]=
+static Say PeonDies[] =
 {
-    {-1540005},
-    {-1540006},
-    {-1540007},
-    {-1540008},
+    { -1540005},
+    { -1540006},
+    { -1540007},
+    { -1540008},
 };
 
 enum
@@ -69,12 +69,12 @@ enum
     SPELL_SHADOW_FISSURE   = 30496,                         // Summon the ShadowFissure NPC
 
     SPELL_SHADOW_CLEAVE    = 30495,
-    H_SPELL_SHADOW_SLAM    = 35953,
+    SPELL_SHADOW_SLAM_H    = 35953,
 
+    SPELL_SHADOW_SEAR      = 30735,                         // On fel orcs - not sure yet how it is used
     SPELL_HEMORRHAGE       = 30478,
 
-    SPELL_CONSUMPTION      = 30497,
-    SPELL_TEMPORARY_VISUAL = 39312,                         // this is wrong, a temporary solution. spell consumption already has the purple visual, but doesn't display as it should
+    SPELL_CONSUMPTION      = 30497,                         // Cast by the shadow fissure
 
     NPC_FEL_ORC_CONVERT    = 17083,
 };
@@ -96,7 +96,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
     bool m_bIsIntroEvent;
     bool m_bIsMainEvent;
     bool m_bSpinOnce;
-    //bool m_bHasTaunted;
+    // bool m_bHasTaunted;
     bool m_bPhase;
 
     uint32 m_uiPeonEngagedCount;
@@ -107,15 +107,15 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
     uint32 m_uiShadowFissureTimer;
     uint32 m_uiCleaveTimer;
 
-    uint64 m_uiLastEventInvokerGUID;
+    ObjectGuid m_lastEventInvokerGuid;
 
-    void Reset()
+    void Reset() override
     {
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
         m_bIsIntroEvent = false;
         m_bIsMainEvent = false;
-        //m_bHasTaunted = false;
+        // m_bHasTaunted = false;
         m_bSpinOnce = false;
         m_bPhase = false;
 
@@ -127,7 +127,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         m_uiShadowFissureTimer = 8000;
         m_uiCleaveTimer = 5000;
 
-        m_uiLastEventInvokerGUID = 0;
+        m_lastEventInvokerGuid.Clear();
     }
 
     void DoYellForPeonAggro(Unit* pWho)
@@ -139,7 +139,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         ++m_uiPeonEngagedCount;
 
         if (pWho)
-            m_uiLastEventInvokerGUID = pWho->GetGUID();
+            m_lastEventInvokerGuid = pWho->GetObjectGuid();
     }
 
     void DoYellForPeonDeath(Unit* pKiller)
@@ -158,13 +158,12 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
 
             if (pKiller)
                 AttackStart(pKiller);
-
         }
     }
 
     void DoTauntPeons()
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_TAUNT_1, m_creature); break;
             case 1: DoScriptText(SAY_TAUNT_2, m_creature); break;
@@ -182,11 +181,11 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         m_bIsMainEvent = true;
         m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
-        if (Unit* pEnemy = m_creature->GetMap()->GetUnit(m_uiLastEventInvokerGUID))
+        if (Unit* pEnemy = m_creature->GetMap()->GetUnit(m_lastEventInvokerGuid))
             AttackStart(pEnemy);
     }
 
-    void AttackStart(Unit* pWho)
+    void AttackStart(Unit* pWho) override
     {
         if (m_bIsIntroEvent || !m_bIsMainEvent)
             return;
@@ -204,18 +203,15 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         }
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        if (!m_bIntroOnce && m_creature->IsWithinDistInMap(pWho, 50.0f))
+        if (!m_bIntroOnce && pWho->GetTypeId() == TYPEID_PLAYER && !((Player*)pWho)->isGameMaster() && m_creature->IsWithinDistInMap(pWho, 50.0f) && m_creature->IsWithinLOSInMap(pWho))
         {
-            if (pWho->GetTypeId() != TYPEID_PLAYER)
-                return;
-
             DoScriptText(SAY_INTRO, m_creature);
             m_bIntroOnce = true;
             m_bIsIntroEvent = true;
 
-            m_uiLastEventInvokerGUID = pWho->GetGUID();
+            m_lastEventInvokerGuid = pWho->GetObjectGuid();
 
             if (m_pInstance)
                 m_pInstance->SetData(TYPE_NETHEKURSE, IN_PROGRESS);
@@ -227,9 +223,9 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO_1, m_creature); break;
             case 1: DoScriptText(SAY_AGGRO_2, m_creature); break;
@@ -237,23 +233,21 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
-        pSummoned->setFaction(16);
+        // ToDo: this should be done in DB
         pSummoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         pSummoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
 
-        // triggered spell of consumption does not properly show it's SpellVisual, wrong spellid?
-        pSummoned->CastSpell(pSummoned, SPELL_TEMPORARY_VISUAL, true);
         pSummoned->CastSpell(pSummoned, SPELL_CONSUMPTION, false, NULL, NULL, m_creature->GetObjectGuid());
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DIE, m_creature);
 
@@ -263,7 +257,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         m_pInstance->SetData(TYPE_NETHEKURSE, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_NETHEKURSE, FAIL);
@@ -277,7 +271,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsIntroEvent)
         {
@@ -309,7 +303,7 @@ struct MANGOS_DLL_DECL boss_grand_warlock_nethekurseAI : public ScriptedAI
 
             if (m_uiCleaveTimer < uiDiff)
             {
-                DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SHADOW_CLEAVE : H_SPELL_SHADOW_SLAM);
+                DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SHADOW_CLEAVE : SPELL_SHADOW_SLAM_H);
                 m_uiCleaveTimer = urand(6000, 8500);
             }
             else
@@ -354,22 +348,22 @@ struct MANGOS_DLL_DECL mob_fel_orc_convertAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     uint32 m_uiHemorrhageTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_creature->SetNoCallAssistance(true);              // we don't want any assistance (WE R HEROZ!)
         m_uiHemorrhageTimer = 3000;
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* /*pWho*/) override
     {
         return;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (m_pInstance)
         {
-            Creature* pKurse = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_NETHEKURSE));
+            Creature* pKurse = m_pInstance->GetSingleCreatureFromStorage(NPC_NETHEKURSE);
             if (pKurse && m_creature->IsWithinDist(pKurse, 45.0f))
             {
                 if (boss_grand_warlock_nethekurseAI* pKurseAI = dynamic_cast<boss_grand_warlock_nethekurseAI*>(pKurse->AI()))
@@ -383,14 +377,14 @@ struct MANGOS_DLL_DECL mob_fel_orc_convertAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* pKiller) override
     {
         if (m_pInstance)
         {
             if (m_pInstance->GetData(TYPE_NETHEKURSE) != IN_PROGRESS)
                 return;
 
-            if (Creature* pKurse = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_NETHEKURSE)))
+            if (Creature* pKurse = m_pInstance->GetSingleCreatureFromStorage(NPC_NETHEKURSE))
             {
                 if (boss_grand_warlock_nethekurseAI* pKurseAI = dynamic_cast<boss_grand_warlock_nethekurseAI*>(pKurse->AI()))
                     pKurseAI->DoYellForPeonDeath(pKiller);
@@ -398,7 +392,7 @@ struct MANGOS_DLL_DECL mob_fel_orc_convertAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -416,13 +410,13 @@ struct MANGOS_DLL_DECL mob_fel_orc_convertAI : public ScriptedAI
 };
 
 // NOTE: this creature are also summoned by other spells, for different creatures
-struct MANGOS_DLL_DECL mob_lesser_shadow_fissureAI : public ScriptedAI
+struct MANGOS_DLL_DECL mob_lesser_shadow_fissureAI : public Scripted_NoMovementAI
 {
-    mob_lesser_shadow_fissureAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    mob_lesser_shadow_fissureAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
 
-    void Reset() { }
-    void MoveInLineOfSight(Unit* pWho) { }
-    void AttackStart(Unit* pWho) { }
+    void Reset() override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void AttackStart(Unit* /*pWho*/) override { }
 };
 
 CreatureAI* GetAI_boss_grand_warlock_nethekurse(Creature* pCreature)

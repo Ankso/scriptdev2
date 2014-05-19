@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -52,35 +52,44 @@ struct MANGOS_DLL_DECL npc_corporal_keeshan_escortAI : public npc_escortAI
     uint32 m_uiMockingBlowTimer;
     uint32 m_uiShieldBashTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiMockingBlowTimer = 5000;
         m_uiShieldBashTimer  = 8000;
     }
 
-    void WaypointStart(uint32 uiWP)
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
+    {
+        if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
+        {
+            DoScriptText(SAY_CORPORAL_KEESHAN_1, m_creature);
+            Start(false, (Player*)pInvoker, GetQuestTemplateStore(uiMiscValue));
+        }
+    }
+
+    void WaypointStart(uint32 uiWP) override
     {
         switch (uiWP)
         {
-            case 27:                                        //break outside
+            case 27:                                        // break outside
                 DoScriptText(SAY_CORPORAL_KEESHAN_3, m_creature);
                 m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                 break;
-            case 54:                                        //say goodbye
+            case 54:                                        // say goodbye
                 DoScriptText(SAY_CORPORAL_KEESHAN_5, m_creature);
                 break;
         }
     }
 
-    void WaypointReached(uint32 uiWP)
+    void WaypointReached(uint32 uiWP) override
     {
         switch (uiWP)
         {
-            case 26:                                        //break outside
+            case 26:                                        // break outside
                 m_creature->SetStandState(UNIT_STAND_STATE_SIT);
                 DoScriptText(SAY_CORPORAL_KEESHAN_2, m_creature);
                 break;
-            case 53:                                        //quest_complete
+            case 53:                                        // quest_complete
                 DoScriptText(SAY_CORPORAL_KEESHAN_4, m_creature);
                 if (Player* pPlayer = GetPlayerForEscort())
                     pPlayer->GroupEventHappens(QUEST_MISSING_IN_ACTION, m_creature);
@@ -88,9 +97,9 @@ struct MANGOS_DLL_DECL npc_corporal_keeshan_escortAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
-        //Combat check
+        // Combat check
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
@@ -122,24 +131,18 @@ CreatureAI* GetAI_npc_corporal_keeshan(Creature* pCreature)
 bool QuestAccept_npc_corporal_keeshan(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_MISSING_IN_ACTION)
-    {
-        if (npc_corporal_keeshan_escortAI* pEscortAI = dynamic_cast<npc_corporal_keeshan_escortAI*>(pCreature->AI()))
-        {
-            DoScriptText(SAY_CORPORAL_KEESHAN_1, pCreature);
-            pEscortAI->Start(false, pPlayer, pQuest);
-        }
-    }
+        pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
 
     return true;
 }
 
 void AddSC_redridge_mountains()
 {
-    Script* NewScript;
+    Script* pNewScript;
 
-    NewScript = new Script;
-    NewScript->Name = "npc_corporal_keeshan";
-    NewScript->GetAI = &GetAI_npc_corporal_keeshan;
-    NewScript->pQuestAcceptNPC = &QuestAccept_npc_corporal_keeshan;
-    NewScript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_corporal_keeshan";
+    pNewScript->GetAI = &GetAI_npc_corporal_keeshan;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_corporal_keeshan;
+    pNewScript->RegisterSelf();
 }

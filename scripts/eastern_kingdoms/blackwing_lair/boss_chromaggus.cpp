@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -92,7 +92,7 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
     uint32 m_uiFrenzyTimer;
     bool m_bEnraged;
 
-    void Reset()
+    void Reset() override
     {
         m_uiCurrentVulnerabilitySpell = 0;                  // We use this to store our last vulnerability spell so we can remove it later
 
@@ -105,25 +105,25 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
         m_bEnraged          = false;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_CHROMAGGUS, IN_PROGRESS);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_CHROMAGGUS, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_CHROMAGGUS, FAIL);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -136,15 +136,8 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
                 m_creature->RemoveAurasDueToSpell(m_uiCurrentVulnerabilitySpell);
 
             // Cast new random vurlnabilty on self
-            uint32 uiSpell;
-            switch(urand(0, 4))
-            {
-                case 0: uiSpell = SPELL_FIRE_VULNERABILITY; break;
-                case 1: uiSpell = SPELL_FROST_VULNERABILITY; break;
-                case 2: uiSpell = SPELL_SHADOW_VULNERABILITY; break;
-                case 3: uiSpell = SPELL_NATURE_VULNERABILITY; break;
-                case 4: uiSpell = SPELL_ARCANE_VULNERABILITY; break;
-            }
+            uint32 aSpellId[] = {SPELL_FIRE_VULNERABILITY, SPELL_FROST_VULNERABILITY, SPELL_SHADOW_VULNERABILITY, SPELL_NATURE_VULNERABILITY, SPELL_ARCANE_VULNERABILITY};
+            uint32 uiSpell = aSpellId[urand(0, 4)];
 
             if (DoCastSpellIfCan(m_creature, uiSpell) == CAST_OK)
             {
@@ -180,7 +173,7 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
         {
             uint32 m_uiSpellAfflict = 0;
 
-            switch(urand(0, 4))
+            switch (urand(0, 4))
             {
                 case 0: m_uiSpellAfflict = SPELL_BROODAF_BLUE; break;
                 case 1: m_uiSpellAfflict = SPELL_BROODAF_BLACK; break;
@@ -189,9 +182,9 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
                 case 4: m_uiSpellAfflict = SPELL_BROODAF_GREEN; break;
             }
 
-            std::vector<ObjectGuid> vGuids;
+            GuidVector vGuids;
             m_creature->FillGuidsListFromThreatList(vGuids);
-            for (std::vector<ObjectGuid>::const_iterator i = vGuids.begin();i != vGuids.end(); ++i)
+            for (GuidVector::const_iterator i = vGuids.begin(); i != vGuids.end(); ++i)
             {
                 Unit* pUnit = m_creature->GetMap()->GetUnit(*i);
 
@@ -202,13 +195,13 @@ struct MANGOS_DLL_DECL boss_chromaggusAI : public ScriptedAI
 
                     // Chromatic mutation if target is effected by all afflictions
                     if (pUnit->HasAura(SPELL_BROODAF_BLUE, EFFECT_INDEX_0)
-                        && pUnit->HasAura(SPELL_BROODAF_BLACK, EFFECT_INDEX_0)
-                        && pUnit->HasAura(SPELL_BROODAF_RED, EFFECT_INDEX_0)
-                        && pUnit->HasAura(SPELL_BROODAF_BRONZE, EFFECT_INDEX_0)
-                        && pUnit->HasAura(SPELL_BROODAF_GREEN, EFFECT_INDEX_0))
+                            && pUnit->HasAura(SPELL_BROODAF_BLACK, EFFECT_INDEX_0)
+                            && pUnit->HasAura(SPELL_BROODAF_RED, EFFECT_INDEX_0)
+                            && pUnit->HasAura(SPELL_BROODAF_BRONZE, EFFECT_INDEX_0)
+                            && pUnit->HasAura(SPELL_BROODAF_GREEN, EFFECT_INDEX_0))
                     {
-                        //target->RemoveAllAuras();
-                        //DoCastSpellIfCan(target,SPELL_CHROMATIC_MUT_1);
+                        // target->RemoveAllAuras();
+                        // DoCastSpellIfCan(target,SPELL_CHROMATIC_MUT_1);
 
                         // Chromatic mutation is causing issues
                         // Assuming it is caused by a lack of core support for Charm

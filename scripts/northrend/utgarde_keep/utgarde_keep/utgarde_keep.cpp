@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -57,34 +57,34 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
     uint32 m_uiForgeEncounterId;
     uint32 m_uiBurningBrandTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiBurningBrandTimer = 2000;
     }
 
     void SetMyForge()
     {
-        std::list<GameObject *> lGOList;
+        std::list<GameObject*> lGOList;
         uint32 uiGOBellow = 0;
         uint32 uiGOFire = 0;
 
-        for(uint8 i = 0; i < MAX_FORGE; ++i)
+        for (uint8 i = 0; i < MAX_FORGE; ++i)
         {
-            switch(i)
+            switch (i)
             {
                 case 0: uiGOBellow = GO_BELLOW_1; break;
                 case 1: uiGOBellow = GO_BELLOW_2; break;
                 case 2: uiGOBellow = GO_BELLOW_3; break;
             }
 
-            if (GameObject* pGOTemp = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(uiGOBellow)))
+            if (GameObject* pGOTemp = m_pInstance->GetSingleGameObjectFromStorage(uiGOBellow))
                 lGOList.push_back(pGOTemp);
         }
 
         if (!lGOList.empty())
         {
             if (lGOList.size() != MAX_FORGE)
-                error_log("SD2: mob_dragonflayer_forge_master expected %u in lGOList, but does not match.", MAX_FORGE);
+                script_error_log("mob_dragonflayer_forge_master expected %u in lGOList, but does not match.", MAX_FORGE);
 
             lGOList.sort(ObjectDistanceOrder(m_creature));
 
@@ -93,14 +93,14 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
             else if (lGOList.front()->getLootState() == GO_ACTIVATED)
                 lGOList.front()->ResetDoorOrButton();
 
-            switch(lGOList.front()->GetEntry())
+            switch (lGOList.front()->GetEntry())
             {
                 case GO_BELLOW_1: uiGOFire = GO_FORGEFIRE_1; m_uiForgeEncounterId = TYPE_BELLOW_1; break;
                 case GO_BELLOW_2: uiGOFire = GO_FORGEFIRE_2; m_uiForgeEncounterId = TYPE_BELLOW_2; break;
                 case GO_BELLOW_3: uiGOFire = GO_FORGEFIRE_3; m_uiForgeEncounterId = TYPE_BELLOW_3; break;
             }
 
-            if (GameObject* pGOTemp = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(uiGOFire)))
+            if (GameObject* pGOTemp = m_pInstance->GetSingleGameObjectFromStorage(uiGOFire))
             {
                 if (pGOTemp->getLootState() == GO_READY)
                     pGOTemp->UseDoorOrButton(DAY);
@@ -110,23 +110,23 @@ struct MANGOS_DLL_DECL mob_dragonflayer_forge_masterAI : public ScriptedAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         SetMyForge();
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         SetMyForge();
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(m_uiForgeEncounterId, DONE);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -149,10 +149,10 @@ CreatureAI* GetAI_mob_dragonflayer_forge_master(Creature* pCreature)
 
 void AddSC_utgarde_keep()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_dragonflayer_forge_master";
-    newscript->GetAI = &GetAI_mob_dragonflayer_forge_master;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_dragonflayer_forge_master";
+    pNewScript->GetAI = &GetAI_mob_dragonflayer_forge_master;
+    pNewScript->RegisterSelf();
 }

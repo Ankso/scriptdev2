@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -59,10 +59,10 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
     sBombFace* m_asBombFaces;
     float m_afSpawnPos[3];
 
-    GUIDList m_lSummonedBombGUIDs;
-    GUIDList m_lLandedBombGUIDs;
+    GuidList m_lSummonedBombGUIDs;
+    GuidList m_lLandedBombGUIDs;
 
-    void Reset()
+    void Reset() override
     {
         m_uiKnockAwayTimer = urand(17000, 20000);
         m_uiActivateBombTimer = urand(10000, 15000);
@@ -73,7 +73,7 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         m_lLandedBombGUIDs.clear();
     }
 
-    void GetAIInformation(ChatHandler& reader)
+    void GetAIInformation(ChatHandler& reader) override
     {
         reader.PSendSysMessage("Thermaplugg, currently phase %s", m_bIsPhaseTwo ? "two" : "one");
 
@@ -84,12 +84,12 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         }
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(SAY_SLAY, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_THERMAPLUGG, DONE);
@@ -97,7 +97,7 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         m_lSummonedBombGUIDs.clear();
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
@@ -112,13 +112,13 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         m_afSpawnPos[2] = m_creature->GetPositionZ();
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_THERMAPLUGG, FAIL);
 
         // Remove remaining bombs
-        for (GUIDList::const_iterator itr = m_lSummonedBombGUIDs.begin(); itr != m_lSummonedBombGUIDs.end(); ++itr)
+        for (GuidList::const_iterator itr = m_lSummonedBombGUIDs.begin(); itr != m_lSummonedBombGUIDs.end(); ++itr)
         {
             if (Creature* pBomb = m_creature->GetMap()->GetCreature(*itr))
                 pBomb->ForcedDespawn();
@@ -126,31 +126,31 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         m_lSummonedBombGUIDs.clear();
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_WALKING_BOMB)
         {
-            m_lSummonedBombGUIDs.push_back(pSummoned->GetGUID());
+            m_lSummonedBombGUIDs.push_back(pSummoned->GetObjectGuid());
             // calculate point for falling down
             float fX, fY;
-            fX = 0.2*m_afSpawnPos[0] + 0.8*pSummoned->GetPositionX();
-            fY = 0.2*m_afSpawnPos[1] + 0.8*pSummoned->GetPositionY();
+            fX = 0.2 * m_afSpawnPos[0] + 0.8 * pSummoned->GetPositionX();
+            fY = 0.2 * m_afSpawnPos[1] + 0.8 * pSummoned->GetPositionY();
             pSummoned->GetMotionMaster()->MovePoint(1, fX, fY, m_afSpawnPos[2] - 2.0f);
         }
     }
 
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
+    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId) override
     {
         if (pSummoned->GetEntry() == NPC_WALKING_BOMB && uiMotionType == POINT_MOTION_TYPE && uiPointId == 1)
-            m_lLandedBombGUIDs.push_back(pSummoned->GetGUID());
+            m_lLandedBombGUIDs.push_back(pSummoned->GetObjectGuid());
     }
 
-    void SummonedCreatureDespawn(Creature* pSummoned)
+    void SummonedCreatureDespawn(Creature* pSummoned) override
     {
-        m_lSummonedBombGUIDs.remove(pSummoned->GetGUID());
+        m_lSummonedBombGUIDs.remove(pSummoned->GetObjectGuid());
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -158,7 +158,7 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         // Movement of Summoned mobs
         if (!m_lLandedBombGUIDs.empty())
         {
-            for (GUIDList::const_iterator itr = m_lLandedBombGUIDs.begin(); itr != m_lLandedBombGUIDs.end(); ++itr)
+            for (GuidList::const_iterator itr = m_lLandedBombGUIDs.begin(); itr != m_lLandedBombGUIDs.end(); ++itr)
             {
                 if (Creature* pBomb = m_creature->GetMap()->GetCreature(*itr))
                     pBomb->GetMotionMaster()->MoveFollow(m_creature, 0.0f, 0.0f);
@@ -192,7 +192,7 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature, m_bIsPhaseTwo ? SPELL_ACTIVATE_BOMB_B : SPELL_ACTIVATE_BOMB_A) == CAST_OK)
             {
-                m_uiActivateBombTimer = (m_bIsPhaseTwo ? urand(6, 12) : urand(12, 17))*IN_MILLISECONDS;
+                m_uiActivateBombTimer = (m_bIsPhaseTwo ? urand(6, 12) : urand(12, 17)) * IN_MILLISECONDS;
                 if (!urand(0, 5))                           // TODO, chance/ place for this correct?
                     DoScriptText(SAY_BOMB, m_creature);
             }
@@ -211,10 +211,10 @@ struct MANGOS_DLL_DECL boss_thermapluggAI : public ScriptedAI
                     {
                         // Calculate the spawning position as 90% between face and thermaplugg spawn-pos, and hight hardcoded
                         float fX = 0.0f, fY = 0.0f;
-                        if (GameObject* pFace = m_creature->GetMap()->GetGameObject(m_asBombFaces[i].m_uiGnomeFaceGUID))
+                        if (GameObject* pFace = m_creature->GetMap()->GetGameObject(m_asBombFaces[i].m_gnomeFaceGuid))
                         {
-                            fX = 0.35*m_afSpawnPos[0] + 0.65*pFace->GetPositionX();
-                            fY = 0.35*m_afSpawnPos[1] + 0.65*pFace->GetPositionY();
+                            fX = 0.35 * m_afSpawnPos[0] + 0.65 * pFace->GetPositionX();
+                            fY = 0.35 * m_afSpawnPos[1] + 0.65 * pFace->GetPositionY();
                         }
                         m_creature->SummonCreature(NPC_WALKING_BOMB, fX, fY, fBombSpawnZ, 0.0f, TEMPSUMMON_CORPSE_DESPAWN, 0);
                         m_asBombFaces[i].m_uiBombTimer = urand(10000, 25000);   // TODO
@@ -234,7 +234,7 @@ CreatureAI* GetAI_boss_thermaplugg(Creature* pCreature)
     return new boss_thermapluggAI(pCreature);
 }
 
-bool EffectDummyCreature_spell_boss_thermaplugg(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
+bool EffectDummyCreature_spell_boss_thermaplugg(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
     if ((uiSpellId != SPELL_ACTIVATE_BOMB_A && uiSpellId != SPELL_ACTIVATE_BOMB_B) || uiEffIndex != EFFECT_INDEX_0)
         return false;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -10,6 +10,7 @@ enum InstanceZA
     MAX_ENCOUNTER           = 8,
     MAX_VENDOR              = 2,
     MAX_CHESTS              = 4,
+    MAX_BEAR_WAVES          = 4,
 
     SAY_INST_RELEASE        = -1568067,                     // TODO Event NYI
     SAY_INST_BEGIN          = -1568068,
@@ -24,24 +25,26 @@ enum InstanceZA
     SAY_INST_SACRIF2        = -1568077,
     SAY_INST_COMPLETE       = -1568078,
 
+    // Bear event yells
+    SAY_WAVE1_AGGRO         = -1568010,
+    SAY_WAVE2_STAIR1        = -1568011,
+    SAY_WAVE3_STAIR2        = -1568012,
+    SAY_WAVE4_PLATFORM      = -1568013,
+
     WORLD_STATE_ID          = 3104,
     WORLD_STATE_COUNTER     = 3106,
 
-    TYPE_EVENT_RUN          = 1,
-    TYPE_AKILZON            = 2,
-    TYPE_NALORAKK           = 3,
-    TYPE_JANALAI            = 4,
-    TYPE_HALAZZI            = 5,
-    TYPE_MALACRASS          = 6,
-    TYPE_ZULJIN             = 7,
+    TYPE_EVENT_RUN          = 0,
+    TYPE_AKILZON            = 1,
+    TYPE_NALORAKK           = 2,
+    TYPE_JANALAI            = 3,
+    TYPE_HALAZZI            = 4,
+    TYPE_MALACRASS          = 5,
+    TYPE_ZULJIN             = 6,
+    TYPE_RUN_EVENT_TIME     = 7,                            // Must be MAX_ENCOUNTER -1
 
     TYPE_RAND_VENDOR_1      = 8,
     TYPE_RAND_VENDOR_2      = 9,
-
-    TYPE_RUN_EVENT_TIME     = 10,
-
-    TYPE_J_EGGS_RIGHT       = 11,
-    TYPE_J_EGGS_LEFT        = 12,
 
     NPC_AKILZON             = 23574,
     NPC_NALORAKK            = 23576,
@@ -50,8 +53,21 @@ enum InstanceZA
     NPC_MALACRASS           = 24239,
     NPC_ZULJIN              = 23863,
 
-    NPC_EGG                 = 23817,
-    NPC_SPIRIT_LYNX         = 24143,
+    // Narolakk event npcs
+    NPC_MEDICINE_MAN        = 23581,
+    NPC_TRIBES_MAN          = 23582,
+    NPC_AXETHROWER          = 23542,
+    NPC_WARBRINGER          = 23580,
+
+    // Malacrass companions
+    NPC_ALYSON              = 24240,
+    NPC_THURG               = 24241,
+    NPC_SLITHER             = 24242,
+    NPC_RADAAN              = 24243,
+    NPC_GAZAKROTH           = 24244,
+    NPC_FENSTALKER          = 24245,
+    NPC_DARKHEART           = 24246,
+    NPC_KORAGG              = 24247,
 
     NPC_HARRISON            = 24358,
     // Time Run Event NPCs
@@ -65,6 +81,12 @@ enum InstanceZA
     NPC_ASHIL_CORPSE        = 24441,
     NPC_HARKOR_CORPSE       = 24443,
 
+    // Zul'jin event spirits
+    NPC_BEAR_SPIRIT         = 23878,                        // They should all have aura 42466
+    NPC_EAGLE_SPIRIT        = 23880,
+    NPC_LYNX_SPIRIT         = 23877,
+    NPC_DRAGONHAWK_SPIRIT   = 23879,
+
     GO_STRANGE_GONG         = 187359,
     GO_MASSIVE_GATE         = 186728,
     GO_WIND_DOOR            = 186858,
@@ -74,7 +96,6 @@ enum InstanceZA
     GO_WOODEN_DOOR          = 186306,
     GO_FIRE_DOOR            = 186859,
 
-    // unused, expected to be possible to handle within Database!
     GO_TANZARS_TRUNK        = 186648,
     GO_KRAZS_PACKAGE        = 186667,
     GO_ASHLIS_BAG           = 186672,
@@ -106,25 +127,53 @@ struct TimeEventNpcInfo
     ObjectGuid npGuid;
 };
 
+struct NalorakkBearEventInfo
+{
+    int iYellId;
+    float fX, fY, fZ, fO, fAggroDist;
+};
+
+static const NalorakkBearEventInfo aBearEventInfo[MAX_BEAR_WAVES] =
+{
+    {SAY_WAVE1_AGGRO,    0, 0, 0, 0, 45.0f},
+    {SAY_WAVE2_STAIR1,   -54.948f, 1419.772f, 27.303f, 0.03f, 37.0f},
+    {SAY_WAVE3_STAIR2,   -80.303f, 1372.622f, 40.764f, 1.67f, 35.0f},
+    {SAY_WAVE4_PLATFORM, -77.495f, 1294.760f, 48.487f, 1.66f, 60.0f}
+};
+
+struct NalorakkTrashInfo
+{
+    GuidSet sBearTrashGuidSet;
+    uint8 uiTrashKilled;
+};
+
 class MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
 {
     public:
         instance_zulaman(Map* pMap);
 
-        void Initialize();
-        bool IsEncounterInProgress() const;
+        void Initialize() override;
+        bool IsEncounterInProgress() const override;
 
-        void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
+        void OnPlayerEnter(Player* pPlayer) override;
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
+        void OnCreatureDeath(Creature* pCreature) override;
+        void OnCreatureEvade(Creature* pCreature);
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
-        void Update(uint32 uiDiff);
+        bool IsBearPhaseInProgress() { return m_bIsBearPhaseInProgress; }
+        void SetBearEventProgress(bool bIsInProgress) { m_bIsBearPhaseInProgress = bIsInProgress; }
+        void SendNextBearWave(Unit* pTarget);
+
+        bool CheckConditionCriteriaMeet(Player const* pPlayer, uint32 uiInstanceConditionId, WorldObject const* pConditionSource, uint32 conditionSourceType) const override;
+
+        void Update(uint32 uiDiff) override;
 
     private:
         uint8 GetKilledPreBosses();
@@ -139,27 +188,9 @@ class MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
         uint32 m_uiEventTimer;
         uint32 m_uiGongCount;
 
-        uint64 m_uiAkilzonGUID;
-        uint64 m_uiNalorakkGUID;
-        uint64 m_uiJanalaiGUID;
-        uint64 m_uiHalazziGUID;
-        uint64 m_uiSpiritLynxGUID;
-        uint64 m_uiZuljinGUID;
-        uint64 m_uiMalacrassGUID;
-        uint64 m_uiHarrisonGUID;
-
-        uint64 m_uiStrangeGongGUID;
-        uint64 m_uiMassiveGateGUID;
-        uint64 m_uiWindDoorGUID;
-        uint64 m_uiLynxTempleEntranceGUID;
-        uint64 m_uiLynxTempleExitGUID;
-        uint64 m_uiMalacrassEntranceGUID;
-        uint64 m_uiWoodenDoorGUID;
-        uint64 m_uiFireDoorGUID;
-
-        GUIDList m_lEggsGUIDList;
-        uint32 m_uiEggsRemainingCount_Left;
-        uint32 m_uiEggsRemainingCount_Right;
+        NalorakkTrashInfo m_aNalorakkEvent[MAX_BEAR_WAVES];
+        uint8 m_uiBearEventPhase;
+        bool m_bIsBearPhaseInProgress;
 };
 
 #endif

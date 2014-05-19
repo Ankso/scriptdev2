@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -43,7 +43,7 @@ enum
     SPELL_SUMMON_SPARK                      = 52746,
     SPELL_SPARK_DESPAWN                     = 52776,
 
-    //Spark of Ionar
+    // Spark of Ionar
     SPELL_SPARK_VISUAL_TRIGGER_N            = 52667,
     SPELL_SPARK_VISUAL_TRIGGER_H            = 59833,
 
@@ -59,7 +59,7 @@ enum
 
 struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
 {
-    boss_ionarAI(Creature *pCreature) : ScriptedAI(pCreature)
+    boss_ionarAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
@@ -68,29 +68,29 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    GUIDList m_lSparkGUIDList;
+    GuidList m_lSparkGUIDList;
 
     bool m_bIsRegularMode;
 
+    bool m_bIsDesperseCasting;
     bool m_bIsSplitPhase;
-    uint32 m_uiSplit_Timer;
+    uint32 m_uiSplitTimer;
     uint32 m_uiSparkAtHomeCount;
 
-    uint32 m_uiStaticOverload_Timer;
-    uint32 m_uiBallLightning_Timer;
+    uint32 m_uiStaticOverloadTimer;
+    uint32 m_uiBallLightningTimer;
 
     uint32 m_uiHealthAmountModifier;
 
-    void Reset()
+    void Reset() override
     {
-        m_lSparkGUIDList.clear();
-
         m_bIsSplitPhase = true;
-        m_uiSplit_Timer = 25000;
+        m_bIsDesperseCasting = false;
+        m_uiSplitTimer = 25000;
         m_uiSparkAtHomeCount = 0;
 
-        m_uiStaticOverload_Timer = urand(5000, 6000);
-        m_uiBallLightning_Timer = urand(10000, 11000);
+        m_uiStaticOverloadTimer = urand(5000, 6000);
+        m_uiBallLightningTimer = urand(10000, 11000);
 
         m_uiHealthAmountModifier = 1;
 
@@ -98,7 +98,7 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
             m_creature->SetVisibility(VISIBILITY_ON);
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (m_creature->getVictim())
             return;
@@ -109,7 +109,7 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
         AttackStart(pAttacker);
     }
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* /*who*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
@@ -117,13 +117,15 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
             m_pInstance->SetData(TYPE_IONAR, IN_PROGRESS);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
-            m_pInstance->SetData(TYPE_IONAR, NOT_STARTED);
+            m_pInstance->SetData(TYPE_IONAR, FAIL);
+
+        DespawnSpark();
     }
 
-    void AttackStart(Unit* pWho)
+    void AttackStart(Unit* pWho) override
     {
         if (m_creature->Attack(pWho, true))
         {
@@ -136,7 +138,7 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* killer)
+    void JustDied(Unit* /*killer*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
         DespawnSpark();
@@ -145,9 +147,9 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
             m_pInstance->SetData(TYPE_IONAR, DONE);
     }
 
-    void KilledUnit(Unit *victim)
+    void KilledUnit(Unit* /*victim*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_SLAY_1, m_creature); break;
             case 1: DoScriptText(SAY_SLAY_2, m_creature); break;
@@ -157,10 +159,7 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
 
     void DespawnSpark()
     {
-        if (m_lSparkGUIDList.empty())
-            return;
-
-        for(GUIDList::const_iterator itr = m_lSparkGUIDList.begin(); itr != m_lSparkGUIDList.end(); ++itr)
+        for (GuidList::const_iterator itr = m_lSparkGUIDList.begin(); itr != m_lSparkGUIDList.end(); ++itr)
         {
             if (Creature* pTemp = m_creature->GetMap()->GetCreature(*itr))
             {
@@ -172,23 +171,18 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
         m_lSparkGUIDList.clear();
     }
 
-    //make sparks come back
+    // make sparks come back
     void CallBackSparks()
     {
-        //should never be empty here, but check
-        if (m_lSparkGUIDList.empty())
-            return;
-
-        for(GUIDList::const_iterator itr = m_lSparkGUIDList.begin(); itr != m_lSparkGUIDList.end(); ++itr)
+        for (GuidList::const_iterator itr = m_lSparkGUIDList.begin(); itr != m_lSparkGUIDList.end(); ++itr)
         {
             if (Creature* pSpark = m_creature->GetMap()->GetCreature(*itr))
             {
                 if (pSpark->isAlive())
                 {
-                    if (pSpark->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
-                        pSpark->GetMotionMaster()->MovementExpired();
-
-                    pSpark->SetSpeedRate(MOVE_RUN,2);
+                    // Required to prevent combat movement, elsewise they might switch movement on aggro-change
+                    if (ScriptedAI* pSparkAI = dynamic_cast<ScriptedAI*>(pSpark->AI()))
+                        pSparkAI->SetCombatMovement(false);
 
                     pSpark->GetMotionMaster()->MovePoint(POINT_CALLBACK, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
                 }
@@ -201,35 +195,30 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
         ++m_uiSparkAtHomeCount;
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_SPARK_OF_IONAR)
         {
             pSummoned->CastSpell(pSummoned, m_bIsRegularMode ? SPELL_SPARK_VISUAL_TRIGGER_N : SPELL_SPARK_VISUAL_TRIGGER_H, true);
 
-            Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0);
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                pSummoned->AI()->AttackStart(pTarget);
 
-            if (m_creature->getVictim())
-                pSummoned->AI()->AttackStart(pTarget ? pTarget : m_creature->getVictim());
-
-            m_lSparkGUIDList.push_back(pSummoned->GetGUID());
+            m_lSparkGUIDList.push_back(pSummoned->GetObjectGuid());
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
         // Splitted
         if (m_creature->GetVisibility() == VISIBILITY_OFF)
         {
-            if (!m_creature->isInCombat())
+            if (m_uiSplitTimer < uiDiff)
             {
-                Reset();
-                return;
-            }
-
-            if (m_uiSplit_Timer < uiDiff)
-            {
-                m_uiSplit_Timer = 2500;
+                m_uiSplitTimer = 2500;
 
                 // Return sparks to where Ionar splitted
                 if (m_bIsSplitPhase)
@@ -238,16 +227,15 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
                     m_bIsSplitPhase = false;
                 }
                 // Lightning effect and restore Ionar
-                else 
+                else if (m_uiSparkAtHomeCount == MAX_SPARKS)
                 {
                     m_creature->SetVisibility(VISIBILITY_ON);
-                    m_creature->CastSpell(m_creature, SPELL_SPARK_DESPAWN, false);
-
-                    DespawnSpark();
+                    DoCastSpellIfCan(m_creature, SPELL_SPARK_DESPAWN);
 
                     m_uiSparkAtHomeCount = 0;
-                    m_uiSplit_Timer = 25000;
+                    m_uiSplitTimer = 25000;
                     m_bIsSplitPhase = true;
+                    m_bIsDesperseCasting = false;
 
                     if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() != CHASE_MOTION_TYPE)
                     {
@@ -257,44 +245,43 @@ struct MANGOS_DLL_DECL boss_ionarAI : public ScriptedAI
                 }
             }
             else
-                m_uiSplit_Timer -= uiDiff;
+                m_uiSplitTimer -= uiDiff;
 
             return;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (m_uiStaticOverload_Timer < uiDiff)
+        if (m_uiStaticOverloadTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_STATIC_OVERLOAD_N : SPELL_STATIC_OVERLOAD_H);
-
-            m_uiStaticOverload_Timer = urand(5000, 6000);
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_STATIC_OVERLOAD_N : SPELL_STATIC_OVERLOAD_H) == CAST_OK)
+                    m_uiStaticOverloadTimer = urand(5000, 6000);
+            }
         }
         else
-            m_uiStaticOverload_Timer -= uiDiff;
+            m_uiStaticOverloadTimer -= uiDiff;
 
-        if (m_uiBallLightning_Timer < uiDiff)
+        if (m_uiBallLightningTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                m_creature->CastSpell(pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), m_bIsRegularMode ? SPELL_BALL_LIGHTNING_N : SPELL_BALL_LIGHTNING_H, false, NULL, NULL, m_creature->GetObjectGuid());
-            m_uiBallLightning_Timer = urand(10000, 11000);
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_BALL_LIGHTNING_N : SPELL_BALL_LIGHTNING_H) == CAST_OK)
+                    m_uiBallLightningTimer = urand(10000, 11000);
+            }
         }
         else
-            m_uiBallLightning_Timer -= uiDiff;
+            m_uiBallLightningTimer -= uiDiff;
 
         // Health check
-        if (m_creature->GetHealthPercent() < float(100 - 20*m_uiHealthAmountModifier))
+        if (m_creature->GetHealthPercent() < float(100 - 20 * m_uiHealthAmountModifier))
         {
             ++m_uiHealthAmountModifier;
 
-            DoScriptText(urand(0, 1) ? SAY_SPLIT_1 : SAY_SPLIT_2, m_creature);
-
-            if (m_creature->IsNonMeleeSpellCasted(false))
-                m_creature->InterruptNonMeleeSpells(false);
-
-            DoCastSpellIfCan(m_creature, SPELL_DISPERSE);
+            if (!m_bIsDesperseCasting && DoCastSpellIfCan(m_creature, SPELL_DISPERSE, CAST_INTERRUPT_PREVIOUS) == CAST_OK)
+            {
+                DoScriptText(urand(0, 1) ? SAY_SPLIT_1 : SAY_SPLIT_2, m_creature);
+                m_bIsDesperseCasting = true;
+            }
         }
 
         DoMeleeAttackIfReady();
@@ -306,25 +293,34 @@ CreatureAI* GetAI_boss_ionar(Creature* pCreature)
     return new boss_ionarAI(pCreature);
 }
 
-bool EffectDummyCreature_boss_ionar(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
+bool EffectDummyCreature_boss_ionar(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-    //always check spellid and effectindex
+    // always check spellid and effectindex
     if (uiSpellId == SPELL_DISPERSE && uiEffIndex == EFFECT_INDEX_0)
     {
         if (pCreatureTarget->GetEntry() != NPC_IONAR)
             return true;
 
-        for(uint8 i = 0; i < MAX_SPARKS; ++i)
+        for (uint8 i = 0; i < MAX_SPARKS; ++i)
             pCreatureTarget->CastSpell(pCreatureTarget, SPELL_SUMMON_SPARK, true);
 
         pCreatureTarget->AttackStop();
-        pCreatureTarget->RemoveAllAuras();
         pCreatureTarget->SetVisibility(VISIBILITY_OFF);
 
         if (pCreatureTarget->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
             pCreatureTarget->GetMotionMaster()->MovementExpired();
 
-        //always return true when we are handling this spell and effect
+        // always return true when we are handling this spell and effect
+        return true;
+    }
+    else if (uiSpellId == SPELL_SPARK_DESPAWN && uiEffIndex == EFFECT_INDEX_0)
+    {
+        if (pCreatureTarget->GetEntry() != NPC_IONAR)
+            return true;
+
+        if (boss_ionarAI* pIonarAI = dynamic_cast<boss_ionarAI*>(pCreatureTarget->AI()))
+            pIonarAI->DespawnSpark();
+
         return true;
     }
     return false;
@@ -336,7 +332,7 @@ bool EffectDummyCreature_boss_ionar(Unit* pCaster, uint32 uiSpellId, SpellEffect
 
 struct MANGOS_DLL_DECL mob_spark_of_ionarAI : public ScriptedAI
 {
-    mob_spark_of_ionarAI(Creature *pCreature) : ScriptedAI(pCreature)
+    mob_spark_of_ionarAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
         Reset();
@@ -344,16 +340,16 @@ struct MANGOS_DLL_DECL mob_spark_of_ionarAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    void Reset() { }
+    void Reset() override { }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId)
+    void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
         if (uiType != POINT_MOTION_TYPE || !m_pInstance)
             return;
 
         if (uiPointId == POINT_CALLBACK)
         {
-            if (Creature* pIonar = m_pInstance->instance->GetCreature(m_pInstance->GetData64(DATA_IONAR)))
+            if (Creature* pIonar = m_pInstance->GetSingleCreatureFromStorage(NPC_IONAR))
             {
                 if (!pIonar->isAlive())
                 {
@@ -377,16 +373,16 @@ CreatureAI* GetAI_mob_spark_of_ionar(Creature* pCreature)
 
 void AddSC_boss_ionar()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_ionar";
-    newscript->GetAI = &GetAI_boss_ionar;
-    newscript->pEffectDummyNPC = &EffectDummyCreature_boss_ionar;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_ionar";
+    pNewScript->GetAI = &GetAI_boss_ionar;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_boss_ionar;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_spark_of_ionar";
-    newscript->GetAI = &GetAI_mob_spark_of_ionar;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_spark_of_ionar";
+    pNewScript->GetAI = &GetAI_mob_spark_of_ionar;
+    pNewScript->RegisterSelf();
 }

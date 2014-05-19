@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: boss_freya
-SD%Complete:
-SDComment: aura stacking need core support after the recent aura changes
+SD%Complete: 95%
+SDComment: Elders and some of the Nature Allies handled in ACID. Script might require some minor improvements.
 SDCategory: Ulduar
 EndScriptData */
 
@@ -26,1052 +26,622 @@ EndScriptData */
 
 enum
 {
-    /* YELLS */
-    // freya
-    SAY_AGGRO               = -1603000,
-    SAY_AGGRO_HARD          = -1603001,
-    SAY_SUMMON1             = -1603002,
-    SAY_SUMMON2             = -1603003,
-    SAY_SUMMON3             = -1603004,
-    SAY_SLAY1               = -1603005,
-    SAY_SLAY2               = -1603006,
-    SAY_DEATH               = -1603007,
-    SAY_BERSERK             = -1603008,
-    EMOTE_ALLIES_NATURE     = -1603362,
-    EMOTE_LIFEBINDERS_GIFT  = -1603363,
-    EMOTE_GROUND_TREMMOR    = -1603364,
-    EMOTE_IRON_ROOTS        = -1603365,
-    //brightleaf
-    SAY_BRIGHTLEAF_AGGRO    = -1603160,
-    SAY_BRIGHTLEAF_SLAY1    = -1603161,
-    SAY_BRIGHTLEAF_SLAY2    = -1603162,
-    SAY_BRIGHTLEAF_DEATH    = -1603163,
-    //Ironbranch
-    SAY_IRONBRANCH_AGGRO    = -1603170,
-    SAY_IRONBRANCH_SLAY1    = -1603171,
-    SAY_IRONBRANCH_SLAY2    = -1603172,
-    SAY_IRONBRANCH_DEATH    = -1603173,
-    //Stonebark
-    SAY_STONEBARK_AGGRO     = -1603180,
-    SAY_STONEBARK_SLAY1     = -1603181,
-    SAY_STONEBARK_SLAY2     = -1603182,
-    SAY_STONEBARK_DEATH     = -1603183,
+    SAY_AGGRO                           = -1603000,
+    SAY_AGGRO_HARD                      = -1603001,
+    SAY_ADDS_CONSERVATOR                = -1603002,
+    SAY_ADDS_TRIO                       = -1603003,
+    SAY_ADDS_LASHER                     = -1603004,
+    SAY_SLAY_1                          = -1603005,
+    SAY_SLAY_2                          = -1603006,
+    SAY_EPILOGUE                        = -1603007,
+    SAY_BERSERK                         = -1603008,
 
-    /* BOSS SPELLS */
-    SPELL_ATTUNED_TO_NATURE        = 62519, //increases healing, start at 150 stacks
-	SPELL_ATTUNED_10_STACKS		   = 62525,
-	SPELL_ATTUNED_2_STACKS		   = 62524,
-	SPELL_ATTUNED_25_STACKS		   = 62521,
-    SPELL_TOUCH_OF_EONAR           = 62528, //heals Freya, 6k per second
-    SPELL_TOUCH_OF_EONAR_H         = 62892, //heals Freya, 24k per second
-    SPELL_SUNBEAM                  = 62623,
-    SPELL_SUNBEAM_H                = 62872,
-    SPELL_BERSERK                  = 47008, // 10 min
+    EMOTE_ALLIES_NATURE                 = -1603010,
+    EMOTE_REGEN_ALLIES                  = -1603011,
 
-    /* HARD MODE SPELLS */
-    SPELL_DRAINED_OF_POWER          = 62467,
-    // brightleaf
-    SPELL_UNSTABLE_ENERGY_FREYA     = 62451,
-    SPELL_UNSTABLE_ENERGY_FREYA_H   = 62865,
-    SPELL_BRIGHTLEAFS_ESSENCE       = 62968, //62385,
-    SPELL_EFFECT_BRIGHTLEAF         = 63294,
-    // ironbrach
-    SPELL_STRENGHTEN_IRON_ROOTS     = 63601,
-    NPC_STRENGHENED_IRON_ROOTS      = 33168,
-    SPELL_IRON_ROOTS_FREYA          = 62438,
-    SPELL_IRON_ROOTS_FREYA_H        = 62861,
-    SPELL_IRONBRANCH_ESSENCE        = 62713, //62387,
-    SPELL_EFFECT_IRONBRANCH         = 63292,
-    // stonebark
-    SPELL_GROUND_TREMOR_FREYA       = 62437,
-    SPELL_GROUND_TREMOR_FREYA_H     = 62859,
-    SPELL_STONEBARKS_ESSENCE        = 65590, //62386,
-    SPELL_EFFECT_STONEBARK          = 63295,
+    SAY_AGGRO_BRIGHT                    = -1603014,
+    SAY_SLAY_1_BRIGHT                   = -1603015,
+    SAY_SLAY_2_BRIGHT                   = -1603016,
+    SAY_DEATH_BRIGHT                    = -1603017,
 
-    NPC_SUN_BEAM                    = 33170,
-    NPC_UNSTABLE_SUN_BEAM           = 33050,
+    SAY_AGGRO_IRON                      = -1603018,
+    SAY_SLAY_1_IRON                     = -1603019,
+    SAY_SLAY_2_IRON                     = -1603020,
+    SAY_DEATH_IRON                      = -1603021,
 
-    // sanctuary adds 
-    NPC_EONARS_GIFT             = 33228,
-    SPELL_LIFEBINDERS_GIFT      = 62584,    // after 12 secs, heals Freya & her allies for 30%
-    SPELL_LIFEBINDERS_GIFT_H    = 64185,    // the same but for 60%
-    SPELL_PHEROMONES            = 62619,    // protects from conservators grip
-    NPC_HEALTHY_SPORE           = 33215,
+    SAY_AGGRO_STONE                     = -1603022,
+    SAY_SLAY_1_STONE                    = -1603023,
+    SAY_SLAY_2_STONE                    = -1603024,
+    SAY_DEATH_STONE                     = -1603025,
 
-    /* ADDS */
-    // 6 waves of adds. 1 of the 3 each min 
-    NPC_DETONATING_LASHER       = 32918,    // recude 2 stacks
-    // spells
-    SPELL_FLAME_LASH            = 62608,
-    SPELL_DETONATE              = 62598,
-    SPELL_DETONATE_H            = 62937, 
+    // general spells
+    SPELL_FREYA_CREDIT                  = 65074,                // kill credit spell; added in spell_template
+    SPELL_TELEPORT                      = 62940,                // despawn on event end
+    SPELL_BERSERK                       = 47008,
+    // SPELL_FREYA_DUMMY_YELLOW         = 63292,                // dummy spells used to light up the crystals; used in dbscripts_on_creature_move
+    // SPELL_FREYA_DUMMY_BLUE           = 63294,
+    // SPELL_FREYA_DUMMY_GREEN          = 63295,
 
-    NPC_ANCIENT_CONSERVATOR     = 33203,    // reduce 30 stacks
-    //spells
-    SPELL_CONSERVATORS_GRIP     = 62532,
-    SPELL_NATURES_FURY          = 62589,
-    SPELL_NATURES_FURY_H        = 63571,
+    // combat spells
+    SPELL_ATTUNED_TO_NATURE             = 62519,
+    SPELL_TOUCH_OF_EONAR                = 62528,
+    SPELL_TOUCH_OF_EONAR_H              = 62892,
+    SPELL_SUNBEAM                       = 62623,
+    SPELL_SUNBEAM_H                     = 62872,
 
-    /* elemental adds */                    // each one reduces 10 stacks
-    NPC_WATER_SPIRIT            = 33202,
-    // spells
-    SPELL_TIDAL_WAVE            = 62653,
-    SPELL_TIDAL_WAVE_H          = 62935,
+    // summon creature spells
+    SPELL_SUMMON_ALLIES_OF_NATURE       = 62678,                // triggers random of 62685, 62686 or 62688
+    SPELL_SUMMON_ALLIES_OF_NATURE_H     = 62873,                // spell needs to be confirmed; identical to normal mode version
+    SPELL_SUMMON_WAVE_1                 = 62685,                // summon npc 33203
+    SPELL_SUMMON_WAVE_3                 = 62686,                // summon npcs 33202, 32916 and 32919
+    SPELL_SUMMON_WAVE_10                = 62688,                // summon 10 * npc 32918
+    SPELL_LIFEBINDERS_GIFT_SUMMON       = 62572,
+    SPELL_NATURE_BOMB_SUMMON            = 64604,
 
-    NPC_STORM_LASHER            = 32919,
-    // spells
-    SPELL_STORMBOLT             = 62649,
-    SPELL_STORMBOLT_H           = 62938,
-    SPELL_LIGHTNING_LASH        = 62648,    // 3 targets
-    SPELL_LIGHTNING_LASH_H      = 62939,    // 5 targets
+    // summon loot spells
+    SPELL_SUMMON_CHEST_0                = 62950,                // summon loot chest spells, depending on the number of elders alive
+    SPELL_SUMMON_CHEST_1                = 62952,
+    SPELL_SUMMON_CHEST_2                = 62953,
+    SPELL_SUMMON_CHEST_3                = 62954,
+    SPELL_SUMMON_CHEST_0_H              = 62955,
+    SPELL_SUMMON_CHEST_1_H              = 62956,
+    SPELL_SUMMON_CHEST_2_H              = 62957,
+    SPELL_SUMMON_CHEST_3_H              = 62958,
 
-    NPC_SNAPLASHER              = 32916,
-    // spells
-    SPELL_HARDENED_BARK         = 62663,
-    SPELL_HARDENED_BARK_H       = 64190,
+    // hard mode spells
+    SPELL_FULL_HEAL                     = 43978,
+    SPELL_DRAINED_OF_POWER              = 62467,                // stun effect for each elder alive after finish channeling
 
-    // nature bomb
-    NPC_NATURE_BOMB             = 34129,
-    GO_NATURE_BOMB              = 194902,
-    SPELL_NATURE_BOMB           = 64587,
-    SPELL_NATURE_BOMB_H         = 64650,
+    SPELL_BRIGHTLEAF_ESSENCE_CHANNEL    = 62485,                // brightleaf
+    SPELL_BRIGHTLEAF_ESSENCE_CHANNEL_H  = 65587,
+    SPELL_UNSTABLE_SUN_BEAM             = 62450,
+    SPELL_UNSTABLE_SUN_BEAM_H           = 62868,
 
-    /* ELDERS */                            // used in phase 1
-    ELDER_BRIGHTLEAF            = 32915,
-    ELDER_IRONBRANCH            = 32913,
-    ELDER_STONEBARK             = 32914,
+    SPELL_IRONBRANCH_ESSENCE_CHANNEL    = 62484,                // ironbrach
+    SPELL_IRONBRANCH_ESSENCE_CHANNEL_H  = 65588,
+    SPELL_IRON_ROOTS                    = 62439,
+    SPELL_IRON_ROOTS_H                  = 62862,
 
-    // brightleaf spells
-    SPELL_BRIGHTLEAF_FLUX       = 62262,
-    SPELL_SOLAR_FLARE           = 62240,
-    SPELL_SOLAR_FLARE_H         = 62920,
-    SPELL_UNSTABLE_SUN_BEAM     = 62211,
-    SPELL_UNSTABLE_SUN_BEAM_A   = 62243,
-    SPELL_UNSTABLE_ENERGY       = 62217,    // cancels sun bean 
-    SPELL_UNSTABLE_ENERGY_H     = 62922,
-    SPELL_PHOTOSYNTHESIS        = 62209,
+    SPELL_STONEBARK_ESSEMCE_CHANNEL     = 62483,                // stonebark
+    SPELL_STONEBARK_ESSEMCE_CHANNEL_H   = 65589,
+    SPELL_GROUND_TREMOR                 = 62437,
+    SPELL_GROUND_TREMOR_H               = 62859,
 
-    // ironbrach spells
-    SPELL_IMPALE                = 62310,
-    SPELL_IMPALE_H              = 62928,
-    SPELL_IRON_ROOTS            = 62283, 
-    SPELL_IRON_ROOTS_H          = 62930,
-    NPC_IRON_ROOTS              = 33088,
-    SPELL_THORM_SWARM           = 62285,
-    SPELL_THORM_SWARM_H         = 62931,
+    // summons spells
+    SPELL_SPORE_SUMMON_PERIODIC         = 62566,                // triggers 62582, 62591, 62592, 62593; cast by 33203
+    SPELL_HEALTHY_SPORE_VISUAL          = 62538,                // cast by npc 33215
+    SPELL_POTENT_PHEROMONES             = 62541,                // cast by npc 33215
 
-    // stonebark spells
-    SPELL_FIST_OF_STONE         = 62344,
-    SPELL_BROKEN_BONES          = 62356,
-    SPELL_GROUND_TREMOR         = 62325,
-    SPELL_GROUND_TREMOR_H       = 62932,
-    SPELL_PETRIFIED_BARK        = 62337,
-    SPELL_PETRIFIED_BARK_H      = 62933,
+    // sun beam spells; handled by eventAI
+    // SPELL_UNSTABLE_SUN_BEAM_VISUAL   = 62216,                // cast by npc 33170
+    // SPELL_UNSTABLE_ENERGY            = 62451,                // cast by npc 33170
+    // SPELL_UNSTABLE_ENERGY_H          = 62865,
 
-    // not used because summoned chest doesn't despawn after looted
-    SPELL_SUMMON_CHEST_1                = 62950,
-    SPELL_SUMMON_CHEST_2                = 62952,
-    SPELL_SUMMON_CHEST_3                = 62953,
-    SPELL_SUMMON_CHEST_4                = 62954,
-    SPELL_SUMMON_CHEST_5                = 62955,
-    SPELL_SUMMON_CHEST_6                = 62956,
-    SPELL_SUMMON_CHEST_7                = 62957,
-    SPELL_SUMMON_CHEST_8                = 62958,
+    // iron roots spells
+    SPELL_STRENGTHEN_IRON_ROOTS         = 62440,                // remove stun and damange aura from summoner
+    SPELL_STRENGTHEN_IRON_ROOTS_H       = 63601,
+    SPELL_IRON_ROOTS_REMOVE             = 62282,                // same as above, but for the Elder version
+    SPELL_IRON_ROOTS_REMOVE_H           = 63598,
 
-    SPELL_SUMMON_ALLIES_OF_NATURE       = 62678, //better do that in sd2
-    SPELL_SUMMON_LASHERS                = 62688, // lashers - broken
-    SPELL_SUMMON_ELEMENTALS             = 62686, // elementals -> better in sd2
-    SPELL_SUMMON_CONSERVATOR            = 62685, // conservator
-    SPELL_LIFEBINDERS_GIFT_SUMMON       = 62869,
-    SPELL_NATURE_BOMB_SUMMON            = 64606,
+    // nature bomb spells
+    SPELL_NATURE_BOMB_GO                = 64600,                // spawns go 194902
+    SPELL_NATURE_BOMB                   = 64587,
+    SPELL_NATURE_BOMB_H                 = 64650,
 
-    SPELL_SPORE_SUMMON_NE               = 62591,
-    SPELL_SPORE_SUMMON_SE               = 62592,
-    SPELL_SPORE_SUMMON_SW               = 62593,
-    SPELL_SPORE_SUMMON_NW               = 62582,
+    // allies of nature spells
+    SPELL_ATTUNED_10_STACKS             = 62525,                // remove 10 stacks of 62519
+    SPELL_ATTUNED_2_STACKS              = 62524,                // remove 2 stacks of 62519
+    SPELL_ATTUNED_25_STACKS             = 62521,                // remove 25 stacks of 62519
 
-    SPELL_HEALTHY_SPORE_VISUAL          = 62538,
-    SPELL_NATURE_BOMB_VISUAL            = 64604,
-    SPELL_LIFEBINDERS_VISUAL            = 62579,
-    SPELL_LIFEBINDER_GROW               = 44833,
+    // three allies spells
+    SPELL_FEIGN_DEATH                   = 65985,
+    SPELL_CLEAR_DEBUFFS                 = 34098,
+    SPELL_TIDAL_WAVE                    = 62652,                // triggers 62653 or 62935
+    SPELL_TIDAL_WAVE_VISUAL             = 62655,
+    SPELL_HARDENED_BARK                 = 62664,
+    SPELL_HARDENED_BARK_H               = 64191,
+    SPELL_LIGHTNING_LASH                = 62648,
+    SPELL_LIGHTNING_LASH_H              = 62939,
+    SPELL_STORMBOLT                     = 62649,
+    SPELL_STORMBOLT_H                   = 62938,
 
-    SPELL_PHEROMONES_LG                 = 62619,
-    SPELL_POTENT_PHEROMONES             = 62541,
+    // eonar's gift spells
+    SPELL_LIFEBINDERS_GIFT              = 62584,
+    SPELL_LIFEBINDERS_GIFT_H            = 64185,
+    SPELL_LIFEBINDERS_GIFT_VISUAL       = 62579,
+    SPELL_AUTO_GROW                     = 62559,                // cast by npcs 33228 and 33215
+    SPELL_PHEROMONES                    = 62619,
 
-    ACHIEV_BACK_TO_NATURE           = 2982,
-    ACHIEV_BACK_TO_NATURE_H         = 2983,
-    ACHIEV_KNOCK_WOOD               = 3177,
-    ACHIEV_KNOCK_WOOD_H             = 3185,
-    ACHIEV_KNOCK_KNOCK_WOOD         = 3178,
-    ACHIEV_KNOCK_KNOCK_WOOD_H       = 3186,
-    ACHIEV_KNOCK_KNOCK_KNOCK_WOOD   = 3179,
-    ACHIEV_KNOCK_KNOCK_KNOCK_WOOD_H = 3187, 
+    // allies of nature summons
+    NPC_DETONATING_LASHER               = 32918,                // has auras 64481 and 28819
+    NPC_ANCIENT_CONSERVATOR             = 33203,
+    NPC_WATER_SPIRIT                    = 33202,
+    NPC_STORM_LASHER                    = 32919,
+    NPC_SNAPLASHER                      = 32916,
+
+    // other summons
+    NPC_NATURE_BOMB                     = 34129,
+    // NPC_SUN_BEAM                     = 33170,                // handled in eventAI
+    // NPC_UNSTABLE_SUN_BEAM            = 33050,                // handled in eventAI
+    NPC_IRON_ROOTS                      = 33088,
+    NPC_STRENGHENED_IRON_ROOTS          = 33168,
+    NPC_EONARS_GIFT                     = 33228,
+    // NPC_HEALTHY_SPORE                = 33215,
+
+    // other
+    // GO_NATURE_BOMB                   = 194902,
+    MIN_ATTUNED_NATURE_STACKS           = 25,
+    MAX_ALLIES_SPELLS                   = 3,
+    MAX_ALLIES_WAVES                    = 6,
 };
 
-// Iron roots & stranghned iron roots
-struct MANGOS_DLL_DECL mob_iron_rootsAI : public ScriptedAI
-{
-    mob_iron_rootsAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        SetCombatMovement(false);
-        Reset();
-    }
+static const uint32 aAlliesSpawnSpells[MAX_ALLIES_SPELLS] = {SPELL_SUMMON_WAVE_1, SPELL_SUMMON_WAVE_3, SPELL_SUMMON_WAVE_10};
 
-    bool m_bIsRegularMode;
-    ScriptedInstance* m_pInstance;
+/*######
+## boss_freya
+######*/
 
-    uint64 m_uiVictimGUID;
-    uint32 m_uiCreatureEntry;
-
-    void Reset()
-    {
-        m_uiVictimGUID = 0;
-        m_uiCreatureEntry = m_creature->GetEntry();
-    }
-
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
-    {
-        if (uiDamage > m_creature->GetHealth())
-        {
-            if (m_uiVictimGUID)
-            {
-                if (Unit* pVictim = m_creature->GetMap()->GetUnit(m_uiVictimGUID))
-                {
-                    switch(m_uiCreatureEntry)
-                    {
-                    case NPC_IRON_ROOTS:
-                        pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS : SPELL_IRON_ROOTS_H);
-                        break;
-                    case NPC_STRENGHENED_IRON_ROOTS:
-                        pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS_FREYA : SPELL_IRON_ROOTS_FREYA_H);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-        if (pVictim) 
-        {
-            switch(m_uiCreatureEntry)
-            {
-            case NPC_IRON_ROOTS:
-                pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS : SPELL_IRON_ROOTS_H);
-                break;
-            case NPC_STRENGHENED_IRON_ROOTS:
-                pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS_FREYA : SPELL_IRON_ROOTS_FREYA_H);
-                break;
-            }
-        }
-    }
-
-    void JustDied(Unit* Killer)
-    {
-        if (Unit* pVictim = m_creature->GetMap()->GetUnit(m_uiVictimGUID))
-        {
-            switch(m_uiCreatureEntry)
-            {
-            case NPC_IRON_ROOTS:
-                pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS : SPELL_IRON_ROOTS_H);
-                break;
-            case NPC_STRENGHENED_IRON_ROOTS:
-                pVictim->RemoveAurasDueToSpell(m_bIsRegularMode ? SPELL_IRON_ROOTS_FREYA : SPELL_IRON_ROOTS_FREYA_H);
-                break;
-            }
-        }
-    }
-
-    void UpdateAI(const uint32 uiuiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-    }
-};
-
-// Elder Brightleaf
-struct MANGOS_DLL_DECL boss_elder_brightleafAI : public ScriptedAI
-{
-    boss_elder_brightleafAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool m_bIsRegularMode;
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiBrightleafFluxTimer;
-    uint32 m_uiSolarFlareTimer;
-    uint32 m_uiUnstableSunBeanTimer;
-    uint32 m_uiUnstabelEnergyTimer;
-    uint32 m_uiSunbeamStacks;
-    uint32 m_uiHealTimer;
-    bool m_bHasSunbeam;
-
-    void Reset()
-    {
-        m_uiBrightleafFluxTimer     = 5000;
-        m_uiSolarFlareTimer         = 10000 + urand(1000, 5000);
-        m_uiUnstableSunBeanTimer    = 15000;
-        m_uiUnstabelEnergyTimer     = 30000;
-        m_uiSunbeamStacks           = 1;
-        m_bHasSunbeam               = false;
-    }
-
-    void Aggro(Unit* pWho)
-    {    
-        DoScriptText(SAY_BRIGHTLEAF_AGGRO, m_creature);
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-        if(irand(0,1))
-            DoScriptText(SAY_BRIGHTLEAF_SLAY1, m_creature);
-        else
-            DoScriptText(SAY_BRIGHTLEAF_SLAY2, m_creature);
-    }
-
-    void JustDied(Unit *killer)
-    {
-        DoScriptText(SAY_BRIGHTLEAF_DEATH, m_creature);
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-		// this needs core suport
-        if(m_uiBrightleafFluxTimer < uiDiff)
-        {
-            DoCast(m_creature, SPELL_BRIGHTLEAF_FLUX);
-            m_uiBrightleafFluxTimer = 5000;
-        }
-        else m_uiBrightleafFluxTimer -= uiDiff;
-
-        if(m_uiSolarFlareTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                DoCast(pTarget, m_bIsRegularMode ? SPELL_SOLAR_FLARE : SPELL_SOLAR_FLARE_H);
-            m_uiSolarFlareTimer = 10000 + urand(1000, 5000);
-        }
-        else m_uiSolarFlareTimer -= uiDiff;
-
-		// also the following spells need some core support -> hacky way of use
-		// PLEASE FIX FOR REVISION!
-        if(m_uiUnstableSunBeanTimer < uiDiff)
-        {
-            DoCast(m_creature, SPELL_UNSTABLE_SUN_BEAM);
-            m_bHasSunbeam = true;
-            m_uiHealTimer = 1000;
-            m_uiUnstableSunBeanTimer = urand(7000, 12000);
-        }
-        else m_uiUnstableSunBeanTimer -= uiDiff;
-
-		// cast after the unstable sun bean
-        if (m_uiHealTimer < uiDiff && m_bHasSunbeam)
-        {
-            DoCast(m_creature, SPELL_PHOTOSYNTHESIS);
-            m_bHasSunbeam = false;
-        }
-        else m_uiHealTimer -= uiDiff;
-
-		// removes photosynthesis when standing inside
-        if(m_uiUnstabelEnergyTimer < uiDiff)
-        {
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_UNSTABLE_ENERGY: SPELL_UNSTABLE_ENERGY_H);
-            m_creature->RemoveAurasDueToSpell(SPELL_UNSTABLE_SUN_BEAM_A);
-            m_creature->RemoveAurasDueToSpell(SPELL_PHOTOSYNTHESIS);
-            m_uiSunbeamStacks = 1;
-            m_uiUnstabelEnergyTimer = urand(20000, 30000);
-        }
-        else m_uiUnstabelEnergyTimer -= uiDiff;
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-CreatureAI* GetAI_boss_elder_brightleaf(Creature* pCreature)
-{
-    return new boss_elder_brightleafAI(pCreature);
-}
-
-// Elder Ironbranch
-struct MANGOS_DLL_DECL boss_elder_ironbranchAI : public ScriptedAI
-{
-    boss_elder_ironbranchAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool m_bIsRegularMode;
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiImpaleTimer;
-    uint32 m_uiIronrootsTimer;
-    uint32 m_uiThornSwarmTimer;
-
-    void Reset()
-    {
-        m_uiImpaleTimer         = 10000 + urand (1000, 5000);
-        m_uiIronrootsTimer      = 20000 + urand (1000, 7000);
-        m_uiThornSwarmTimer     = 30000;
-    }
-
-    void Aggro(Unit* pWho)
-    {    
-        DoScriptText(SAY_IRONBRANCH_AGGRO, m_creature);
-    }
-
-    void JustDied(Unit *killer)
-    {
-        DoScriptText(SAY_IRONBRANCH_DEATH, m_creature);
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-        if(irand(0,1))
-            DoScriptText(SAY_IRONBRANCH_SLAY1, m_creature);
-        else
-            DoScriptText(SAY_IRONBRANCH_SLAY2, m_creature);
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if(m_uiImpaleTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                DoCast(pTarget, m_bIsRegularMode ? SPELL_IMPALE : SPELL_IMPALE_H);
-            m_uiImpaleTimer = 10000 + urand (1000, 5000);
-        }
-        else m_uiImpaleTimer -= uiDiff;
-
-        if(m_uiIronrootsTimer < uiDiff)
-        {
-            if(Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                DoCast(target, m_bIsRegularMode ? SPELL_IRON_ROOTS : SPELL_IRON_ROOTS_H);
-            m_uiIronrootsTimer = 20000 + urand (1000, 7000);
-        }
-        else m_uiIronrootsTimer -= uiDiff;
-
-        if(m_uiThornSwarmTimer < uiDiff)
-        {
-            if(Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                DoCast(target, m_bIsRegularMode ? SPELL_THORM_SWARM : SPELL_THORM_SWARM_H);
-            m_uiThornSwarmTimer = 30000;
-        }
-        else m_uiThornSwarmTimer -= uiDiff;
-
-        DoMeleeAttackIfReady(); 
-    }
-};
-
-CreatureAI* GetAI_boss_elder_ironbranch(Creature* pCreature)
-{
-    return new boss_elder_ironbranchAI(pCreature);
-}
-
-// Stonebark
-struct MANGOS_DLL_DECL boss_elder_stonebarkAI : public ScriptedAI
-{
-    boss_elder_stonebarkAI(Creature* pCreature) : ScriptedAI(pCreature) 
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool m_bIsRegularMode;
-    ScriptedInstance* m_pInstance;
-
-    uint32 m_uiFistsOfStoneTimer;
-    uint32 m_uiGroundTremorTimer;
-    uint32 m_uiPetrifiedBarkTimer;
-
-    void Reset()
-    {
-        m_uiFistsOfStoneTimer   = 20000;
-        m_uiGroundTremorTimer   = 15000;
-        m_uiPetrifiedBarkTimer  = 25000;
-    }
-
-    void Aggro(Unit* pWho)
-    {    
-        DoScriptText(SAY_STONEBARK_AGGRO, m_creature);
-    }
-
-    void JustDied(Unit *killer)
-    {
-        DoScriptText(SAY_STONEBARK_DEATH, m_creature);
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-        if(irand(0,1))
-            DoScriptText(SAY_STONEBARK_SLAY1, m_creature);
-        else
-            DoScriptText(SAY_STONEBARK_SLAY2, m_creature);
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if(m_uiFistsOfStoneTimer < uiDiff)
-        {
-            DoCast(m_creature, SPELL_FIST_OF_STONE);
-            m_uiFistsOfStoneTimer = 30000;
-        }
-        else m_uiFistsOfStoneTimer -= uiDiff;
-
-        if(m_uiGroundTremorTimer < uiDiff)
-        {
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_GROUND_TREMOR : SPELL_GROUND_TREMOR_H);
-            m_uiGroundTremorTimer = 15000 + urand (1000, 5000);
-        }
-        else m_uiGroundTremorTimer -= uiDiff;
-
-        if(m_uiPetrifiedBarkTimer < uiDiff)
-        {
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_PETRIFIED_BARK : SPELL_PETRIFIED_BARK_H);
-            m_uiPetrifiedBarkTimer = 20000 + urand (1000, 5000);
-        }
-        else m_uiPetrifiedBarkTimer -= uiDiff;
-
-        DoMeleeAttackIfReady(); 
-    }
-};
-
-CreatureAI* GetAI_boss_elder_stonebark(Creature* pCreature)
-{
-    return new boss_elder_stonebarkAI(pCreature);
-}
-
-// Freya
 struct MANGOS_DLL_DECL boss_freyaAI : public ScriptedAI
 {
     boss_freyaAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_ulduar*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+
+        // init the Allies of Nature spells
+        spawnSpellsVector.reserve(MAX_ALLIES_SPELLS);
+        for (uint8 i = 0; i < MAX_ALLIES_SPELLS; ++i)
+            spawnSpellsVector.push_back(aAlliesSpawnSpells[i]);
+
+        m_bEventFinished = false;
+        m_uiEpilogueTimer = 0;
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_ulduar* m_pInstance;
     bool m_bIsRegularMode;
+    bool m_bEventFinished;
 
-    uint32 m_uiSummonTimer;
-    uint32 m_uiWaveNumber;
-    uint32 m_uiWaveType;
-    uint32 m_uiWaveTypeInc;
+    uint32 m_uiEpilogueTimer;
+    uint32 m_uiBerserkTimer;
+
+    uint32 m_uiAlliesNatureTimer;
+    uint8 m_uiAlliesWaveCount;
+
     uint32 m_uiSunbeamTimer;
-    uint32 m_uiEnrageTimer;
-
-    bool m_bIsHardMode;
-	bool m_bHasAura;
-    
     uint32 m_uiNatureBombTimer;
     uint32 m_uiLifebindersGiftTimer;
+    uint32 m_uiThreeAlliesTimer;
 
-    bool m_bIsOutro;
-    uint32 m_uiOutroTimer;
-    uint32 m_uiStep;
-
-    // hard mode timers
     uint32 m_uiUnstableEnergyTimer;
-    uint32 m_uiStrenghtenIronRootsTimer;
+    uint32 m_uiIronRootsTimer;
     uint32 m_uiGroundTremorTimer;
 
-    uint32 m_uiThreeWaveCheckTimer;
-    bool m_bWaveCheck;
-    uint64 m_uiWaterSpiritGUID;
-    uint64 m_uiStormLasherGUID;
-    uint64 m_uiSnapLasherGUID;
+    ObjectGuid m_waterSpiritGuid;
+    ObjectGuid m_stormLasherGuid;
+    ObjectGuid m_snaplasherGuid;
 
-    bool m_bIsBrightleafAlive;
-    bool m_bIsIronbranchAlive;
-    bool m_bIsStonebarkAlive;
+    std::vector<uint32> spawnSpellsVector;
 
-    uint32 m_uiAchievProgress;
-    bool m_bNature;
-
-    void Reset()
+    void Reset() override
     {
-        m_uiSummonTimer                 = 15000;
-        m_uiWaveNumber                  = 0;
-        m_uiWaveType                    = irand(0,2);
-        m_uiWaveTypeInc                 = irand(1,2);
-        m_uiSunbeamTimer                = rand()%10000;
-        m_uiEnrageTimer                 = 600000; //10 minutes
-        m_bIsHardMode                   = false;
-        m_uiLifebindersGiftTimer        = 30000;
-        m_uiUnstableEnergyTimer         = 25000;
-        m_uiStrenghtenIronRootsTimer    = 25000 + urand(1000, 5000);
-        m_uiGroundTremorTimer           = 20000;
-        m_uiNatureBombTimer             = 7000;
-        m_uiThreeWaveCheckTimer         = 1000;
-        m_uiAchievProgress              = 10000;
-        m_bWaveCheck                    = false;
-        m_uiWaterSpiritGUID             = 0;
-        m_uiStormLasherGUID             = 0;
-        m_uiSnapLasherGUID              = 0;
+        m_uiBerserkTimer            = 10 * MINUTE * IN_MILLISECONDS;
 
-        m_uiOutroTimer                  = 10000;
-        m_uiStep                        = 1;
-        m_bIsOutro                      = false;
+        m_uiAlliesNatureTimer       = 10000;
+        m_uiAlliesWaveCount         = 0;
+        m_uiNatureBombTimer         = 65000;
+        m_uiSunbeamTimer            = 20000;
+        m_uiLifebindersGiftTimer    = 25000;
+        m_uiThreeAlliesTimer        = 0;
 
-        m_uiAchievProgress              = 0;
-        m_bNature                       = false;
-		m_bHasAura						= false;
+        m_uiUnstableEnergyTimer     = 0;
+        m_uiIronRootsTimer          = 0;
+        m_uiGroundTremorTimer       = 0;
 
-        if(m_pInstance) 
-        {
-            // remove elder auras
-            if (Creature* pBrightleaf = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_BRIGHTLEAF)))
-            {
-                if (pBrightleaf->isAlive())
-                    pBrightleaf->RemoveAllAuras();
-            }
-            if (Creature* pIronbranch = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_IRONBRACH)))
-            {
-                if (pIronbranch->isAlive())
-                    pIronbranch->RemoveAllAuras();
-            }
-            if (Creature* pStonebark = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_STONEBARK)))
-            {
-                if (pStonebark->isAlive())
-                    pStonebark->RemoveAllAuras();
-            }
-        }
+        // make the spawn spells random
+        std::random_shuffle(spawnSpellsVector.begin(), spawnSpellsVector.end());
     }
 
-    void Aggro(Unit *who) 
+    void Aggro(Unit* /*pWho*/) override
     {
-		// aura should stack up to 150 when casted, need core support
-		DoCast(m_creature, SPELL_ATTUNED_TO_NATURE);
+        // don't attack again after being defeated
+        if (m_bEventFinished)
+            return;
 
-        if(m_pInstance) 
-        {
+        if (m_pInstance)
             m_pInstance->SetData(TYPE_FREYA, IN_PROGRESS);
 
-            // check brightleaf
-            if (Creature* pBrightleaf = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_BRIGHTLEAF)))
-            {
-                if (pBrightleaf->isAlive())
-                {
-                    pBrightleaf->CastSpell(pBrightleaf, SPELL_DRAINED_OF_POWER, false);
-                    pBrightleaf->CastSpell(m_creature, SPELL_EFFECT_BRIGHTLEAF, false);
-                    m_bIsBrightleafAlive = true;
-                    m_uiAchievProgress += 1;
-                }
-                else
-                    m_bIsBrightleafAlive = false;
-            }
+        DoCastSpellIfCan(m_creature, SPELL_ATTUNED_TO_NATURE, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+        DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_TOUCH_OF_EONAR : SPELL_TOUCH_OF_EONAR_H, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
 
-            // check ironbranch
-            if (Creature* pIronbranch = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_IRONBRACH)))
-            {
-                if (pIronbranch->isAlive())
-                {
-                    pIronbranch->CastSpell(pIronbranch, SPELL_DRAINED_OF_POWER, false);
-                    pIronbranch->CastSpell(m_creature, SPELL_EFFECT_IRONBRANCH, false);
-                    m_bIsIronbranchAlive = true;
-                    m_uiAchievProgress += 1;
-                }
-                else
-                    m_bIsIronbranchAlive = false;
-            }
-
-            // check stonebark
-            if (Creature* pStonebark = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_STONEBARK)))
-            {
-                if (pStonebark->isAlive())
-                {
-                    pStonebark->CastSpell(pStonebark, SPELL_DRAINED_OF_POWER, false);
-                    pStonebark->CastSpell(m_creature, SPELL_EFFECT_STONEBARK, false);
-                    m_bIsStonebarkAlive = true;
-                    m_uiAchievProgress += 1;
-                }
-                else
-                    m_bIsStonebarkAlive = false;
-            }
-        }
-
-        m_bIsHardMode = CheckHardMode();
-
-        if(!m_bIsHardMode)
-            DoScriptText(SAY_AGGRO, m_creature);
-        else
-            DoScriptText(SAY_AGGRO_HARD, m_creature);
+        FetchElders();
     }
 
-    void JustReachedHome()
+    void AttackStart(Unit* pWho) override
+    {
+        // don't attack again after being defeated
+        if (m_bEventFinished)
+            return;
+
+        ScriptedAI::AttackStart(pWho);
+    }
+
+    void MoveInLineOfSight(Unit* pWho) override
+    {
+        // don't attack again after being defeated
+        if (m_bEventFinished)
+            return;
+
+        ScriptedAI::MoveInLineOfSight(pWho);
+    }
+
+    void JustReachedHome() override
     {
         if (m_pInstance)
+        {
             m_pInstance->SetData(TYPE_FREYA, FAIL);
-    }
 
-    void DoOutro()
-    {
-        if(m_pInstance) 
-        {
-            m_pInstance->SetData(TYPE_FREYA_HARD, 0);
-
-            // hacky way to complete achievements; use only if you have this function
-            if(m_uiAchievProgress == 1)
+            // reset elders
+            if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_BRIGHTLEAF))
             {
-                m_pInstance->DoCompleteAchievement(m_bIsRegularMode ? ACHIEV_KNOCK_WOOD : ACHIEV_KNOCK_WOOD_H);
-                m_pInstance->SetData(TYPE_FREYA_HARD, 1);
+                if (pElder->isAlive())
+                    pElder->AI()->EnterEvadeMode();
             }
-            else if (m_uiAchievProgress == 2)
+            if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_IRONBRACH))
             {
-                m_pInstance->DoCompleteAchievement(m_bIsRegularMode ? ACHIEV_KNOCK_KNOCK_WOOD : ACHIEV_KNOCK_KNOCK_WOOD_H);
-                m_pInstance->SetData(TYPE_FREYA_HARD, 2);
+                if (pElder->isAlive())
+                    pElder->AI()->EnterEvadeMode();
             }
-            else if (m_uiAchievProgress == 3)
+            if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_STONEBARK))
             {
-                m_pInstance->DoCompleteAchievement(m_bIsRegularMode ? ACHIEV_KNOCK_KNOCK_KNOCK_WOOD : ACHIEV_KNOCK_KNOCK_KNOCK_WOOD_H);
-                m_pInstance->SetData(TYPE_FREYA_HARD, 3);
+                if (pElder->isAlive())
+                    pElder->AI()->EnterEvadeMode();
             }
-
-            if (m_bNature)
-                m_pInstance->DoCompleteAchievement(m_bIsRegularMode ? ACHIEV_BACK_TO_NATURE : ACHIEV_BACK_TO_NATURE_H);
-
-            m_pInstance->SetData(TYPE_FREYA, DONE);
-        }
-
-        m_creature->ForcedDespawn();
-    }
-
-    // for debug only!
-    void JustDied(Unit* pKiller)
-    {
-        if(m_pInstance) 
-        {
-            m_pInstance->SetData(TYPE_FREYA, DONE);
-            if(m_bIsHardMode)
-                m_pInstance->SetData(TYPE_FREYA_HARD, DONE);
         }
     }
 
-    void DamageTaken(Unit *done_by, uint32 &uiDamage)
+    void EnterEvadeMode() override
     {
-        if(m_creature->GetHealthPercent() < 1.0f)
+        m_creature->RemoveAllAurasOnEvade();
+        m_creature->DeleteThreatList();
+        m_creature->CombatStop(true);
+
+        if (m_creature->isAlive() && !m_bEventFinished)
+            m_creature->GetMotionMaster()->MoveTargetedHome();
+
+        m_creature->SetLootRecipient(NULL);
+
+        Reset();
+    }
+
+    void DamageTaken(Unit* /*pDoneBy*/, uint32& uiDamage) override
+    {
+        if (uiDamage >= m_creature->GetHealth())
         {
             uiDamage = 0;
-            m_bIsOutro = true;
-        }
-    }
 
-    void KilledUnit(Unit* pVictim)
-    {
-        if(irand(0,1))
-            DoScriptText(SAY_SLAY1, m_creature);
-        else
-            DoScriptText(SAY_SLAY2, m_creature);
-    }
-
-	// summon 12 Lashers. Should be done by a spell which needs core fix
-    void SummonLashers()
-    {
-        DoScriptText(SAY_SUMMON3, m_creature);
-        int i;
-        float x,y;
-        for(i = 0; i < 12; ++i)
-        {
-            x = (rand_norm() * 30.0f) - 15.0f;
-            y = (rand_norm() * 30.0f) - 15.0f;
-            if(Creature* pLasher = DoSpawnCreature(NPC_DETONATING_LASHER, x, y, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
+            if (!m_bEventFinished)
             {
-                if(Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    pLasher->AddThreat(pTarget, 1.0f);
+                if (m_pInstance)
+                {
+                    m_pInstance->SetData(TYPE_FREYA, DONE);
+
+                    // spawn chest loot
+                    switch (m_pInstance->GetData(TYPE_FREYA_HARD))
+                    {
+                        case 0: DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SUMMON_CHEST_0 : SPELL_SUMMON_CHEST_0_H, CAST_TRIGGERED); break;
+                        case 1: DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SUMMON_CHEST_1 : SPELL_SUMMON_CHEST_1_H, CAST_TRIGGERED); break;
+                        case 2: DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SUMMON_CHEST_2 : SPELL_SUMMON_CHEST_2_H, CAST_TRIGGERED); break;
+                        case 3: DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SUMMON_CHEST_3 : SPELL_SUMMON_CHEST_3_H, CAST_TRIGGERED); break;
+                    }
+
+                    // check aura stacks for achiev
+                    if (SpellAuraHolder* pNatureAura = m_creature->GetSpellAuraHolder(SPELL_ATTUNED_TO_NATURE))
+                    {
+                        if (pNatureAura && pNatureAura->GetStackAmount() >= MIN_ATTUNED_NATURE_STACKS)
+                            m_pInstance->SetSpecialAchievementCriteria(TYPE_ACHIEV_BACK_NATURE, true);
+                    }
+                }
+
+                DoScriptText(SAY_EPILOGUE, m_creature);
+                m_creature->CastSpell(m_creature, SPELL_FREYA_CREDIT, true);
+
+                m_uiEpilogueTimer = 10000;
+                m_bEventFinished = true;
+                EnterEvadeMode();
             }
         }
     }
 
-	// summon conservator. Should be done by a spell which needs core fix
-    void SummonConservator()
+    void KilledUnit(Unit* pVictim) override
     {
-        DoScriptText(SAY_SUMMON1, m_creature);
-        float x = (rand_norm() * 30.0f) - 15.0f;
-        float y = (rand_norm() * 30.0f) - 15.0f;
-        if(Creature* pAdd = DoSpawnCreature(NPC_ANCIENT_CONSERVATOR, x, y, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
+            return;
+
+        DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
+    }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        switch (pSummoned->GetEntry())
         {
-            if(Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pAdd->AddThreat(pTarget, 1.0f);
+            case NPC_EONARS_GIFT:
+                pSummoned->CastSpell(pSummoned, SPELL_LIFEBINDERS_GIFT_VISUAL, true);
+                pSummoned->CastSpell(pSummoned, SPELL_AUTO_GROW, true);
+                pSummoned->CastSpell(pSummoned, SPELL_PHEROMONES, true);
+                break;
+            case NPC_DETONATING_LASHER:
+            case NPC_ANCIENT_CONSERVATOR:
+                pSummoned->AI()->AttackStart(m_creature->getVictim());
+                break;
+            case NPC_WATER_SPIRIT:
+                m_waterSpiritGuid = pSummoned->GetObjectGuid();
+                pSummoned->AI()->AttackStart(m_creature->getVictim());
+                break;
+            case NPC_STORM_LASHER:
+                m_stormLasherGuid = pSummoned->GetObjectGuid();
+                pSummoned->AI()->AttackStart(m_creature->getVictim());
+                break;
+            case NPC_SNAPLASHER:
+                m_snaplasherGuid = pSummoned->GetObjectGuid();
+                pSummoned->AI()->AttackStart(m_creature->getVictim());
+                break;
+            case NPC_NATURE_BOMB:
+                pSummoned->CastSpell(pSummoned, SPELL_NATURE_BOMB_GO, true);
+                break;
         }
     }
 
-	// summmon the 3 elementals. Should be done by a spell which needs core fix.
-    void SummonElementals()
+    void SummonedCreatureJustDied(Creature* pSummoned) override
     {
-        DoScriptText(SAY_SUMMON2, m_creature);
-        m_bWaveCheck = true;
-        m_uiThreeWaveCheckTimer = 2000;
-
-        if(Creature* pSpirit = DoSpawnCreature(NPC_WATER_SPIRIT, 0, 0, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
+        switch (pSummoned->GetEntry())
         {
-            m_uiWaterSpiritGUID = pSpirit->GetGUID();
-            if(Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pSpirit->AddThreat(pTarget, 1.0f);
-        }
-
-        if(Creature* pStormLasher = DoSpawnCreature(NPC_STORM_LASHER, 0, 0, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
-        {
-            m_uiStormLasherGUID = pStormLasher->GetGUID();
-            if(Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pStormLasher->AddThreat(pTarget, 1.0f);
-        }
-
-        if(Creature* pSnapLasher = DoSpawnCreature(NPC_SNAPLASHER, 0, 0, 0, 0, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 10000))
-        {
-            m_uiSnapLasherGUID = pSnapLasher->GetGUID();
-            if(Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                pSnapLasher->AddThreat(pTarget, 1.0f);
+            case NPC_DETONATING_LASHER:
+                pSummoned->CastSpell(m_creature, SPELL_ATTUNED_2_STACKS, true);
+                break;
+            case NPC_ANCIENT_CONSERVATOR:
+                pSummoned->CastSpell(m_creature, SPELL_ATTUNED_25_STACKS, true);
+                break;
+            case NPC_WATER_SPIRIT:
+            case NPC_STORM_LASHER:
+            case NPC_SNAPLASHER:
+                pSummoned->CastSpell(m_creature, SPELL_ATTUNED_10_STACKS, true);
+                break;
         }
     }
 
-    bool CheckHardMode()
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* /*pInvoker*/, uint32 /*uiMiscValue*/) override
     {
-        if(m_bIsBrightleafAlive && m_bIsIronbranchAlive && m_bIsStonebarkAlive)
-            return true;
-        return false;
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if(!m_bIsOutro)
+        // handle Allies of Nature spawn
+        if (eventType == AI_EVENT_CUSTOM_A)
         {
-            if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-                return;
+            // adjust the index to the size of the vector
+            uint8 uiIndex = m_uiAlliesWaveCount;
+            if (uiIndex >= MAX_ALLIES_SPELLS)
+                uiIndex = m_uiAlliesWaveCount - MAX_ALLIES_SPELLS;
 
-			// hacky way of stacking aura. Please remove when fixed in core!
-			if(SpellAuraHolder* natureAura = m_creature->GetSpellAuraHolder(SPELL_ATTUNED_TO_NATURE))
-			{
-				if(natureAura->GetStackAmount() < 150 && !m_bHasAura)
-				{
-					m_bHasAura = true;
-					natureAura->SetStackAmount(150);
-				}
-			}
-
-			if(!m_creature->HasAura(m_bIsRegularMode ? SPELL_TOUCH_OF_EONAR : SPELL_TOUCH_OF_EONAR_H))
-				DoCast(m_creature, m_bIsRegularMode ? SPELL_TOUCH_OF_EONAR : SPELL_TOUCH_OF_EONAR_H);
-
-			// check if the 3 elementals die at the same time
-            if(m_uiThreeWaveCheckTimer < uiDiff && m_bWaveCheck)
+            switch (spawnSpellsVector[uiIndex])
             {
-                Creature* pWaterSpirit = m_pInstance->instance->GetCreature(m_uiWaterSpiritGUID);
-                Creature* pStormLasher = m_pInstance->instance->GetCreature(m_uiStormLasherGUID);
-                Creature* pSnapLasher = m_pInstance->instance->GetCreature(m_uiSnapLasherGUID);
+                case SPELL_SUMMON_WAVE_1:  DoScriptText(SAY_ADDS_CONSERVATOR, m_creature); break;
+                case SPELL_SUMMON_WAVE_3:  DoScriptText(SAY_ADDS_TRIO, m_creature);        break;
+                case SPELL_SUMMON_WAVE_10: DoScriptText(SAY_ADDS_LASHER, m_creature);      break;
+            }
 
-                if(pWaterSpirit && pStormLasher && pSnapLasher)
+            DoCastSpellIfCan(m_creature, spawnSpellsVector[uiIndex], CAST_TRIGGERED);
+
+            ++m_uiAlliesWaveCount;
+
+            // re-shuffle the spells
+            if (m_uiAlliesWaveCount == MAX_ALLIES_SPELLS)
+            {
+                uint32 uiLastSpell = spawnSpellsVector[MAX_ALLIES_SPELLS - 1];
+                std::random_shuffle(spawnSpellsVector.begin(), spawnSpellsVector.end());
+
+                // make sure we won't repeat the last spell
+                while (spawnSpellsVector[0] == uiLastSpell)
+                    std::random_shuffle(spawnSpellsVector.begin(), spawnSpellsVector.end());
+            }
+        }
+        else if (eventType == AI_EVENT_CUSTOM_B)
+        {
+            if (!m_uiThreeAlliesTimer)
+                m_uiThreeAlliesTimer = 12000;
+        }
+    }
+
+    // check for all elders alive
+    void FetchElders()
+    {
+        if (!m_pInstance)
+            return;
+
+        uint8 uiEldersAlive = 0;
+
+        if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_BRIGHTLEAF))
+        {
+            if (pElder->isAlive())
+            {
+                pElder->CastSpell(pElder, m_bIsRegularMode ? SPELL_BRIGHTLEAF_ESSENCE_CHANNEL : SPELL_BRIGHTLEAF_ESSENCE_CHANNEL_H, true);
+                pElder->CastSpell(pElder, SPELL_FULL_HEAL, true);
+
+                m_uiUnstableEnergyTimer = 25000;
+                ++uiEldersAlive;
+            }
+        }
+        if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_IRONBRACH))
+        {
+            if (pElder->isAlive())
+            {
+                pElder->CastSpell(pElder, m_bIsRegularMode ? SPELL_IRONBRANCH_ESSENCE_CHANNEL : SPELL_IRONBRANCH_ESSENCE_CHANNEL_H, true);
+                pElder->CastSpell(pElder, SPELL_FULL_HEAL, true);
+
+                m_uiIronRootsTimer = 60000;
+                ++uiEldersAlive;
+            }
+        }
+        if (Creature* pElder = m_pInstance->GetSingleCreatureFromStorage(NPC_ELDER_STONEBARK))
+        {
+            if (pElder->isAlive())
+            {
+                pElder->CastSpell(pElder, m_bIsRegularMode ? SPELL_STONEBARK_ESSEMCE_CHANNEL : SPELL_STONEBARK_ESSEMCE_CHANNEL_H, true);
+                pElder->CastSpell(pElder, SPELL_FULL_HEAL, true);
+
+                m_uiGroundTremorTimer = 10000;
+                ++uiEldersAlive;
+            }
+        }
+
+        // store the info about the elders alive
+        m_pInstance->SetData(TYPE_FREYA_HARD, uiEldersAlive);
+
+        if (uiEldersAlive)
+            DoScriptText(SAY_AGGRO_HARD, m_creature);
+        else
+            DoScriptText(SAY_AGGRO, m_creature);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiEpilogueTimer)
+        {
+            if (m_uiEpilogueTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_TELEPORT, CAST_TRIGGERED) == CAST_OK)
                 {
-                    if(!pWaterSpirit->isAlive() && !pStormLasher->isAlive() && !pSnapLasher->isAlive())
-                    {
-                        m_bWaveCheck = false;
-						if(SpellAuraHolder* natureAura = m_creature->GetSpellAuraHolder(SPELL_ATTUNED_TO_NATURE))
-						{
-							if(natureAura->ModStackAmount(-30))
-								m_creature->RemoveAurasDueToSpell(SPELL_ATTUNED_TO_NATURE);
-						}
-                    }
-                    else
-                    {
-                        // respawn the dead ones
-                        if(!pWaterSpirit->isAlive())
-                            pWaterSpirit->Respawn();
-                        if(!pSnapLasher->isAlive())
-                            pSnapLasher->Respawn();
-                        if(!pStormLasher->isAlive())
-                            pStormLasher->Respawn();
-                    }
+                    m_creature->ForcedDespawn(2000);
+                    m_uiEpilogueTimer = 0;
                 }
-                m_uiThreeWaveCheckTimer = 2000;
             }
             else
-                m_uiThreeWaveCheckTimer -= uiDiff;
+                m_uiEpilogueTimer -= uiDiff;
+        }
 
-            // Hardmode
-            if(m_bIsBrightleafAlive)
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (m_uiBerserkTimer)
+        {
+            if (m_uiBerserkTimer <= uiDiff)
             {
-				if(!m_creature->HasAura(SPELL_BRIGHTLEAFS_ESSENCE, EFFECT_INDEX_0))
-					DoCast(m_creature, SPELL_BRIGHTLEAFS_ESSENCE);
-
-				// hacky way, should be done by spell
-                if(m_uiUnstableEnergyTimer < uiDiff)
+                if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
                 {
-                    //DoCast(m_creature, m_bIsRegularMode ? SPELL_UNSTABLE_ENERGY_FREYA : SPELL_UNSTABLE_ENERGY_FREYA_H);
-                    for(int8 i = 0; i < 3; ++i)
-                    {
-                        if(Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                        {
-                            float x = target->GetPositionX();
-                            float y = target->GetPositionY();
-                            float z = target->GetPositionZ();
-                            m_creature->SummonCreature(NPC_SUN_BEAM, x, y, z, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 20000);
-                        }
-                    }
-                    m_uiUnstableEnergyTimer = urand(25000, 30000);
+                    DoScriptText(SAY_BERSERK, m_creature);
+                    m_uiBerserkTimer = 0;
                 }
-                else m_uiUnstableEnergyTimer -= uiDiff;
             }
+            else
+                m_uiBerserkTimer -= uiDiff;
+        }
 
-            if(m_bIsIronbranchAlive)
+        if (m_uiThreeAlliesTimer)
+        {
+            if (m_uiThreeAlliesTimer <= uiDiff)
             {
-				if(!m_creature->HasAura(SPELL_IRONBRANCH_ESSENCE, EFFECT_INDEX_0))
-					DoCast(m_creature, SPELL_IRONBRANCH_ESSENCE);
+                Creature* pSpirit = m_creature->GetMap()->GetCreature(m_waterSpiritGuid);
+                Creature* pStormLasher = m_creature->GetMap()->GetCreature(m_stormLasherGuid);
+                Creature* pSnapLasher = m_creature->GetMap()->GetCreature(m_snaplasherGuid);
+                if (!pSpirit || !pStormLasher || !pSnapLasher)
+                    return;
 
-                if(m_uiStrenghtenIronRootsTimer < uiDiff)
+                if (pSpirit->HasAura(SPELL_FEIGN_DEATH) && pStormLasher->HasAura(SPELL_FEIGN_DEATH) && pSnapLasher->HasAura(SPELL_FEIGN_DEATH))
                 {
-                    if(Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                    {
-                        DoScriptText(EMOTE_IRON_ROOTS, m_creature, target);
-                        DoCast(target, m_bIsRegularMode ? SPELL_IRON_ROOTS_FREYA : SPELL_IRON_ROOTS_FREYA_H);
-                    }
-                    m_uiStrenghtenIronRootsTimer = 50000 + urand(10000, 20000);
+                    m_creature->DealDamage(pSpirit, pSpirit->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NONE, NULL, false);
+                    m_creature->DealDamage(pStormLasher, pStormLasher->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NONE, NULL, false);
+                    m_creature->DealDamage(pSnapLasher, pSnapLasher->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NONE, NULL, false);
                 }
-                else m_uiStrenghtenIronRootsTimer -= uiDiff;
-            }
-
-            if(m_bIsStonebarkAlive)
-            {
-				// aura doesn't work. Needs core fix
-				if(!m_creature->HasAura(SPELL_STONEBARKS_ESSENCE, EFFECT_INDEX_0))
-					DoCast(m_creature, SPELL_STONEBARKS_ESSENCE);
-
-                if(m_uiGroundTremorTimer < uiDiff)
+                else
                 {
-                    DoScriptText(EMOTE_GROUND_TREMMOR, m_creature);
-                    DoCast(m_creature, m_bIsRegularMode ? SPELL_GROUND_TREMOR_FREYA : SPELL_GROUND_TREMOR_FREYA_H);
-                    m_uiGroundTremorTimer = 20000;
+                    pSpirit->CastSpell(pSpirit, SPELL_FULL_HEAL, true);
+                    pStormLasher->CastSpell(pStormLasher, SPELL_FULL_HEAL, true);
+                    pSnapLasher->CastSpell(pSnapLasher, SPELL_FULL_HEAL, true);
                 }
-                else m_uiGroundTremorTimer -= uiDiff;
-            }
 
-            //Phase 1, waves of adds
-            if(m_uiWaveNumber < 6)
+                m_uiThreeAlliesTimer = 0;
+            }
+            else
+                m_uiThreeAlliesTimer -= uiDiff;
+        }
+
+        if (m_uiAlliesWaveCount < MAX_ALLIES_WAVES)
+        {
+            if (m_uiAlliesNatureTimer < uiDiff)
             {
-                if(m_uiSummonTimer < uiDiff)
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SUMMON_ALLIES_OF_NATURE : SPELL_SUMMON_ALLIES_OF_NATURE_H) == CAST_OK)
                 {
                     DoScriptText(EMOTE_ALLIES_NATURE, m_creature);
-                    switch(m_uiWaveType)
-                    {
-                    case 0: SummonLashers(); break;
-                    case 1: SummonConservator(); break;
-                    case 2: SummonElementals(); break;
-                    }
-                    m_uiWaveType = (m_uiWaveType + m_uiWaveTypeInc) % 3;
-                    ++m_uiWaveNumber;
-                    m_uiSummonTimer = 60000;
+                    m_uiAlliesNatureTimer = 60000;
                 }
-                else m_uiSummonTimer -= uiDiff;
             }
-            // Phase 2
             else
+                m_uiAlliesNatureTimer -= uiDiff;
+        }
+        else
+        {
+            if (m_uiNatureBombTimer < uiDiff)
             {
-                // nature bomb. Should be done by spell, not by summon.
-                if(m_uiNatureBombTimer < uiDiff)
-                {
-                    DoCast(m_creature, SPELL_NATURE_BOMB_VISUAL);
-                    DoCast(m_creature, SPELL_NATURE_BOMB_SUMMON);
-
-                    int8 count = urand(8,10);
-                    for(int8 i = 0; i < count; ++i)
-                    {
-                        float radius = 30* rand_norm_f();
-                        float angle = 2.0f * M_PI_F * rand_norm_f();
-                        float x = m_creature->GetPositionX() + cos(angle) * radius;
-                        float y = m_creature->GetPositionY() + sin(angle) * radius;
-                        float z = m_creature->GetTerrain()->GetHeight(x, y, MAX_HEIGHT);
-                        m_creature->SummonCreature(NPC_NATURE_BOMB, x, y, z, 0, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 20000);
-                    }
-                    m_uiNatureBombTimer = urand(7000, 12000);
-                }
-                else m_uiNatureBombTimer -= uiDiff;
+                if (DoCastSpellIfCan(m_creature, SPELL_NATURE_BOMB_SUMMON) == CAST_OK)
+                    m_uiNatureBombTimer = 15000;
             }
-
-            //All phases
-            if(m_uiSunbeamTimer < uiDiff)
-            {
-                if( Unit *target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    DoCast(target, m_bIsRegularMode ? SPELL_SUNBEAM : SPELL_SUNBEAM_H);
-                m_uiSunbeamTimer = 6000 + rand()%10000;
-            }
-            else m_uiSunbeamTimer -= uiDiff;
-
-            if(m_uiLifebindersGiftTimer < uiDiff)
-            {
-                DoScriptText(EMOTE_LIFEBINDERS_GIFT, m_creature);
-                if(Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                    DoCast(pTarget, SPELL_LIFEBINDERS_GIFT_SUMMON);
-                m_uiLifebindersGiftTimer = 30000;
-            }
-            else m_uiLifebindersGiftTimer -= uiDiff;
-
-            if(m_uiEnrageTimer < uiDiff)
-            {
-                DoScriptText(SAY_BERSERK, m_creature);
-                DoCast(m_creature, SPELL_BERSERK);
-                m_uiEnrageTimer = 30000;
-            }
-            else m_uiEnrageTimer -= uiDiff;
-
-            DoMeleeAttackIfReady();
+            else
+                m_uiNatureBombTimer -= uiDiff;
         }
 
-        // outro
-        if(m_bIsOutro)
+        if (m_uiSunbeamTimer < uiDiff)
         {
-            switch(m_uiStep)
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
-            case 1:
-                if(m_creature->HasAura(SPELL_ATTUNED_TO_NATURE, EFFECT_INDEX_0))
-                {
-                    if(m_creature->GetAura(SPELL_ATTUNED_TO_NATURE, EFFECT_INDEX_0)->GetStackAmount() >= 25)
-                        m_bNature = true;
-                }
-                m_creature->setFaction(35);
-                m_creature->RemoveAllAuras();
-                m_creature->DeleteThreatList();
-                m_creature->CombatStop(true);
-                m_creature->InterruptNonMeleeSpells(false);
-                m_creature->SetHealth(m_creature->GetMaxHealth());
-                m_creature->GetMotionMaster()->MovePoint(0, 2359.40f, -52.39f, 425.64f);
-                m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                ++m_uiStep;
-                m_uiOutroTimer = 7000;
-                break;
-            case 3:
-                DoScriptText(SAY_DEATH, m_creature);
-                ++m_uiStep;
-                m_uiOutroTimer = 10000;
-                break;
-            case 5:
-                DoOutro();
-                ++m_uiStep;
-                m_uiOutroTimer = 10000;
-                break;
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_SUNBEAM : SPELL_SUNBEAM_H) == CAST_OK)
+                    m_uiSunbeamTimer = 15000;
             }
         }
-        else return;
+        else
+            m_uiSunbeamTimer -= uiDiff;
 
-        if (m_uiOutroTimer <= uiDiff)
+        if (m_uiLifebindersGiftTimer < uiDiff)
         {
-            ++m_uiStep;
-            m_uiOutroTimer = 330000;
-        } m_uiOutroTimer -= uiDiff;
+            if (DoCastSpellIfCan(m_creature, SPELL_LIFEBINDERS_GIFT_SUMMON) == CAST_OK)
+                m_uiLifebindersGiftTimer = 40000;
+        }
+        else
+            m_uiLifebindersGiftTimer -= uiDiff;
+
+        // Brightleaf ability
+        if (m_uiUnstableEnergyTimer)
+        {
+            if (m_uiUnstableEnergyTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_UNSTABLE_SUN_BEAM : SPELL_UNSTABLE_SUN_BEAM_H) == CAST_OK)
+                    m_uiUnstableEnergyTimer = 25000;
+            }
+            else
+                m_uiUnstableEnergyTimer -= uiDiff;
+        }
+
+        // Ironbranch ability
+        if (m_uiIronRootsTimer)
+        {
+            if (m_uiIronRootsTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_IRON_ROOTS : SPELL_IRON_ROOTS_H) == CAST_OK)
+                    m_uiIronRootsTimer = 60000;
+            }
+            else
+                m_uiIronRootsTimer -= uiDiff;
+        }
+
+        // Stonebark ability
+        if (m_uiGroundTremorTimer)
+        {
+            if (m_uiGroundTremorTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_GROUND_TREMOR : SPELL_GROUND_TREMOR_H) == CAST_OK)
+                    m_uiGroundTremorTimer = 30000;
+            }
+            else
+                m_uiGroundTremorTimer -= uiDiff;
+        }
+
+        DoMeleeAttackIfReady();
     }
 };
 
@@ -1080,430 +650,406 @@ CreatureAI* GetAI_boss_freya(Creature* pCreature)
     return new boss_freyaAI(pCreature);
 }
 
-// Script for all the npcs found on the ground during Freya encounter
-struct MANGOS_DLL_DECL mob_freya_groundAI : public ScriptedAI
+bool EffectScriptEffectCreature_boss_freya(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-     mob_freya_groundAI(Creature* pCreature) : ScriptedAI(pCreature)
+    if ((uiSpellId == SPELL_SUMMON_ALLIES_OF_NATURE || uiSpellId == SPELL_SUMMON_ALLIES_OF_NATURE_H) && uiEffIndex == EFFECT_INDEX_0)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        if (pCreatureTarget->GetEntry() == NPC_FREYA)
+            pCreatureTarget->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, pCaster, pCreatureTarget);
+
+        return true;
+    }
+
+    return false;
+}
+
+/*######
+## three_nature_allies
+######*/
+
+struct MANGOS_DLL_DECL three_nature_alliesAI : public ScriptedAI
+{
+    three_nature_alliesAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_ulduar*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        SetCombatMovement(false);
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_ulduar* m_pInstance;
     bool m_bIsRegularMode;
 
-    uint32 m_uiNatureBomb_Timer;
-    uint32 m_uiDieTimer;
-    uint32 m_uiEonarsGift_Timer;
-    uint32 m_uiNonSelectable_Timer;
-    uint32 m_uiGrow_Timer;
-    uint32 m_uiSunBeamDespawn_Timer;
-    uint32 m_uiUnstableEnergy_Timer;
-    uint32 m_uiHealthyGrow_Timer;
-    uint64 m_uiNatureBombGUID;
-    float m_fSize;
+    bool m_bIsFakeDeath;
 
-    bool m_bNpcNatureBomb;
-    bool m_bNpcEonarsGift;
-    bool m_bNpcHealthySpore;
-    bool m_bNpcSunBeamFreya;
-    bool m_bNpcSunBeamBright;
-
-    bool m_bHasGrow;
-
-    void Reset()
+    void Reset() override
     {
-        m_uiNatureBomb_Timer        = urand(9000,11000);
-        m_uiDieTimer                = 60000;
-        m_uiEonarsGift_Timer        = urand(11000,13000);
-        m_uiNonSelectable_Timer     = 5000;
-        m_uiUnstableEnergy_Timer    = 1000;
-        m_uiGrow_Timer              = 0;
-        m_uiSunBeamDespawn_Timer    = urand(10000,11000);
-        m_bHasGrow                  = true;
-        m_uiHealthyGrow_Timer       = urand(3000,12000);
-        m_bNpcNatureBomb            = false;
-        m_bNpcEonarsGift            = false;
-        m_bNpcHealthySpore          = false;
-        m_bNpcSunBeamFreya          = false;
-        m_bNpcSunBeamBright         = false;
-
-		// the invisible displayIds should be set in DB.
-        switch(m_creature->GetEntry())
-        {
-            case NPC_NATURE_BOMB:
-                m_bNpcNatureBomb = true;
-                m_creature->setFaction(14);
-                m_fSize = 1;
-                m_creature->SetDisplayId(25865);     // invisible
-                DoCast(m_creature, SPELL_LIFEBINDERS_VISUAL);
-                break;
-            case NPC_EONARS_GIFT:
-                m_bNpcEonarsGift = true;
-                m_fSize = float(0.1);
-                DoCast(m_creature, SPELL_LIFEBINDERS_VISUAL);
-                break;
-            case NPC_HEALTHY_SPORE:
-                m_bNpcHealthySpore = true; 
-                DoCast(m_creature, SPELL_HEALTHY_SPORE_VISUAL);
-                DoCast(m_creature, SPELL_POTENT_PHEROMONES);
-                break;
-            case NPC_SUN_BEAM:
-                m_bNpcSunBeamFreya = true;
-                m_creature->SetDisplayId(25865);     // invisible
-                DoCast(m_creature, SPELL_LIFEBINDERS_VISUAL);
-                DoCast(m_creature, m_bIsRegularMode ? SPELL_UNSTABLE_ENERGY_FREYA : SPELL_UNSTABLE_ENERGY_FREYA_H);
-                break;
-            case NPC_UNSTABLE_SUN_BEAM:
-                m_bNpcSunBeamBright = true; 
-                m_creature->SetDisplayId(25865);     // invisible
-                DoCast(m_creature, SPELL_LIFEBINDERS_VISUAL);
-                //DoCast(m_creature, SPELL_PHOTOSYNTHESIS); // spell needs core fix, should be casted on Brighleaf!
-                break;
-        }
-
-        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-        m_creature->SetRespawnDelay(DAY);           
+        m_bIsFakeDeath = false;
     }
 
-    void AttackStart(Unit* pWho)
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
     {
-        return;
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (m_pInstance && m_pInstance->GetData(TYPE_FREYA) != IN_PROGRESS) 
-            m_creature->ForcedDespawn();
-
-        if(!m_creature->isAlive())
+        if (pDoneBy->GetEntry() == NPC_FREYA)
             return;
 
-        // NATURE BOMB
-        if(m_bNpcNatureBomb)
+        if (uiDamage >= m_creature->GetHealth())
         {
-            if(m_uiNatureBomb_Timer < uiDiff)
-            {
-                DoCast(m_creature, m_bIsRegularMode ? SPELL_NATURE_BOMB : SPELL_NATURE_BOMB_H);
-                m_uiDieTimer = 500;
-                m_uiNatureBomb_Timer = 10000;
-            }else m_uiNatureBomb_Timer -= uiDiff;
+            uiDamage = 0;
 
-            if(m_uiDieTimer < uiDiff)
-                m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_SHADOW, NULL, false);
-            else m_uiDieTimer -= uiDiff;
+            if (m_bIsFakeDeath)
+                return;
+
+            if (m_pInstance)
+            {
+                if (Creature* pFreya = m_pInstance->GetSingleCreatureFromStorage(NPC_FREYA))
+                    SendAIEvent(AI_EVENT_CUSTOM_B, m_creature, pFreya);
+            }
+
+            DoCastSpellIfCan(m_creature, SPELL_CLEAR_DEBUFFS, CAST_TRIGGERED);
+            DoCastSpellIfCan(m_creature, SPELL_FEIGN_DEATH, CAST_TRIGGERED);
+
+            m_creature->SetHealth(1);
+            m_creature->ClearComboPointHolders();
+            m_creature->ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, false);
+            m_creature->ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, false);
+            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            m_creature->ClearAllReactives();
+            m_creature->GetMotionMaster()->Clear();
+            m_creature->GetMotionMaster()->MoveIdle();
+            m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
+
+            DoScriptText(EMOTE_REGEN_ALLIES, m_creature);
+            m_bIsFakeDeath = true;
         }
+    }
 
-        // EONAR GIFT
-        if(m_bNpcEonarsGift)
+    void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
+    {
+        if (pSpell->Id == SPELL_FULL_HEAL)
         {
-            if (m_uiGrow_Timer > 500 && m_fSize < 1.5)
-            {
-                m_fSize += float(m_uiGrow_Timer)/8000;
-                m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fSize);
-                m_uiGrow_Timer = 0;
-            }else m_uiGrow_Timer += uiDiff;
-
-            if(m_uiEonarsGift_Timer < uiDiff)
-            {
-                if (Creature* pFreya = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_FREYA)))
-                    DoCast(pFreya, m_bIsRegularMode ? SPELL_LIFEBINDERS_GIFT : SPELL_LIFEBINDERS_GIFT_H);
-                m_uiEonarsGift_Timer = 1000;
-            }else m_uiEonarsGift_Timer -= uiDiff;
-
-            if(m_uiNonSelectable_Timer < uiDiff && m_creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE))
-            {
-                m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                DoCast(m_creature, SPELL_PHEROMONES_LG);
-            }else m_uiNonSelectable_Timer -= uiDiff;
-        }
-
-        // HEALTHY SPORE
-        if(m_bNpcHealthySpore)
-        {
-            if(!m_bHasGrow && m_fSize < 0.25)
-                m_creature->ForcedDespawn();
-
-            if(m_uiHealthyGrow_Timer < uiDiff)
-            {
-                if(m_bHasGrow)
-                {
-                    m_fSize = float(urand(150,225))/100;
-                    m_bHasGrow = false;
-                }
-                else
-                    m_fSize = float(urand(1,300))/100;
-                if(m_fSize < 1)
-                    m_fSize = 0.1f;
-                m_creature->SetFloatValue(OBJECT_FIELD_SCALE_X, m_fSize);
-                m_uiHealthyGrow_Timer = urand(3000,5000);
-            }else m_uiHealthyGrow_Timer -= uiDiff;
-        }
-
-        // SUN BEAM
-        if(m_bNpcSunBeamBright)
-        {
-            if(m_uiUnstableEnergy_Timer < uiDiff)
-            {
-                DoCast(m_creature, m_bIsRegularMode ? SPELL_UNSTABLE_ENERGY : SPELL_UNSTABLE_ENERGY_H);
-                m_uiUnstableEnergy_Timer = 1000;
-            }else m_uiUnstableEnergy_Timer -= uiDiff;
-        }
-
-        if(m_bNpcSunBeamFreya || m_bNpcSunBeamBright)
-        {
-            if(m_uiSunBeamDespawn_Timer < uiDiff)
-                m_creature->ForcedDespawn();
-            else m_uiSunBeamDespawn_Timer -= uiDiff;
+            m_bIsFakeDeath = false;
+            DoResetThreat();
+            m_creature->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
+            m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+            m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         }
     }
 };
 
-// Script for Freya's adds
-struct MANGOS_DLL_DECL mob_freya_spawnedAI : public ScriptedAI
+/*######
+## npc_water_spirit
+######*/
+
+struct MANGOS_DLL_DECL npc_water_spiritAI : public three_nature_alliesAI
 {
-    mob_freya_spawnedAI(Creature* pCreature) : ScriptedAI(pCreature)
+    npc_water_spiritAI(Creature* pCreature) : three_nature_alliesAI(pCreature) { Reset(); }
+
+    uint32 m_uiTidalWaveTimer;
+
+    void Reset() override
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
+        m_uiTidalWaveTimer = 10000;
+        three_nature_alliesAI::Reset();
     }
 
-    ScriptedInstance* m_pInstance;
-    bool m_bIsRegularMode;
-
-    bool m_bAncientConservator;
-    bool m_bDetonatingLasher;
-    bool m_bAncientWaterSpirit;
-    bool m_bStormLasher;
-    bool m_bSnaplasher;
-    bool m_bHasExploded;
-
-    uint32 m_uiDeathCountdown;
-    uint32 m_uiTidalWave_Timer;
-    uint32 m_uiStormbolt_Timer;
-    uint32 m_uiLightningLash_Timer;
-    uint32 m_uiFlameLash_Timer;
-    uint32 m_uiNaturesFury_Timer;
-    uint32 m_uiWave3_DeathCountdown;
-    uint32 m_uiRespawnSpores_Timer;
-    uint32 m_uiDieTimer;
-    uint8 m_uiHealthMultiplier;
-
-    void Reset()
+    void UpdateAI(const uint32 uiDiff) override
     {
-        m_bAncientWaterSpirit       = false;
-        m_bStormLasher              = false;
-        m_bSnaplasher               = false;
-        m_bAncientConservator       = false;
-        m_bDetonatingLasher         = false;
-        m_bHasExploded              = false;
-        m_uiDieTimer                = 120000;
-        m_uiDeathCountdown          = 10000;
-        m_uiTidalWave_Timer         = urand(2000,4000);
-        m_uiStormbolt_Timer         = 1000;
-        m_uiLightningLash_Timer     = urand(11000,14000);        
-        m_uiFlameLash_Timer         = urand(5000,10000);
-        m_uiNaturesFury_Timer       = urand(8000,10000);
-        m_uiRespawnSpores_Timer     = 5000;
-        m_uiHealthMultiplier        = 1;
-
-        switch(m_creature->GetEntry())
-        {
-			// The Conservator's Grip needs core fix. It should be canceled by pheronomes!
-        case NPC_ANCIENT_CONSERVATOR:
-            m_bAncientConservator = true;
-            //DoCast(m_creature, SPELL_CONSERVATORS_GRIP); //spell disabled because it isn't negated by pheronomes
-            DoSpores(10);
-            break;
-        case NPC_DETONATING_LASHER:
-            m_bDetonatingLasher = true;
-            break;
-        case NPC_WATER_SPIRIT:
-            m_bAncientWaterSpirit = true;
-            break;
-        case NPC_SNAPLASHER:
-            m_bSnaplasher = true;
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_HARDENED_BARK : SPELL_HARDENED_BARK_H);
-            break;
-        case NPC_STORM_LASHER:
-            m_bStormLasher = true;
-            break;
-        }
-        m_creature->SetRespawnDelay(DAY);
-    }
-
-    void JustDied(Unit* Killer)
-    {
-		// remove some stacks from Freya's aura
-		// hacky way. Should be done by spell which needs core support
-        if (m_bAncientConservator)
-		{
-			if (Creature* pFreya = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_FREYA)))
-			{
-				if(SpellAuraHolder* natureAura = pFreya->GetSpellAuraHolder(SPELL_ATTUNED_TO_NATURE))
-				{
-					if(natureAura->ModStackAmount(-25))
-						m_creature->RemoveAurasDueToSpell(SPELL_ATTUNED_TO_NATURE);
-				}
-			}
-		}
-
-        if (m_bDetonatingLasher)
-		{
-			if (Creature* pFreya = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(NPC_FREYA)))
-			{
-				if(SpellAuraHolder* natureAura = pFreya->GetSpellAuraHolder(SPELL_ATTUNED_TO_NATURE))
-				{
-					if(natureAura->ModStackAmount(-2))
-						m_creature->RemoveAurasDueToSpell(SPELL_ATTUNED_TO_NATURE);
-				}
-			}
-		}
-    }
-
-    void DamageTaken(Unit *done_by, uint32 &uiDamage)
-    {
-        if (m_bDetonatingLasher && uiDamage > m_creature->GetHealth() && !m_bHasExploded)
-        {
-            DoCast(m_creature, m_bIsRegularMode ? SPELL_DETONATE : SPELL_DETONATE_H);
-            uiDamage        = 0;
-            m_bHasExploded  = true;
-            m_uiDieTimer  = 500;
-        }        
-    }
-
-    void DoSpores(int8 times)
-    {
-        for(int8 i = 0; i < times; ++i)
-        {
-            for(int8 itr = 0; i < 3; ++i)
-                DoCast(m_creature, SPELL_SPORE_SUMMON_NE + itr);
-            DoCast(m_creature, SPELL_SPORE_SUMMON_NW);
-        }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (m_pInstance && m_pInstance->GetData(TYPE_FREYA) != IN_PROGRESS) 
-            m_creature->ForcedDespawn();
-
-        if(!m_creature->isAlive())
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // DETONATING LASHERS
-        if(m_bDetonatingLasher)
+        if (m_uiTidalWaveTimer < uiDiff)
         {
-            if(m_uiFlameLash_Timer < uiDiff)
+            if (DoCastSpellIfCan(m_creature, SPELL_TIDAL_WAVE) == CAST_OK)
             {
-                DoCast(m_creature->getVictim(), SPELL_FLAME_LASH);
-                m_uiFlameLash_Timer = urand(5000,10000);
-            }else m_uiFlameLash_Timer -= uiDiff;
-
-            if(m_uiDieTimer < uiDiff)
-                m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_SHADOW, NULL, false);
-            else m_uiDieTimer -= uiDiff;
-        }
-
-        // CONSERVATOR
-        if(m_bAncientConservator)
-        {
-            if(m_uiNaturesFury_Timer < uiDiff)
-            {
-                DoCast(m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0), m_bIsRegularMode ? SPELL_NATURES_FURY : SPELL_NATURES_FURY_H);
-                m_uiNaturesFury_Timer = urand(5000,6000);
-            }else m_uiNaturesFury_Timer -= uiDiff;
-
-            if(m_uiRespawnSpores_Timer < uiDiff)
-            {
-                DoSpores(3);
-                m_uiRespawnSpores_Timer = 5000;
-            }else m_uiRespawnSpores_Timer -= uiDiff;
-        }
-
-        // ELEMENTAL ADDS
-        // waterspirit
-        if(m_bAncientWaterSpirit && m_uiTidalWave_Timer < uiDiff)
-        {
-            DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_TIDAL_WAVE : SPELL_TIDAL_WAVE_H);
-            m_uiTidalWave_Timer = urand(7000,9000);
-        }else m_uiTidalWave_Timer -= uiDiff;
-
-        // stormlasher
-        if(m_bStormLasher)
-        {
-            if (m_uiLightningLash_Timer < uiDiff)
-            {
-                DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_LIGHTNING_LASH : SPELL_LIGHTNING_LASH_H);
-                m_uiLightningLash_Timer = urand(11000,14000);
-            }
-            else
-            {
-                m_uiLightningLash_Timer -= uiDiff;
-                if (m_uiStormbolt_Timer < uiDiff)
-                {
-                    DoCast(m_creature->getVictim(), m_bIsRegularMode ? SPELL_STORMBOLT : SPELL_STORMBOLT_H);
-                    m_uiStormbolt_Timer = 2000;
-                }else m_uiStormbolt_Timer -= uiDiff;
+                DoCastSpellIfCan(m_creature, SPELL_TIDAL_WAVE_VISUAL, CAST_TRIGGERED);
+                m_uiTidalWaveTimer = 10000;
             }
         }
+        else
+            m_uiTidalWaveTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
 
-CreatureAI* GetAI_mob_freya_ground(Creature* pCreature)
+CreatureAI* GetAI_npc_water_spirit(Creature* pCreature)
 {
-    return new mob_freya_groundAI(pCreature);
+    return new npc_water_spiritAI(pCreature);
 }
 
-CreatureAI* GetAI_mob_freya_spawned(Creature* pCreature)
+/*######
+## npc_snaplasher
+######*/
+
+struct MANGOS_DLL_DECL npc_snaplasherAI : public three_nature_alliesAI
 {
-    return new mob_freya_spawnedAI(pCreature);
+    npc_snaplasherAI(Creature* pCreature) : three_nature_alliesAI(pCreature) { Reset(); }
+
+    void Reset() override
+    {
+        three_nature_alliesAI::Reset();
+    }
+
+    void Aggro(Unit* /*pWho*/) override
+    {
+        DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_HARDENED_BARK : SPELL_HARDENED_BARK_H);
+    }
+};
+
+CreatureAI* GetAI_npc_snaplasher(Creature* pCreature)
+{
+    return new npc_snaplasherAI(pCreature);
 }
 
-CreatureAI* GetAI_mob_iron_roots(Creature* pCreature)
+/*######
+## npc_storm_lasher
+######*/
+
+struct MANGOS_DLL_DECL npc_storm_lasherAI : public three_nature_alliesAI
 {
-    return new mob_iron_rootsAI(pCreature);
+    npc_storm_lasherAI(Creature* pCreature) : three_nature_alliesAI(pCreature) { Reset(); }
+
+    uint32 m_uiLightningLashTimer;
+    uint32 m_uiStormBoltTimer;
+
+    void Reset() override
+    {
+        m_uiLightningLashTimer = urand(5000, 10000);
+        m_uiStormBoltTimer = 5000;
+        three_nature_alliesAI::Reset();
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (m_uiLightningLashTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_LIGHTNING_LASH : SPELL_LIGHTNING_LASH_H) == CAST_OK)
+                    m_uiLightningLashTimer = urand(5000, 10000);
+            }
+        }
+        else
+            m_uiLightningLashTimer -= uiDiff;
+
+        if (m_uiStormBoltTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_STORMBOLT : SPELL_STORMBOLT_H) == CAST_OK)
+                    m_uiStormBoltTimer = 5000;
+            }
+        }
+        else
+            m_uiStormBoltTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
+};
+
+CreatureAI* GetAI_npc_storm_lasher(Creature* pCreature)
+{
+    return new npc_storm_lasherAI(pCreature);
+}
+
+/*######
+## npc_eonars_gift
+######*/
+
+struct MANGOS_DLL_DECL npc_eonars_giftAI : public Scripted_NoMovementAI
+{
+    npc_eonars_giftAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+    uint32 m_uiGiftTimer;
+
+    void Reset() override
+    {
+        m_uiGiftTimer = 10000;
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiGiftTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_LIFEBINDERS_GIFT : SPELL_LIFEBINDERS_GIFT_H) == CAST_OK)
+                m_uiGiftTimer = 10000;
+        }
+        else
+            m_uiGiftTimer -= uiDiff;
+    }
+};
+
+CreatureAI* GetAI_npc_eonars_gift(Creature* pCreature)
+{
+    return new npc_eonars_giftAI(pCreature);
+}
+
+/*######
+## npc_nature_bomb
+######*/
+
+struct MANGOS_DLL_DECL npc_nature_bombAI : public Scripted_NoMovementAI
+{
+    npc_nature_bombAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+    uint32 m_uiNatureBombTimer;
+
+    ObjectGuid m_natureBombGuid;
+
+    void Reset() override
+    {
+        m_uiNatureBombTimer = 10000;
+    }
+
+    void JustSummoned(GameObject* pGo) override
+    {
+        m_natureBombGuid = pGo->GetObjectGuid();
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiNatureBombTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_NATURE_BOMB : SPELL_NATURE_BOMB_H) == CAST_OK)
+            {
+                if (GameObject* pBomb = m_creature->GetMap()->GetGameObject(m_natureBombGuid))
+                    pBomb->Use(m_creature);
+
+                m_creature->ForcedDespawn(2000);
+                m_uiNatureBombTimer = 10000;
+            }
+        }
+        else
+            m_uiNatureBombTimer -= uiDiff;
+    }
+};
+
+CreatureAI* GetAI_npc_nature_bomb(Creature* pCreature)
+{
+    return new npc_nature_bombAI(pCreature);
+}
+
+/*######
+## npc_iron_roots
+######*/
+
+struct MANGOS_DLL_DECL npc_iron_rootsAI : public Scripted_NoMovementAI
+{
+    npc_iron_rootsAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+
+    void Reset() override { }
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+
+    void JustDied(Unit* /*pKiller*/) override
+    {
+        if (!m_creature->IsTemporarySummon())
+            return;
+
+        if (m_creature->GetEntry() == NPC_IRON_ROOTS)
+            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_IRON_ROOTS_REMOVE : SPELL_IRON_ROOTS_REMOVE_H, CAST_TRIGGERED);
+        else if (m_creature->GetEntry() == NPC_STRENGHENED_IRON_ROOTS)
+            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_STRENGTHEN_IRON_ROOTS : SPELL_STRENGTHEN_IRON_ROOTS_H, CAST_TRIGGERED);
+    }
+
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_iron_roots(Creature* pCreature)
+{
+    return new npc_iron_rootsAI(pCreature);
+}
+
+/*######
+## npc_healthy_spore
+######*/
+
+// TODO Remove this 'script' when combat can be proper prevented from core-side
+struct MANGOS_DLL_DECL npc_healthy_sporeAI : public Scripted_NoMovementAI
+{
+    npc_healthy_sporeAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature) { Reset(); }
+
+    void Reset() override
+    {
+        DoCastSpellIfCan(m_creature, SPELL_AUTO_GROW, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+        DoCastSpellIfCan(m_creature, SPELL_POTENT_PHEROMONES, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+        DoCastSpellIfCan(m_creature, SPELL_HEALTHY_SPORE_VISUAL, CAST_TRIGGERED | CAST_AURA_NOT_PRESENT);
+        m_creature->ForcedDespawn(25000);
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_healthy_spore(Creature* pCreature)
+{
+    return new npc_healthy_sporeAI(pCreature);
 }
 
 void AddSC_boss_freya()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_freya";
-    newscript->GetAI = &GetAI_boss_freya;
-    newscript->RegisterSelf();
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_elder_brightleaf";
-    newscript->GetAI = &GetAI_boss_elder_brightleaf;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_freya";
+    pNewScript->GetAI = GetAI_boss_freya;
+    pNewScript->pEffectScriptEffectNPC = &EffectScriptEffectCreature_boss_freya;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_elder_ironbranch";
-    newscript->GetAI = &GetAI_boss_elder_ironbranch;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_water_spirit";
+    pNewScript->GetAI = GetAI_npc_water_spirit;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "boss_elder_stonebark";
-    newscript->GetAI = &GetAI_boss_elder_stonebark;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_snaplasher";
+    pNewScript->GetAI = GetAI_npc_snaplasher;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_freya_ground";
-    newscript->GetAI = &GetAI_mob_freya_ground;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_storm_lasher";
+    pNewScript->GetAI = GetAI_npc_storm_lasher;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_freya_spawned";
-    newscript->GetAI = &GetAI_mob_freya_spawned;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_eonars_gift";
+    pNewScript->GetAI = GetAI_npc_eonars_gift;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_iron_roots";
-    newscript->GetAI = &GetAI_mob_iron_roots;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_nature_bomb";
+    pNewScript->GetAI = GetAI_npc_nature_bomb;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_iron_roots";
+    pNewScript->GetAI = GetAI_npc_iron_roots;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_healthy_spore";
+    pNewScript->GetAI = GetAI_npc_healthy_spore;
+    pNewScript->RegisterSelf();
 }

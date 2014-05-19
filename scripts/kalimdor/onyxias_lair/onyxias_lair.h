@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -24,6 +24,8 @@ enum
     ACHIEV_CRIT_MANY_WHELPS_H   = 12568,
     ACHIEV_CRIT_NO_BREATH_N     = 12566,                    // Acheivements 4404, 4407
     ACHIEV_CRIT_NO_BREATH_H     = 12569,
+
+    ACHIEV_START_ONYXIA_ID      = 6601,
 };
 
 class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
@@ -32,25 +34,21 @@ class MANGOS_DLL_DECL instance_onyxias_lair : public ScriptedInstance
         instance_onyxias_lair(Map* pMap);
         ~instance_onyxias_lair() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        bool IsEncounterInProgress() const;
+        bool IsEncounterInProgress() const override;
 
-        void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureCreate(Creature* pCreature) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
 
-        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/);
-
-        uint64 GetOnyxiaTriggerGUID() { return m_uiOnyxTriggerGUID; }
+        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/) const override;
 
     protected:
         uint32 m_uiEncounter;
         uint32 m_uiAchievWhelpsCount;
 
         time_t m_tPhaseTwoStart;
-
-        uint64 m_uiOnyxTriggerGUID;
 };
 
 #endif

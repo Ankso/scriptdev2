@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,97 +16,188 @@
 
 /* ScriptData
 SDName: pit_of_saron
-SD%Complete: 0
+SD%Complete: 100
 SDComment:
 SDCategory: Pit of Saron
 EndScriptData */
+
+/* ContentData
+EndContentData */
 
 #include "precompiled.h"
 #include "pit_of_saron.h"
 
 enum
 {
-    // Intro
-    SAY_TYRANNUS_INTRO_1                = -1658001,
-    SAY_JAINA_INTRO_1                   = -1658002,
-    SAY_SYLVANAS_INTRO_1                = -1658003,
-    SAY_TYRANNUS_INTRO_2                = -1658004,
-    SAY_TYRANNUS_INTRO_3                = -1658005,
-    SAY_JAINA_INTRO_2                   = -1658006,
-    SAY_SYLVANAS_INTRO_2                = -1658007,
-    SAY_TYRANNUS_INTRO_4                = -1658008,
-    SAY_JAINA_INTRO_3                   = -1658009,
-    SAY_JAINA_INTRO_4                   = -1658010,
-    SAY_SYLVANAS_INTRO_3                = -1658011,
-    SAY_JAINA_INTRO_5                   = -1658012,
-    SAY_SYLVANAS_INTRO_4                = -1658013,
+    // Ambush event
+    SPELL_EMPOWERED_SHADOW_BOLT         = 69528,
+    SPELL_SUMMON_UNDEAD                 = 69516,
 
-    // Ambush and Gauntlet
-    SAY_TYRANNUS_AMBUSH_1               = -1658047,
-    SAY_TYRANNUS_AMBUSH_2               = -1658048,
-    SAY_GAUNTLET                        = -1658049,
-
-    // Sindragosa outro
-    SAY_GENERAL_OUTRO_1                 = -1658061,
-    SAY_GENERAL_OUTRO_2                 = -1658062,
-    SAY_JAINA_OUTRO_1                   = -1658063,
-    SAY_SYLVANAS_OUTRO_1                = -1658064,
-    SAY_JAINA_OUTRO_2                   = -1658065,
-    SAY_JAINA_OUTRO_3                   = -1658066,
-    SAY_SYLVANAS_OUTRO_2                = -1658067,
+    // Icicles
+    SPELL_ICICLE                        = 69426,
+    SPELL_ICICLE_DUMMY                  = 69428,
+    SPELL_ICE_SHARDS_H                  = 70827,            // used to check the tunnel achievement
 };
 
-struct MANGOS_DLL_DECL npc_jaina_or_sylvanas_POSintroAI : public ScriptedAI
+/*######
+## npc_ymirjar_deathbringer
+######*/
+
+struct MANGOS_DLL_DECL npc_ymirjar_deathbringerAI : public ScriptedAI
 {
-   npc_jaina_or_sylvanas_POSintroAI(Creature *pCreature) : ScriptedAI(pCreature)
-   {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-   }
+    npc_ymirjar_deathbringerAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-   ScriptedInstance* m_pInstance;
+    uint32 m_uiShadowBoltTimer;
 
-   void Reset()
-   {
-   }
+    void Reset() override
+    {
+        m_uiShadowBoltTimer = urand(1000, 3000);
+    }
+
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
+    {
+        if (uiMotionType != POINT_MOTION_TYPE || !uiPointId)
+            return;
+
+        DoCastSpellIfCan(m_creature, SPELL_SUMMON_UNDEAD);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+
+        if (m_uiShadowBoltTimer < uiDiff)
+        {
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_EMPOWERED_SHADOW_BOLT) == CAST_OK)
+                    m_uiShadowBoltTimer = urand(2000, 3000);
+            }
+        }
+        else
+            m_uiShadowBoltTimer -= uiDiff;
+
+        DoMeleeAttackIfReady();
+    }
 };
 
-struct MANGOS_DLL_DECL npc_jaina_or_sylvanas_POSoutroAI : public ScriptedAI
+CreatureAI* GetAI_npc_ymirjar_deathbringer(Creature* pCreature)
 {
-   npc_jaina_or_sylvanas_POSoutroAI(Creature *pCreature) : ScriptedAI(pCreature)
-   {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        Reset();
-   }
-
-   ScriptedInstance* m_pInstance;
-
-   void Reset()
-   {
-   }
-};
-
-CreatureAI* GetAI_npc_jaina_or_sylvanas_POSintro(Creature* pCreature)
-{
-    return new npc_jaina_or_sylvanas_POSintroAI(pCreature);
+    return new npc_ymirjar_deathbringerAI(pCreature);
 }
 
-CreatureAI* GetAI_npc_jaina_or_sylvanas_POSoutro(Creature* pCreature)
+bool EffectDummyCreature_spell_summon_undead(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-    return new npc_jaina_or_sylvanas_POSoutroAI(pCreature);
+    // always check spellid and effectindex
+    if (uiSpellId == SPELL_SUMMON_UNDEAD && uiEffIndex == EFFECT_INDEX_0)
+    {
+        if (pCreatureTarget->GetEntry() != NPC_YMIRJAR_DEATHBRINGER)
+            return true;
+
+        float fX, fY, fZ;
+        for (uint8 i = 0; i < 4; ++i)
+        {
+            pCreatureTarget->GetNearPoint(pCreatureTarget, fX, fY, fZ, 0, frand(8.0f, 12.0f), M_PI_F * 0.5f * i);
+            pCreatureTarget->SummonCreature(i % 2 ? NPC_YMIRJAR_WRATHBRINGER : NPC_YMIRJAR_FLAMEBEARER, fX, fY, fZ, 3.75f, TEMPSUMMON_DEAD_DESPAWN, 0);
+        }
+
+        // always return true when we are handling this spell and effect
+        return true;
+    }
+
+    return false;
+}
+
+/*######
+## npc_collapsing_icicle
+######*/
+
+struct MANGOS_DLL_DECL npc_collapsing_icicleAI : public ScriptedAI
+{
+    npc_collapsing_icicleAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_pInstance = (instance_pit_of_saron*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    instance_pit_of_saron* m_pInstance;
+
+    void Reset() override
+    {
+        DoCastSpellIfCan(m_creature, SPELL_ICICLE_DUMMY, CAST_TRIGGERED);
+        DoCastSpellIfCan(m_creature, SPELL_ICICLE, CAST_TRIGGERED);
+    }
+
+    void SpellHitTarget(Unit* pTarget, const SpellEntry* pSpell) override
+    {
+        // Mark the achiev failed
+        if (pSpell->Id == SPELL_ICE_SHARDS_H && pTarget->GetTypeId() == TYPEID_PLAYER && m_pInstance)
+            m_pInstance->SetSpecialAchievementCriteria(TYPE_ACHIEV_DONT_LOOK_UP, false);
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_collapsing_icicle(Creature* pCreature)
+{
+    return new npc_collapsing_icicleAI(pCreature);
+}
+
+/*######
+## at_pit_of_saron
+######*/
+
+bool AreaTrigger_at_pit_of_saron(Player* pPlayer, AreaTriggerEntry const* pAt)
+{
+    if (pPlayer->isGameMaster() || !pPlayer->isAlive())
+        return false;
+
+    instance_pit_of_saron* pInstance = (instance_pit_of_saron*)pPlayer->GetInstanceData();
+    if (!pInstance)
+        return false;
+
+    if (pAt->id == AREATRIGGER_ID_TUNNEL_START)
+    {
+        if (pInstance->GetData(TYPE_GARFROST) != DONE || pInstance->GetData(TYPE_KRICK) != DONE ||
+                pInstance->GetData(TYPE_AMBUSH) != NOT_STARTED)
+            return false;
+
+        pInstance->DoStartAmbushEvent();
+        pInstance->SetData(TYPE_AMBUSH, IN_PROGRESS);
+        return true;
+    }
+    else if (pAt->id == AREATRIGGER_ID_TUNNEL_END)
+    {
+        if (pInstance->GetData(TYPE_AMBUSH) != IN_PROGRESS)
+            return false;
+
+        pInstance->SetData(TYPE_AMBUSH, DONE);
+        return true;
+    }
+
+    return false;
 }
 
 void AddSC_pit_of_saron()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name="npc_jaina_or_sylvanas_POSintro";
-    newscript->GetAI = &GetAI_npc_jaina_or_sylvanas_POSintro;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_ymirjar_deathbringer";
+    pNewScript->GetAI = &GetAI_npc_ymirjar_deathbringer;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_spell_summon_undead;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name="npc_jaina_or_sylvana_POSoutro";
-    newscript->GetAI = &GetAI_npc_jaina_or_sylvanas_POSoutro;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_collapsing_icicle";
+    pNewScript->GetAI = &GetAI_npc_collapsing_icicle;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "at_pit_of_saron";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_pit_of_saron;
+    pNewScript->RegisterSelf();
 }

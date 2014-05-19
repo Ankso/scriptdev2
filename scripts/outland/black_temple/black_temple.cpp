@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -46,7 +46,7 @@ bool GossipHello_npc_spirit_of_olum(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-bool GossipSelect_npc_spirit_of_olum(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_spirit_of_olum(Player* pPlayer, Creature* /*pCreature*/, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
         pPlayer->CLOSE_GOSSIP_MENU();
@@ -58,11 +58,11 @@ bool GossipSelect_npc_spirit_of_olum(Player* pPlayer, Creature* pCreature, uint3
 
 void AddSC_black_temple()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_spirit_of_olum";
-    newscript->pGossipHello = &GossipHello_npc_spirit_of_olum;
-    newscript->pGossipSelect = &GossipSelect_npc_spirit_of_olum;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_spirit_of_olum";
+    pNewScript->pGossipHello = &GossipHello_npc_spirit_of_olum;
+    pNewScript->pGossipSelect = &GossipSelect_npc_spirit_of_olum;
+    pNewScript->RegisterSelf();
 }

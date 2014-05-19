@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -29,7 +29,7 @@ EndContentData */
 #include "precompiled.h"
 #include "escort_ai.h"
 
- /*######
+/*######
 ## npc_00x09hl
 ######*/
 
@@ -51,11 +51,11 @@ struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
 {
     npc_00x09hlAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 26:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
@@ -71,12 +71,12 @@ struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
         }
     }
 
-    void WaypointStart(uint32 uiPointId)
+    void WaypointStart(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 27:
-                for(uint8 i = 0; i < 3; ++i)
+                for (uint8 i = 0; i < 3; ++i)
                 {
                     float fX, fY, fZ;
                     m_creature->GetRandomPoint(147.927444f, -3851.513428f, 130.893f, 7.0f, fX, fY, fZ);
@@ -85,7 +85,7 @@ struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
                 }
                 break;
             case 44:
-                for(uint8 i = 0; i < 3; ++i)
+                for (uint8 i = 0; i < 3; ++i)
                 {
                     float fX, fY, fZ;
                     m_creature->GetRandomPoint(-141.151581f, -4291.213867f, 120.130f, 7.0f, fX, fY, fZ);
@@ -96,7 +96,7 @@ struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (pWho->GetEntry() == NPC_MARAUDING_OWL || pWho->GetEntry() == NPC_VILE_AMBUSHER)
             return;
@@ -104,7 +104,7 @@ struct MANGOS_DLL_DECL npc_00x09hlAI : public npc_escortAI
         DoScriptText(urand(0, 1) ? SAY_OOX_AGGRO1 : SAY_OOX_AGGRO2, m_creature);
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ());
     }
@@ -115,7 +115,7 @@ bool QuestAccept_npc_00x09hl(Player* pPlayer, Creature* pCreature, const Quest* 
     if (pQuest->GetQuestId() == QUEST_RESQUE_OOX_09)
     {
         pCreature->SetStandState(UNIT_STAND_STATE_STAND);
-        pCreature->setFaction((pPlayer->GetTeam() == ALLIANCE) ? FACTION_ESCORT_A_PASSIVE : FACTION_ESCORT_H_PASSIVE);
+        pCreature->SetFactionTemporary(pPlayer->GetTeam() == ALLIANCE ? FACTION_ESCORT_A_PASSIVE : FACTION_ESCORT_H_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         DoScriptText(SAY_OOX_START, pCreature, pPlayer);
 
@@ -181,13 +181,13 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
     uint32 m_uiPostEventTimer;
     int m_iSpawnId;
 
-    void Reset()
+    void Reset() override
     {
         m_uiPostEventCount = 0;
         m_uiPostEventTimer = 3000;
     }
 
-    void JustRespawned()
+    void JustRespawned() override
     {
         m_bIsByOutrunner = false;
         m_iSpawnId = 0;
@@ -195,7 +195,7 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
         npc_escortAI::JustRespawned();
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -208,7 +208,7 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
             if (urand(0, 3))
                 return;
 
-            //only if attacked and escorter is not in combat?
+            // only if attacked and escorter is not in combat?
             DoScriptText(urand(0, 1) ? SAY_RIN_HELP_1 : SAY_RIN_HELP_2, m_creature);
         }
     }
@@ -219,31 +219,31 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
             m_iSpawnId = 1;
 
         m_creature->SummonCreature(NPC_RANGER,
-            m_afAmbushSpawn[m_iSpawnId].m_fX, m_afAmbushSpawn[m_iSpawnId].m_fY, m_afAmbushSpawn[m_iSpawnId].m_fZ, 0.0f,
-            TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
+                                   m_afAmbushSpawn[m_iSpawnId].m_fX, m_afAmbushSpawn[m_iSpawnId].m_fY, m_afAmbushSpawn[m_iSpawnId].m_fZ, 0.0f,
+                                   TEMPSUMMON_TIMED_OOC_OR_CORPSE_DESPAWN, 60000);
 
-        for(int i = 0; i < 2; ++i)
+        for (int i = 0; i < 2; ++i)
         {
             m_creature->SummonCreature(NPC_OUTRUNNER,
-                m_afAmbushSpawn[m_iSpawnId].m_fX, m_afAmbushSpawn[m_iSpawnId].m_fY, m_afAmbushSpawn[m_iSpawnId].m_fZ, 0.0f,
-                TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 60000);
+                                       m_afAmbushSpawn[m_iSpawnId].m_fX, m_afAmbushSpawn[m_iSpawnId].m_fY, m_afAmbushSpawn[m_iSpawnId].m_fZ, 0.0f,
+                                       TEMPSUMMON_TIMED_OOC_OR_CORPSE_DESPAWN, 60000);
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
-        pSummoned->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+        m_creature->SetWalk(false);
         pSummoned->GetMotionMaster()->MovePoint(0, m_afAmbushMoveTo[m_iSpawnId].m_fX, m_afAmbushMoveTo[m_iSpawnId].m_fY, m_afAmbushMoveTo[m_iSpawnId].m_fZ);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 1:
                 DoScriptText(SAY_RIN_FREE, m_creature, pPlayer);
@@ -263,9 +263,9 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
-        //Check if we have a current target
+        // Check if we have a current target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
             if (HasEscortState(STATE_ESCORT_ESCORTING) && m_uiPostEventCount)
@@ -276,7 +276,7 @@ struct MANGOS_DLL_DECL npc_rinjiAI : public npc_escortAI
 
                     if (Player* pPlayer = GetPlayerForEscort())
                     {
-                        switch(m_uiPostEventCount)
+                        switch (m_uiPostEventCount)
                         {
                             case 1:
                                 DoScriptText(SAY_RIN_PROGRESS_1, m_creature, pPlayer);

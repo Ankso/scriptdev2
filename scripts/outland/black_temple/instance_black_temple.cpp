@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -36,28 +36,7 @@ EndScriptData */
 8 - Illidan Stormrage Event
 */
 
-instance_black_temple::instance_black_temple(Map* pMap) : ScriptedInstance(pMap),
-    m_uiNajentusGUID(0),
-    m_uiAkamaGUID(0),
-    m_uiAkama_ShadeGUID(0),
-    m_uiShadeOfAkamaGUID(0),
-    m_uiSupremusGUID(0),
-    m_uiLadyMalandeGUID(0),
-    m_uiGathiosTheShattererGUID(0),
-    m_uiHighNethermancerZerevorGUID(0),
-    m_uiVerasDarkshadowGUID(0),
-    m_uiIllidariCouncilGUID(0),
-    m_uiBloodElfCouncilVoiceGUID(0),
-    m_uiIllidanStormrageGUID(0),
-
-    m_uiNajentusGateGUID(0),
-    m_uiMainTempleDoorsGUID(0),
-    m_uiShadeAkamaDoorGUID(0),
-    m_uiIllidanGateGUID(0),
-    m_uiShahrazPreDoorGUID(0),
-    m_uiShahrazPostDoorGUID(0),
-    m_uiPreCouncilDoorGUID(0),
-    m_uiCouncilDoorGUID(0)
+instance_black_temple::instance_black_temple(Map* pMap) : ScriptedInstance(pMap)
 {
     Initialize();
 };
@@ -65,145 +44,182 @@ instance_black_temple::instance_black_temple(Map* pMap) : ScriptedInstance(pMap)
 void instance_black_temple::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+}
 
-    m_uiIllidanDoorGUID[0] = 0;
-    m_uiIllidanDoorGUID[1] = 0;
+void instance_black_temple::OnPlayerEnter(Player* /*pPlayer*/)
+{
+    DoSpawnAkamaIfCan();
 }
 
 bool instance_black_temple::IsEncounterInProgress() const
 {
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-        if (m_auiEncounter[i] == IN_PROGRESS) return true;
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            return true;
+    }
 
     return false;
 }
 
 void instance_black_temple::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
-        case NPC_WARLORD_NAJENTUS:  m_uiNajentusGUID                = pCreature->GetGUID(); break;
-        case NPC_AKAMA:             m_uiAkamaGUID                   = pCreature->GetGUID(); break;
-        case NPC_AKAMA_SHADE:       m_uiAkama_ShadeGUID             = pCreature->GetGUID(); break;
-        case NPC_SHADE_OF_AKAMA:    m_uiShadeOfAkamaGUID            = pCreature->GetGUID(); break;
-        case NPC_SUPREMUS:          m_uiSupremusGUID                = pCreature->GetGUID(); break;
-        case NPC_ILLIDAN_STORMRAGE: m_uiIllidanStormrageGUID        = pCreature->GetGUID(); break;
-        case NPC_GATHIOS:           m_uiGathiosTheShattererGUID     = pCreature->GetGUID(); break;
-        case NPC_ZEREVOR:           m_uiHighNethermancerZerevorGUID = pCreature->GetGUID(); break;
-        case NPC_LADY_MALANDE:      m_uiLadyMalandeGUID             = pCreature->GetGUID(); break;
-        case NPC_VERAS:             m_uiVerasDarkshadowGUID         = pCreature->GetGUID(); break;
-        case NPC_ILLIDARI_COUNCIL:  m_uiIllidariCouncilGUID         = pCreature->GetGUID(); break;
-        case NPC_COUNCIL_VOICE:     m_uiBloodElfCouncilVoiceGUID    = pCreature->GetGUID(); break;
+        case NPC_SPIRIT_OF_OLUM:
+        case NPC_SPIRIT_OF_UDALO:
+            // Use only the summoned versions
+            if (!pCreature->IsTemporarySummon())
+                break;
+        case NPC_AKAMA:
+        case NPC_ILLIDAN_STORMRAGE:
+        case NPC_MAIEV_SHADOWSONG:
+        case NPC_AKAMA_SHADE:
+        case NPC_SHADE_OF_AKAMA:
+        case NPC_RELIQUARY_OF_SOULS:
+        case NPC_GATHIOS:
+        case NPC_ZEREVOR:
+        case NPC_LADY_MALANDE:
+        case NPC_VERAS:
+        case NPC_ILLIDARI_COUNCIL:
+        case NPC_COUNCIL_VOICE:
+        case NPC_ILLIDAN_DOOR_TRIGGER:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+        case NPC_ASH_CHANNELER:
+            m_lChannelersGuidList.push_back(pCreature->GetObjectGuid());
+            break;
+        case NPC_CREATURE_GENERATOR:
+            m_vCreatureGeneratorGuidVector.push_back(pCreature->GetObjectGuid());
+            break;
+        case NPC_GLAIVE_TARGET:
+            m_vGlaiveTargetGuidVector.push_back(pCreature->GetObjectGuid());
+            break;
     }
 }
 
 void instance_black_temple::OnObjectCreate(GameObject* pGo)
 {
-    switch(pGo->GetEntry())
+    switch (pGo->GetEntry())
     {
         case GO_NAJENTUS_GATE:                              // Gate past Naj'entus (at the entrance to Supermoose's courtyards)
-            m_uiNajentusGateGUID = pGo->GetGUID();
             if (m_auiEncounter[TYPE_NAJENTUS] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_SUPREMUS_DOORS:                             // Main Temple Doors - right past Supermoose (Supremus)
-            m_uiMainTempleDoorsGUID = pGo->GetGUID();
             if (m_auiEncounter[TYPE_SUPREMUS] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_SHADE_OF_AKAMA:                             // Door close during encounter
-            m_uiShadeAkamaDoorGUID = pGo->GetGUID();
+        case GO_GOREFIEND_DOOR:                             // Door close during encounter
             break;
-        case GO_PRE_SHAHRAZ_DOOR:                           // Door leading to Mother Shahraz
-            m_uiShahrazPreDoorGUID = pGo->GetGUID();
-            if (CanPreMotherDoorOpen())
+        case GO_GURTOGG_DOOR:                               // Door opens after encounter
+            if (m_auiEncounter[TYPE_BLOODBOIL] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
-        case GO_POST_SHAHRAZ_DOOR:                           // Door after shahraz
-            m_uiShahrazPostDoorGUID = pGo->GetGUID();
-            if (m_auiEncounter[6] == DONE)
+        case GO_PRE_SHAHRAZ_DOOR:                           // Door leading to Mother Shahraz
+            if (m_auiEncounter[TYPE_SHADE] == DONE && m_auiEncounter[TYPE_GOREFIEND] == DONE && m_auiEncounter[TYPE_BLOODBOIL] == DONE && m_auiEncounter[TYPE_RELIQUIARY] == DONE)
+                pGo->SetGoState(GO_STATE_ACTIVE);
+            break;
+        case GO_POST_SHAHRAZ_DOOR:                          // Door after shahraz
+            if (m_auiEncounter[TYPE_SHAHRAZ] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_PRE_COUNCIL_DOOR:                           // Door leading to the Council (grand promenade)
-            m_uiPreCouncilDoorGUID = pGo->GetGUID();
-            break;
         case GO_COUNCIL_DOOR:                               // Door leading to the Council (inside)
-            m_uiCouncilDoorGUID = pGo->GetGUID();
-            break;
         case GO_ILLIDAN_GATE:                               // Gate leading to Temple Summit
-            m_uiIllidanGateGUID = pGo->GetGUID();
-            // TODO - dependend on council state
-            break;
         case GO_ILLIDAN_DOOR_R:                             // Right door at Temple Summit
-            m_uiIllidanDoorGUID[0] = pGo->GetGUID();
-            break;
         case GO_ILLIDAN_DOOR_L:                             // Left door at Temple Summit
-            m_uiIllidanDoorGUID[1] = pGo->GetGUID();
             break;
-    }
-}
 
-bool instance_black_temple::CanPreMotherDoorOpen()
-{
-    if (m_auiEncounter[TYPE_SHADE] == DONE && m_auiEncounter[TYPE_GOREFIEND] == DONE && m_auiEncounter[TYPE_BLOODBOIL] == DONE && m_auiEncounter[TYPE_RELIQUIARY] == DONE)
-    {
-        debug_log("SD2: Black Temple: door to Mother Shahraz can open");
-        return true;
+        default:
+            return;
     }
-
-    debug_log("SD2: Black Temple: Door data to Mother Shahraz requested, cannot open yet (Encounter data: %u %u %u %u)",m_auiEncounter[2],m_auiEncounter[3],m_auiEncounter[4],m_auiEncounter[5]);
-    return false;
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_black_temple::SetData(uint32 uiType, uint32 uiData)
 {
-    debug_log("SD2: Instance Black Temple: SetData received for type %u with data %u",uiType,uiData);
-
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_NAJENTUS:
             m_auiEncounter[uiType] = uiData;
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiNajentusGateGUID);
+                DoUseDoorOrButton(GO_NAJENTUS_GATE);
             break;
         case TYPE_SUPREMUS:
             m_auiEncounter[uiType] = uiData;
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiMainTempleDoorsGUID);
+                DoUseDoorOrButton(GO_SUPREMUS_DOORS);
             break;
         case TYPE_SHADE:
             m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE && CanPreMotherDoorOpen())
-                DoUseDoorOrButton(m_uiShahrazPreDoorGUID);
+            // combat door
+            DoUseDoorOrButton(GO_SHADE_OF_AKAMA);
+            if (uiData == FAIL)
+            {
+                // Reset channelers on fail
+                for (GuidList::const_iterator itr = m_lChannelersGuidList.begin(); itr != m_lChannelersGuidList.end(); ++itr)
+                {
+                    if (Creature* pChanneler = instance->GetCreature(*itr))
+                    {
+                        if (!pChanneler->isAlive())
+                            pChanneler->Respawn();
+                        else
+                            pChanneler->AI()->EnterEvadeMode();
+                    }
+                }
+            }
+            if (uiData == DONE)
+                DoOpenPreMotherDoor();
             break;
         case TYPE_GOREFIEND:
             m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE && CanPreMotherDoorOpen())
-                DoUseDoorOrButton(m_uiShahrazPreDoorGUID);
+            DoUseDoorOrButton(GO_GOREFIEND_DOOR);
+            if (uiData == DONE)
+                DoOpenPreMotherDoor();
             break;
         case TYPE_BLOODBOIL:
             m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE && CanPreMotherDoorOpen())
-                DoUseDoorOrButton(m_uiShahrazPreDoorGUID);
+            if (uiData == DONE)
+            {
+                DoOpenPreMotherDoor();
+                DoUseDoorOrButton(GO_GURTOGG_DOOR);
+            }
             break;
         case TYPE_RELIQUIARY:
             m_auiEncounter[uiType] = uiData;
-            if (uiData == DONE && CanPreMotherDoorOpen())
-                DoUseDoorOrButton(m_uiShahrazPreDoorGUID);
+            if (uiData == DONE)
+                DoOpenPreMotherDoor();
             break;
         case TYPE_SHAHRAZ:
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiShahrazPostDoorGUID);
+                DoUseDoorOrButton(GO_POST_SHAHRAZ_DOOR);
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_COUNCIL:
-            DoUseDoorOrButton(m_uiCouncilDoorGUID);
+            // Don't set the same data twice
+            if (m_auiEncounter[uiType] == uiData)
+                return;
+            DoUseDoorOrButton(GO_COUNCIL_DOOR);
+            m_auiEncounter[uiType] = uiData;
+            if (uiData == DONE)
+                DoSpawnAkamaIfCan();
+            break;
+        case TYPE_ILLIDAN:
+            DoUseDoorOrButton(GO_ILLIDAN_DOOR_R);
+            DoUseDoorOrButton(GO_ILLIDAN_DOOR_L);
+            if (uiData == FAIL)
+            {
+                // Cleanup encounter
+                DoSpawnAkamaIfCan();
+                DoUseDoorOrButton(GO_ILLIDAN_GATE);
+            }
             m_auiEncounter[uiType] = uiData;
             break;
-        case TYPE_ILLIDAN:    m_auiEncounter[uiType] = uiData; break;
         default:
-            error_log("SD2: Instance Black Temple: ERROR SetData = %u for type %u does not exist/not implemented.", uiType, uiData);
-            break;
+            script_error_log("Instance Black Temple: ERROR SetData = %u for type %u does not exist/not implemented.", uiType, uiData);
+            return;
     }
 
     if (uiData == DONE)
@@ -212,8 +228,8 @@ void instance_black_temple::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-            << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
-            << m_auiEncounter[6] << " " << m_auiEncounter[7] << " " << m_auiEncounter[8];
+                   << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
+                   << m_auiEncounter[6] << " " << m_auiEncounter[7] << " " << m_auiEncounter[8];
 
         m_strInstData = saveStream.str();
 
@@ -222,52 +238,32 @@ void instance_black_temple::SetData(uint32 uiType, uint32 uiData)
     }
 }
 
-uint32 instance_black_temple::GetData(uint32 uiType)
+uint32 instance_black_temple::GetData(uint32 uiType) const
 {
-    switch(uiType)
-    {
-        case TYPE_NAJENTUS:   return m_auiEncounter[0];
-        case TYPE_SUPREMUS:   return m_auiEncounter[1];
-        case TYPE_SHADE:      return m_auiEncounter[2];
-        case TYPE_GOREFIEND:  return m_auiEncounter[3];
-        case TYPE_BLOODBOIL:  return m_auiEncounter[4];
-        case TYPE_RELIQUIARY: return m_auiEncounter[5];
-        case TYPE_SHAHRAZ:    return m_auiEncounter[6];
-        case TYPE_COUNCIL:    return m_auiEncounter[7];
-        case TYPE_ILLIDAN:    return m_auiEncounter[8];
-        default:
-            return 0;
-    }
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
 }
 
-uint64 instance_black_temple::GetData64(uint32 uiData)
+void instance_black_temple::DoOpenPreMotherDoor()
 {
-    switch(uiData)
-    {
-        case NPC_WARLORD_NAJENTUS:           return m_uiNajentusGUID;
-        case NPC_AKAMA:                      return m_uiAkamaGUID;
-        case NPC_AKAMA_SHADE:                return m_uiAkama_ShadeGUID;
-        case NPC_SHADE_OF_AKAMA:             return m_uiShadeOfAkamaGUID;
-        case NPC_SUPREMUS:                   return m_uiSupremusGUID;
-        case NPC_ILLIDAN_STORMRAGE:          return m_uiIllidanStormrageGUID;
-        case NPC_GATHIOS:                    return m_uiGathiosTheShattererGUID;
-        case NPC_ZEREVOR:                    return m_uiHighNethermancerZerevorGUID;
-        case NPC_LADY_MALANDE:               return m_uiLadyMalandeGUID;
-        case NPC_VERAS:                      return m_uiVerasDarkshadowGUID;
-        case NPC_ILLIDARI_COUNCIL:           return m_uiIllidariCouncilGUID;
-        case GO_NAJENTUS_GATE:               return m_uiNajentusGateGUID;
-        case GO_ILLIDAN_GATE:                return m_uiIllidanGateGUID;
-        case GO_ILLIDAN_DOOR_R:              return m_uiIllidanDoorGUID[0];
-        case GO_ILLIDAN_DOOR_L:              return m_uiIllidanDoorGUID[1];
-        case GO_SUPREMUS_DOORS:              return m_uiMainTempleDoorsGUID;
-        case NPC_COUNCIL_VOICE:              return m_uiBloodElfCouncilVoiceGUID;
-        case GO_PRE_SHAHRAZ_DOOR:            return m_uiShahrazPreDoorGUID;
-        case GO_POST_SHAHRAZ_DOOR:           return m_uiShahrazPostDoorGUID;
-        case GO_PRE_COUNCIL_DOOR:            return m_uiPreCouncilDoorGUID;
-        case GO_COUNCIL_DOOR:                return m_uiCouncilDoorGUID;
-        default:
-            return 0;
-    }
+    if (GetData(TYPE_SHADE) == DONE && GetData(TYPE_GOREFIEND) == DONE && GetData(TYPE_BLOODBOIL) == DONE && GetData(TYPE_RELIQUIARY) == DONE)
+        DoUseDoorOrButton(GO_PRE_SHAHRAZ_DOOR);
+}
+
+void instance_black_temple::DoSpawnAkamaIfCan()
+{
+    if (GetData(TYPE_ILLIDAN) == DONE || GetData(TYPE_COUNCIL) != DONE)
+        return;
+
+    // If already spawned return
+    if (GetSingleCreatureFromStorage(NPC_AKAMA, true))
+        return;
+
+    // Summon Akama after the council has been defeated
+    if (Player* pPlayer = GetPlayerInMap())
+        pPlayer->SummonCreature(NPC_AKAMA, 617.754f, 307.768f, 271.735f, 6.197f, TEMPSUMMON_DEAD_DESPAWN, 0);
 }
 
 void instance_black_temple::Load(const char* chrIn)
@@ -282,11 +278,13 @@ void instance_black_temple::Load(const char* chrIn)
 
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-        >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7] >> m_auiEncounter[8];
+               >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7] >> m_auiEncounter[8];
 
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
         if (m_auiEncounter[i] == IN_PROGRESS)            // Do not load an encounter as "In Progress" - reset it instead.
             m_auiEncounter[i] = NOT_STARTED;
+    }
 
     OUT_LOAD_INST_DATA_COMPLETE;
 }

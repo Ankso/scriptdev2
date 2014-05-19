@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,20 +17,18 @@
 /* ScriptData
 SDName: Dustwallow_Marsh
 SD%Complete: 95
-SDComment: Quest support: 558, 1173, 1273, 1324, 11209, 11126, 11142, 11180. Vendor Nat Pagle
+SDComment: Quest support: 1173, 1222, 1270, 1273, 1324, 11209, 11180.
 SDCategory: Dustwallow Marsh
 EndScriptData */
 
 /* ContentData
 mobs_risen_husk_spirit
 npc_restless_apparition
-npc_deserter_agitator
-npc_lady_jaina_proudmoore
 npc_morokk
-npc_nat_pagle
 npc_ogron
 npc_private_hendel
-npc_cassa_crimsonwing
+npc_stinky_ignatz
+at_nats_landing
 EndContentData */
 
 #include "precompiled.h"
@@ -44,12 +42,11 @@ enum
 {
     QUEST_WHATS_HAUNTING_WITCH_HILL  = 11180,
     SPELL_SUMMON_RESTLESS_APPARITION = 42511,
-    SPELL_CONSUME_FLESH              = 37933,               //Risen Husk
-    SPELL_INTANGIBLE_PRESENCE        = 43127,               //Risen Spirit
+    SPELL_CONSUME_FLESH              = 37933,               // Risen Husk
+    SPELL_INTANGIBLE_PRESENCE        = 43127,               // Risen Spirit
     NPC_RISEN_HUSK                   = 23555,
     NPC_RISEN_SPIRIT                 = 23554
 };
-
 
 struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
 {
@@ -60,7 +57,7 @@ struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
 
     Player* m_pCreditPlayer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiConsumeFlesh_Timer = 10000;
         m_uiIntangiblePresence_Timer = 5000;
@@ -68,13 +65,13 @@ struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
         m_pCreditPlayer = NULL;
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (m_pCreditPlayer)
             m_pCreditPlayer->KilledMonsterCredit(pSummoned->GetEntry(), pSummoned->GetObjectGuid());
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
     {
         if (uiDamage < m_creature->GetHealth())
             return;
@@ -89,7 +86,7 @@ struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -97,7 +94,7 @@ struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
         if (m_uiConsumeFlesh_Timer < uiDiff)
         {
             if (m_creature->GetEntry() == NPC_RISEN_HUSK)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_CONSUME_FLESH);
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_CONSUME_FLESH);
 
             m_uiConsumeFlesh_Timer = 15000;
         }
@@ -107,7 +104,7 @@ struct MANGOS_DLL_DECL mobs_risen_husk_spiritAI : public ScriptedAI
         if (m_uiIntangiblePresence_Timer < uiDiff)
         {
             if (m_creature->GetEntry() == NPC_RISEN_SPIRIT)
-                DoCastSpellIfCan(m_creature->getVictim(),SPELL_INTANGIBLE_PRESENCE);
+                DoCastSpellIfCan(m_creature->getVictim(), SPELL_INTANGIBLE_PRESENCE);
 
             m_uiIntangiblePresence_Timer = 20000;
         }
@@ -145,19 +142,19 @@ struct MANGOS_DLL_DECL npc_restless_apparitionAI : public ScriptedAI
 
     uint32 m_uiTalk_Timer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiTalk_Timer = 1000;
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_uiTalk_Timer)
             return;
 
         if (m_uiTalk_Timer <= uiDiff)
         {
-            switch(urand(0, 7))
+            switch (urand(0, 7))
             {
                 case 0: DoScriptText(SAY_RAND_1, m_creature); break;
                 case 1: DoScriptText(SAY_RAND_2, m_creature); break;
@@ -179,79 +176,6 @@ struct MANGOS_DLL_DECL npc_restless_apparitionAI : public ScriptedAI
 CreatureAI* GetAI_npc_restless_apparition(Creature* pCreature)
 {
     return new npc_restless_apparitionAI(pCreature);
-}
-
-/*######
-## npc_deserter_agitator
-######*/
-
-enum
-{
-    QUEST_TRAITORS_AMONG_US = 11126,
-    FACTION_THER_DESERTER   = 1883
-};
-
-struct MANGOS_DLL_DECL npc_deserter_agitatorAI : public ScriptedAI
-{
-    npc_deserter_agitatorAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
-
-    void Reset()
-    {
-        m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-    }
-};
-
-CreatureAI* GetAI_npc_deserter_agitator(Creature* pCreature)
-{
-    return new npc_deserter_agitatorAI(pCreature);
-}
-
-bool GossipHello_npc_deserter_agitator(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(QUEST_TRAITORS_AMONG_US) == QUEST_STATUS_INCOMPLETE)
-    {
-        pCreature->setFaction(FACTION_THER_DESERTER);
-        pPlayer->TalkedToCreature(pCreature->GetEntry(), pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-/*######
-## npc_lady_jaina_proudmoore
-######*/
-
-enum
-{
-    QUEST_JAINAS_AUTOGRAPH = 558,
-    SPELL_JAINAS_AUTOGRAPH = 23122
-};
-
-#define GOSSIP_ITEM_JAINA "I know this is rather silly but i have a young ward who is a bit shy and would like your autograph."
-
-bool GossipHello_npc_lady_jaina_proudmoore(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestStatus(QUEST_JAINAS_AUTOGRAPH) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_JAINA, GOSSIP_SENDER_MAIN, GOSSIP_SENDER_INFO);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_lady_jaina_proudmoore(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_SENDER_INFO)
-    {
-        pPlayer->SEND_GOSSIP_MENU(7012, pCreature->GetObjectGuid());
-        pPlayer->CastSpell(pPlayer, SPELL_JAINAS_AUTOGRAPH, false);
-    }
-    return true;
 }
 
 /*######
@@ -279,11 +203,11 @@ struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
 
     bool m_bIsSuccess;
 
-    void Reset() {}
+    void Reset() override {}
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 0:
                 SetEscortPaused(true);
@@ -300,7 +224,7 @@ struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
         }
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (m_creature->getVictim())
             return;
@@ -311,7 +235,7 @@ struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
         AttackStart(pAttacker);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void DamageTaken(Unit* /*pDoneBy*/, uint32& uiDamage) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -330,7 +254,7 @@ struct MANGOS_DLL_DECL npc_morokkAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 /*uiDiff*/) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
@@ -370,38 +294,6 @@ bool QuestAccept_npc_morokk(Player* pPlayer, Creature* pCreature, const Quest* p
     }
 
     return false;
-}
-/*######
-## npc_nat_pagle
-######*/
-
-enum
-{
-    QUEST_NATS_MEASURING_TAPE = 8227
-};
-
-bool GossipHello_npc_nat_pagle(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pCreature->isVendor() && pPlayer->GetQuestRewardStatus(QUEST_NATS_MEASURING_TAPE))
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-        pPlayer->SEND_GOSSIP_MENU(7640, pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(7638, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_nat_pagle(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_TRADE)
-        pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
-
-    return true;
 }
 
 /*######
@@ -449,8 +341,8 @@ enum
     PHASE_COMPLETE                      = 3
 };
 
-static float m_afSpawn[] = {-3383.501953f, -3203.383301f, 36.149f};
-static float m_afMoveTo[] = {-3371.414795f, -3212.179932f, 34.210f};
+static float m_afSpawn[] = { -3383.501953f, -3203.383301f, 36.149f};
+static float m_afMoveTo[] = { -3371.414795f, -3212.179932f, 34.210f};
 
 struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
 {
@@ -468,7 +360,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
     uint32 m_uiPhaseCounter;
     uint32 m_uiGlobalTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiGlobalTimer = 5000;
 
@@ -483,7 +375,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
         }
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING) && pWho->GetEntry() == NPC_REETHE && lCreatureList.empty())
             lCreatureList.push_back((Creature*)pWho);
@@ -495,7 +387,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
     {
         if (!lCreatureList.empty())
         {
-            for(std::list<Creature*>::iterator itr = lCreatureList.begin(); itr != lCreatureList.end(); ++itr)
+            for (std::list<Creature*>::iterator itr = lCreatureList.begin(); itr != lCreatureList.end(); ++itr)
             {
                 if ((*itr)->GetEntry() == uiCreatureEntry && (*itr)->isAlive())
                     return (*itr);
@@ -505,9 +397,9 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
         return NULL;
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 9:
                 DoScriptText(SAY_OGR_SPOT, m_creature);
@@ -522,7 +414,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         lCreatureList.push_back(pSummoned);
 
@@ -534,9 +426,9 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
         {
             if (Creature* pCaldwell = GetCreature(NPC_CALDWELL))
             {
-                //will this conversion work without compile warning/error?
+                // will this conversion work without compile warning/error?
                 size_t iSize = lCreatureList.size();
-                pSummoned->GetMotionMaster()->MoveFollow(pCaldwell, 0.5f, (M_PI/2)*(int)iSize);
+                pSummoned->GetMotionMaster()->MoveFollow(pCaldwell, 0.5f, (M_PI / 2) * (int)iSize);
             }
         }
     }
@@ -545,7 +437,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
     {
         if (!lCreatureList.empty())
         {
-            for(std::list<Creature*>::iterator itr = lCreatureList.begin(); itr != lCreatureList.end(); ++itr)
+            for (std::list<Creature*>::iterator itr = lCreatureList.begin(); itr != lCreatureList.end(); ++itr)
             {
                 if ((*itr)->GetEntry() == NPC_REETHE)
                     continue;
@@ -559,7 +451,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
@@ -569,11 +461,11 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
                 {
                     m_uiGlobalTimer = 5000;
 
-                    switch(m_uiPhase)
+                    switch (m_uiPhase)
                     {
                         case PHASE_INTRO:
                         {
-                            switch(m_uiPhaseCounter)
+                            switch (m_uiPhaseCounter)
                             {
                                 case 0:
                                     if (Creature* pReethe = GetCreature(NPC_REETHE))
@@ -599,10 +491,10 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
                                     if (Creature* pReethe = GetCreature(NPC_REETHE))
                                         DoScriptText(SAY_OGR_RET_HEAR, pReethe);
 
-                                    m_creature->SummonCreature(NPC_CALDWELL, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000);
-                                    m_creature->SummonCreature(NPC_HALLAN, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000);
-                                    m_creature->SummonCreature(NPC_SKIRMISHER, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000);
-                                    m_creature->SummonCreature(NPC_SKIRMISHER, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 300000);
+                                    m_creature->SummonCreature(NPC_CALDWELL, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
+                                    m_creature->SummonCreature(NPC_HALLAN, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
+                                    m_creature->SummonCreature(NPC_SKIRMISHER, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
+                                    m_creature->SummonCreature(NPC_SKIRMISHER, m_afSpawn[0], m_afSpawn[1], m_afSpawn[2], 0.0f, TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 300000);
 
                                     m_uiPhase = PHASE_GUESTS;
                                     break;
@@ -611,7 +503,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
                         }
                         case PHASE_GUESTS:
                         {
-                            switch(m_uiPhaseCounter)
+                            switch (m_uiPhaseCounter)
                             {
                                 case 6:
                                     if (Creature* pCaldwell = GetCreature(NPC_CALDWELL))
@@ -652,7 +544,7 @@ struct MANGOS_DLL_DECL npc_ogronAI : public npc_escortAI
                         }
                         case PHASE_COMPLETE:
                         {
-                            switch(m_uiPhaseCounter)
+                            switch (m_uiPhaseCounter)
                             {
                                 case 12:
                                     if (Player* pPlayer = GetPlayerForEscort())
@@ -695,7 +587,7 @@ bool QuestAccept_npc_ogron(Player* pPlayer, Creature* pCreature, const Quest* pQ
         if (npc_ogronAI* pEscortAI = dynamic_cast<npc_ogronAI*>(pCreature->AI()))
         {
             pEscortAI->Start(false, pPlayer, pQuest, true);
-            pCreature->setFaction(FACTION_ESCORT_N_FRIEND_PASSIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_N_FRIEND_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
             DoScriptText(SAY_OGR_START, pCreature, pPlayer);
         }
     }
@@ -721,25 +613,21 @@ enum
     EMOTE_SURRENDER             = -1000415,
 
     QUEST_MISSING_DIPLO_PT16    = 1324,
-    FACTION_HOSTILE             = 168,                      //guessed, may be different
+    FACTION_HOSTILE             = 168,                      // guessed, may be different
 
-    NPC_SENTRY                  = 5184,                     //helps hendel
-    NPC_JAINA                   = 4968,                     //appears once hendel gives up
+    NPC_SENTRY                  = 5184,                     // helps hendel
+    NPC_JAINA                   = 4968,                     // appears once hendel gives up
     NPC_TERVOSH                 = 4967
 };
 
-//TODO: develop this further, end event not created
+// TODO: develop this further, end event not created
 struct MANGOS_DLL_DECL npc_private_hendelAI : public ScriptedAI
 {
     npc_private_hendelAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    void Reset()
-    {
-        if (m_creature->getFaction() != m_creature->GetCreatureInfo()->faction_A)
-            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-    }
+    void Reset() override {}
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (m_creature->getVictim())
             return;
@@ -750,7 +638,7 @@ struct MANGOS_DLL_DECL npc_private_hendelAI : public ScriptedAI
         AttackStart(pAttacker);
     }
 
-    void DamageTaken(Unit* pDoneBy, uint32 &uiDamage)
+    void DamageTaken(Unit* pDoneBy, uint32& uiDamage) override
     {
         if (uiDamage > m_creature->GetHealth() || m_creature->GetHealthPercent() < 20.0f)
         {
@@ -765,10 +653,10 @@ struct MANGOS_DLL_DECL npc_private_hendelAI : public ScriptedAI
     }
 };
 
-bool QuestAccept_npc_private_hendel(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
+bool QuestAccept_npc_private_hendel(Player* /*pPlayer*/, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_MISSING_DIPLO_PT16)
-        pCreature->setFaction(FACTION_HOSTILE);
+        pCreature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_COMBAT_STOP | TEMPFACTION_RESTORE_RESPAWN);
 
     return true;
 }
@@ -778,34 +666,99 @@ CreatureAI* GetAI_npc_private_hendel(Creature* pCreature)
     return new npc_private_hendelAI(pCreature);
 }
 
-/*######
-## npc_cassa_crimsonwing
-######*/
+/*#####
+## npc_stinky_ignatz
+## TODO Note: Possible some dynamic behaviour is missing. Faction change is guessed
+#####*/
 
 enum
 {
-    QUEST_SURVEY_ALCAZ          = 11142,
-    SPELL_ALCAZ_SURVEY          = 42295
+    QUEST_ID_STINKYS_ESCAPE_ALLIANCE    = 1222,
+    QUEST_ID_STINKYS_ESCAPE_HORDE       = 1270,
+
+    SAY_STINKY_BEGIN                    = -1000958,
+    SAY_STINKY_FIRST_STOP               = -1000959,
+    SAY_STINKY_2_MONSTERS               = -1000960,
+    SAY_STINKY_GATHERING                = -1000961,
+    SAY_STINKY_END                      = -1000962,
+
+    GO_BOGBEAN_PLANT                    = 20939,
 };
 
-#define GOSSIP_RIDE             "<Ride the gryphons to Survey Alcaz Island>"
-
-bool GossipHello_npc_cassa_crimsonwing(Player* pPlayer, Creature* pCreature)
+struct MANGOS_DLL_DECL npc_stinky_ignatzAI : public npc_escortAI
 {
-    if (pPlayer->GetQuestStatus(QUEST_SURVEY_ALCAZ) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_RIDE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    npc_stinky_ignatzAI(Creature* pCreature) : npc_escortAI(pCreature)
+    {
+        Reset();
+    }
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
+    ObjectGuid m_bogbeanPlantGuid;
+
+    void Reset() override {}
+
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
+    {
+        if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
+        {
+            DoScriptText(SAY_STINKY_BEGIN, m_creature);
+            Start(false, (Player*)pInvoker, GetQuestTemplateStore(uiMiscValue));
+            m_creature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
+            m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+        }
+    }
+
+    void WaypointReached(uint32 uiPointId) override
+    {
+        switch (uiPointId)
+        {
+            case 11:
+                DoScriptText(SAY_STINKY_FIRST_STOP, m_creature);
+                break;
+            case 17:
+                // TODO Note: This text would imply some waiting till two mobs are killed, such behaviour is neither confirmed nor implemented. Input welcome!
+                DoScriptText(SAY_STINKY_2_MONSTERS, m_creature);
+
+                if (GameObject* pBogbeanPlant = GetClosestGameObjectWithEntry(m_creature, GO_BOGBEAN_PLANT, DEFAULT_VISIBILITY_DISTANCE))
+                {
+                    m_bogbeanPlantGuid = pBogbeanPlant->GetObjectGuid();
+                    m_creature->SetFacingToObject(pBogbeanPlant);
+                }
+
+                break;
+            case 19:
+                DoScriptText(SAY_STINKY_GATHERING, m_creature);
+                break;
+            case 24:
+                if (Player* pPlayer = GetPlayerForEscort())
+                    pPlayer->GroupEventHappens(pPlayer->GetTeam() == ALLIANCE ? QUEST_ID_STINKYS_ESCAPE_ALLIANCE : QUEST_ID_STINKYS_ESCAPE_HORDE, m_creature);
+
+                DoScriptText(SAY_STINKY_END, m_creature);
+                break;
+        }
+    }
+
+    void WaypointStart(uint32 uiPointId)
+    {
+        if (uiPointId == 20)
+        {
+            if (GameObject* pBogbeanPlant = m_creature->GetMap()->GetGameObject(m_bogbeanPlantGuid))
+                pBogbeanPlant->Use(m_creature);
+            m_bogbeanPlantGuid.Clear();
+            m_creature->HandleEmote(EMOTE_ONESHOT_NONE);
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_stinky_ignatz(Creature* pCreature)
+{
+    return new npc_stinky_ignatzAI(pCreature);
 }
 
-bool GossipSelect_npc_cassa_crimsonwing(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool QuestAccept_npc_stinky_ignatz(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->CastSpell(pPlayer, SPELL_ALCAZ_SURVEY, false);
-    }
+    if (pQuest->GetQuestId() == QUEST_ID_STINKYS_ESCAPE_ALLIANCE || pQuest->GetQuestId() == QUEST_ID_STINKYS_ESCAPE_HORDE)
+        pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
+
     return true;
 }
 
@@ -819,14 +772,14 @@ enum
     NPC_LURKING_SHARK  = 23928
 };
 
-bool AreaTrigger_at_nats_landing(Player* pPlayer, const AreaTriggerEntry* pAt)
+bool AreaTrigger_at_nats_landing(Player* pPlayer, const AreaTriggerEntry* /*pAt*/)
 {
     if (pPlayer->GetQuestStatus(QUEST_NATS_BARGAIN) == QUEST_STATUS_INCOMPLETE && pPlayer->HasAura(SPELL_FISH_PASTE))
     {
         Creature* pShark = GetClosestCreatureWithEntry(pPlayer, NPC_LURKING_SHARK, 20.0f);
 
         if (!pShark)
-            pShark = pPlayer->SummonCreature(NPC_LURKING_SHARK, -4246.243f, -3922.356f, -7.488f, 5.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 100000);
+            pShark = pPlayer->SummonCreature(NPC_LURKING_SHARK, -4246.243f, -3922.356f, -7.488f, 5.0f, TEMPSUMMON_TIMED_OOC_DESPAWN, 100000);
 
         pShark->AI()->AttackStart(pPlayer);
         return false;
@@ -849,27 +802,9 @@ void AddSC_dustwallow_marsh()
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
-    pNewScript->Name = "npc_deserter_agitator";
-    pNewScript->GetAI = &GetAI_npc_deserter_agitator;
-    pNewScript->pGossipHello = &GossipHello_npc_deserter_agitator;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_lady_jaina_proudmoore";
-    pNewScript->pGossipHello = &GossipHello_npc_lady_jaina_proudmoore;
-    pNewScript->pGossipSelect = &GossipSelect_npc_lady_jaina_proudmoore;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
     pNewScript->Name = "npc_morokk";
     pNewScript->GetAI = &GetAI_npc_morokk;
     pNewScript->pQuestAcceptNPC = &QuestAccept_npc_morokk;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_nat_pagle";
-    pNewScript->pGossipHello = &GossipHello_npc_nat_pagle;
-    pNewScript->pGossipSelect = &GossipSelect_npc_nat_pagle;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
@@ -885,9 +820,9 @@ void AddSC_dustwallow_marsh()
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
-    pNewScript->Name = "npc_cassa_crimsonwing";
-    pNewScript->pGossipHello = &GossipHello_npc_cassa_crimsonwing;
-    pNewScript->pGossipSelect = &GossipSelect_npc_cassa_crimsonwing;
+    pNewScript->Name = "npc_stinky_ignatz";
+    pNewScript->GetAI = &GetAI_npc_stinky_ignatz;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_stinky_ignatz;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

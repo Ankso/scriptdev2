@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Hakkar
-SD%Complete: 95
-SDComment: Blood siphon spell buggy cause of Core Issue.
+SD%Complete: 100
+SDComment:
 SDCategory: Zul'Gurub
 EndScriptData */
 
@@ -29,7 +29,7 @@ enum
     SAY_AGGRO                   = -1309020,
     SAY_FLEEING                 = -1309021,
 
-    SPELL_BLOOD_SIPHON          = 24324,                    // Related Spells 24322, 24323, 24324, likely starting spell is 24324 (disabled until proper fixed)
+    SPELL_BLOOD_SIPHON          = 24324,                    // triggers 24322 or 24323 on caster
     SPELL_CORRUPTED_BLOOD       = 24328,
     SPELL_CAUSE_INSANITY        = 24327,
     SPELL_WILL_OF_HAKKAR        = 24178,
@@ -65,13 +65,13 @@ struct MANGOS_DLL_DECL boss_hakkarAI : public ScriptedAI
     uint32 m_uiAspectOfThekalTimer;
     uint32 m_uiAspectOfArlokkTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiBloodSiphonTimer       = 90000;
         m_uiCorruptedBloodTimer    = 25000;
         m_uiCauseInsanityTimer     = 17000;
         m_uiWillOfHakkarTimer      = 17000;
-        m_uiEnrageTimer            = 10*MINUTE*IN_MILLISECONDS;
+        m_uiEnrageTimer            = 10 * MINUTE * IN_MILLISECONDS;
 
         m_uiAspectOfJeklikTimer    = 4000;
         m_uiAspectOfVenoxisTimer   = 7000;
@@ -80,7 +80,7 @@ struct MANGOS_DLL_DECL boss_hakkarAI : public ScriptedAI
         m_uiAspectOfArlokkTimer    = 18000;
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*who*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
@@ -100,20 +100,18 @@ struct MANGOS_DLL_DECL boss_hakkarAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        /* Disabled as needs core fix// Blood Siphon Timer
-         * This also will requre spells 24320 24321 to be implemented (and used by the "Son of Hakkar" npcs)
         if (m_uiBloodSiphonTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_BLOOD_SIPHON) == CAST_OK)
                 m_uiBloodSiphonTimer = 90000;
         }
         else
-            m_uiBloodSiphonTimer -= uiDiff; */
+            m_uiBloodSiphonTimer -= uiDiff;
 
         // Corrupted Blood Timer
         if (m_uiCorruptedBloodTimer < uiDiff)
@@ -158,7 +156,7 @@ struct MANGOS_DLL_DECL boss_hakkarAI : public ScriptedAI
         if (m_uiEnrageTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
-                m_uiEnrageTimer = 10*MINUTE*IN_MILLISECONDS;
+                m_uiEnrageTimer = 10 * MINUTE * IN_MILLISECONDS;
         }
         else
             m_uiEnrageTimer -= uiDiff;

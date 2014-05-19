@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -38,10 +38,7 @@ enum
     SPELL_HATEFULSTRIKE_H = 59192,
     SPELL_ENRAGE          = 28131,
     SPELL_BERSERK         = 26662,
-    SPELL_SLIMEBOLT       = 32309,
-
-    ACHIEV_MAKE_QUICK_10  = 1856,
-    ACHIEV_MAKE_QUICK_25  = 1857
+    SPELL_SLIMEBOLT       = 32309
 };
 
 struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
@@ -50,35 +47,28 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
     {
         m_pInstance = (instance_naxxramas*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        m_uiMode = pCreature->GetMap()->GetDifficulty();
         Reset();
     }
 
     instance_naxxramas* m_pInstance;
     bool m_bIsRegularMode;
-    uint8 m_uiMode;
 
     uint32 m_uiHatefulStrikeTimer;
     uint32 m_uiBerserkTimer;
     uint32 m_uiSlimeboltTimer;
-    uint32 m_uiAchievTimer;
-
     bool   m_bEnraged;
     bool   m_bBerserk;
-    bool   m_bTimedAchiev;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiHatefulStrikeTimer = 1000;                      //1 second
-        m_uiBerserkTimer = MINUTE*6*IN_MILLISECONDS;         //6 minutes
-        m_uiAchievTimer = MINUTE*3*IN_MILLISECONDS;    //3 minutes
+        m_uiHatefulStrikeTimer = 1000;                      // 1 second
+        m_uiBerserkTimer = MINUTE * 6 * IN_MILLISECONDS;    // 6 minutes
         m_uiSlimeboltTimer = 10000;
         m_bEnraged = false;
         m_bBerserk = false;
-        m_bTimedAchiev =  false;
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         if (urand(0, 4))
             return;
@@ -86,50 +76,23 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
         DoScriptText(SAY_SLAY, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_PATCHWERK, DONE);
-
-        Map *pMap = m_creature->GetMap();
-        if(pMap && pMap->IsDungeon())
-        {
-            bool m_bIs25 = false;
-            switch (m_uiMode)
-            {
-                case RAID_DIFFICULTY_25MAN_NORMAL:
-                case RAID_DIFFICULTY_25MAN_HEROIC:
-                    m_bIs25 = true;
-                    break;
-                case RAID_DIFFICULTY_10MAN_NORMAL:
-                case RAID_DIFFICULTY_10MAN_HEROIC:
-                default:
-                    break;
-            }
-
-            AchievementEntry const *AchievMakeQuickWerkOfHim = GetAchievementStore()->LookupEntry(m_bIs25 ? ACHIEV_MAKE_QUICK_25 : ACHIEV_MAKE_QUICK_10);
-            Map::PlayerList const &lPlayers = pMap->GetPlayers();
-            for (Map::PlayerList::const_iterator iter = lPlayers.begin(); iter != lPlayers.end(); ++iter)
-            {
-                if (AchievMakeQuickWerkOfHim && !m_bTimedAchiev)
-                {
-                    iter->getSource()->CompletedAchievement(AchievMakeQuickWerkOfHim);
-                }
-            }
-        }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
-        DoScriptText(urand(0, 1)?SAY_AGGRO1:SAY_AGGRO2, m_creature);
+        DoScriptText(urand(0, 1) ? SAY_AGGRO1 : SAY_AGGRO2, m_creature);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_PATCHWERK, IN_PROGRESS);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_PATCHWERK, FAIL);
@@ -140,33 +103,40 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
         // The ability is used on highest HP target choosen of the top 2 (3 heroic) targets on threat list being in melee range
         Unit* pTarget = NULL;
         uint32 uiHighestHP = 0;
-        uint32 uiTargets = m_bIsRegularMode ? 2 : 3;
+        uint32 uiTargets = m_bIsRegularMode ? 1 : 2;
 
         ThreatList const& tList = m_creature->getThreatManager().getThreatList();
-        for (ThreatList::const_iterator iter = tList.begin();iter != tList.end(); ++iter)
+        if (tList.size() > 1)                               // Check if more than two targets, and start loop with second-most aggro
         {
-            if (!uiTargets)
-                break;
-
-            if (Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid()))
+            ThreatList::const_iterator iter = tList.begin();
+            std::advance(iter, 1);
+            for (; iter != tList.end(); ++iter)
             {
-                if (m_creature->CanReachWithMeleeAttack(pTempTarget))
+                if (!uiTargets)
+                    break;
+
+                if (Unit* pTempTarget = m_creature->GetMap()->GetUnit((*iter)->getUnitGuid()))
                 {
-                    if (pTempTarget->GetHealth() > uiHighestHP)
+                    if (m_creature->CanReachWithMeleeAttack(pTempTarget))
                     {
-                        uiHighestHP = pTempTarget->GetHealth();
-                        pTarget = pTempTarget;
+                        if (pTempTarget->GetHealth() > uiHighestHP)
+                        {
+                            uiHighestHP = pTempTarget->GetHealth();
+                            pTarget = pTempTarget;
+                        }
+                        --uiTargets;
                     }
-                    --uiTargets;
                 }
             }
         }
 
-        if (pTarget)
-            DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_HATEFULSTRIKE : SPELL_HATEFULSTRIKE_H);
+        if (!pTarget)
+            pTarget = m_creature->getVictim();
+
+        DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_HATEFULSTRIKE : SPELL_HATEFULSTRIKE_H);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -192,16 +162,7 @@ struct MANGOS_DLL_DECL boss_patchwerkAI : public ScriptedAI
                 }
             }
         }
-        
-        if (!m_bTimedAchiev)
-        {
-            if (m_uiAchievTimer < uiDiff)
-            {
-                m_bTimedAchiev = true;
-            }
-            else
-                m_uiAchievTimer -= uiDiff;
-        }
+
         // Berserk after 6 minutes
         if (!m_bBerserk)
         {
@@ -239,9 +200,10 @@ CreatureAI* GetAI_boss_patchwerk(Creature* pCreature)
 
 void AddSC_boss_patchwerk()
 {
-    Script* NewScript;
-    NewScript = new Script;
-    NewScript->Name = "boss_patchwerk";
-    NewScript->GetAI = &GetAI_boss_patchwerk;
-    NewScript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_patchwerk";
+    pNewScript->GetAI = &GetAI_boss_patchwerk;
+    pNewScript->RegisterSelf();
 }

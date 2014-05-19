@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -53,19 +53,29 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
     uint32 m_uiMyAbility;
     bool m_bEnraged;
 
-    GUIDList m_lAssistList;
+    GuidList m_lAssistList;
 
-    void Reset()
+    void Reset() override
     {
         m_uiMyAbility = 0;
         m_bEnraged = false;
     }
 
-    void JustReachedHome()
+    void GetAIInformation(ChatHandler& reader) override
     {
-        for(GUIDList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
+        if (m_lAssistList.empty())
+            reader.PSendSysMessage("Anubisath Sentinel - group not assigned, will be assigned OnAggro");
+        if (m_lAssistList.size() == MAX_BUDDY)
+            reader.PSendSysMessage("Anubisath Sentinel - proper group found");
+        else
+            reader.PSendSysMessage("Anubisath Sentinel - not correct number of mobs for group found. Number found %u, should be %u", m_lAssistList.size(), MAX_BUDDY);
+    }
+
+    void JustReachedHome() override
+    {
+        for (GuidList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
         {
-            if (*itr == m_creature->GetGUID())
+            if (*itr == m_creature->GetObjectGuid())
                 continue;
 
             if (Creature* pBuddy = m_creature->GetMap()->GetCreature(*itr))
@@ -76,13 +86,13 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         SetAbility();
         InitSentinelsNear(pWho);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoTransferAbility();
     }
@@ -90,7 +100,7 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
     // this way will make it quite possible that sentinels get the same buff as others, need to fix that, it should be one unique each
     void SetAbility()
     {
-        switch(urand(0, 8))
+        switch (urand(0, 8))
         {
             case 0: m_uiMyAbility = SPELL_MENDING; break;
             case 1: m_uiMyAbility = SPELL_PERIODIC_KNOCK_AWAY; break;
@@ -108,11 +118,11 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
 
     void DoTransferAbility()
     {
-        for(GUIDList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
+        for (GuidList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
         {
             if (Creature* pBuddy = m_creature->GetMap()->GetCreature(*itr))
             {
-                if (*itr == m_creature->GetGUID())
+                if (*itr == m_creature->GetObjectGuid())
                     continue;
 
                 if (!pBuddy->isAlive())
@@ -128,9 +138,9 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
     {
         if (!m_lAssistList.empty())
         {
-            for(GUIDList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
+            for (GuidList::const_iterator itr = m_lAssistList.begin(); itr != m_lAssistList.end(); ++itr)
             {
-                if (*itr == m_creature->GetGUID())
+                if (*itr == m_creature->GetObjectGuid())
                     continue;
 
                 if (Creature* pBuddy = m_creature->GetMap()->GetCreature(*itr))
@@ -146,24 +156,21 @@ struct MANGOS_DLL_DECL npc_anubisath_sentinelAI : public ScriptedAI
         std::list<Creature*> lAssistList;
         GetCreatureListWithEntryInGrid(lAssistList, m_creature, m_creature->GetEntry(), 80.0f);
 
-        if (lAssistList.empty())
-            return;
-
-        for(std::list<Creature*>::iterator iter = lAssistList.begin(); iter != lAssistList.end(); ++iter)
+        for (std::list<Creature*>::iterator iter = lAssistList.begin(); iter != lAssistList.end(); ++iter)
         {
-            m_lAssistList.push_back((*iter)->GetGUID());
+            m_lAssistList.push_back((*iter)->GetObjectGuid());
 
-            if ((*iter)->GetGUID() == m_creature->GetGUID())
+            if ((*iter)->GetObjectGuid() == m_creature->GetObjectGuid())
                 continue;
 
             (*iter)->AI()->AttackStart(pTarget);
         }
 
         if (m_lAssistList.size() != MAX_BUDDY)
-            error_log("SD2: npc_anubisath_sentinel found too few/too many buddies, expected %u.", MAX_BUDDY);
+            script_error_log("npc_anubisath_sentinel for %s found too few/too many buddies, expected %u.", m_creature->GetGuidStr().c_str(), MAX_BUDDY);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 /*uiDiff*/) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -188,9 +195,10 @@ CreatureAI* GetAI_npc_anubisath_sentinel(Creature* pCreature)
 
 void AddSC_mob_anubisath_sentinel()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "mob_anubisath_sentinel";
-    newscript->GetAI = &GetAI_npc_anubisath_sentinel;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "mob_anubisath_sentinel";
+    pNewScript->GetAI = &GetAI_npc_anubisath_sentinel;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,75 +17,16 @@
 /* ScriptData
 SDName: Ghostlands
 SD%Complete: 100
-SDComment: Quest support: 9212, 9692. Obtain Budd's Guise of Zul'aman. Vendor Rathis Tomber
+SDComment: Quest support: 9212.
 SDCategory: Ghostlands
 EndScriptData */
 
 /* ContentData
-npc_blood_knight_dawnstar
-npc_budd_nedreck
 npc_ranger_lilatha
-npc_rathis_tomber
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
-
-/*######
-## npc_blood_knight_dawnstar
-######*/
-
-#define GOSSIP_ITEM_INSIGNIA    "Take Blood Knight Insignia"
-
-bool GossipHello_npc_blood_knight_dawnstar(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(9692) == QUEST_STATUS_INCOMPLETE && !pPlayer->HasItemCount(24226,1,true))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT,GOSSIP_ITEM_INSIGNIA,GOSSIP_SENDER_MAIN,GOSSIP_ACTION_INFO_DEF+1);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_blood_knight_dawnstar(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        if (Item* pItem = pPlayer->StoreNewItemInInventorySlot(24226, 1))
-            pPlayer->SendNewItem(pItem, 1, true, false);
-
-        pPlayer->CLOSE_GOSSIP_MENU();
-    }
-    return true;
-}
-
-/*######
-## npc_budd_nedreck
-######*/
-
-#define GOSSIP_ITEM_DISGUISE        "You gave the crew disguises?"
-
-bool GossipHello_npc_budd_nedreck(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestStatus(11166) == QUEST_STATUS_INCOMPLETE)
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT,GOSSIP_ITEM_DISGUISE,GOSSIP_SENDER_MAIN,GOSSIP_ACTION_INFO_DEF);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_budd_nedreck(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction==GOSSIP_ACTION_INFO_DEF)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->CastSpell(pPlayer, 42540, false);
-    }
-    return true;
-}
 
 /*######
 ## npc_ranger_lilatha
@@ -114,7 +55,7 @@ struct MANGOS_DLL_DECL npc_ranger_lilathaAI : public npc_escortAI
     ObjectGuid m_goCageGuid;
     ObjectGuid m_heliosGuid;
 
-    void MoveInLineOfSight(Unit* pUnit)
+    void MoveInLineOfSight(Unit* pUnit) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -128,14 +69,14 @@ struct MANGOS_DLL_DECL npc_ranger_lilathaAI : public npc_escortAI
         npc_escortAI::MoveInLineOfSight(pUnit);
     }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 i) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(i)
+        switch (i)
         {
             case 0:
                 if (GameObject* pGoTemp = GetClosestGameObjectWithEntry(m_creature, GO_CAGE, 10.0f))
@@ -185,7 +126,7 @@ struct MANGOS_DLL_DECL npc_ranger_lilathaAI : public npc_escortAI
         }
     }
 
-    void Reset()
+    void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
         {
@@ -204,7 +145,7 @@ bool QuestAccept_npc_ranger_lilatha(Player* pPlayer, Creature* pCreature, const 
 {
     if (pQuest->GetQuestId() == QUEST_CATACOMBS)
     {
-        pCreature->setFaction(FACTION_SMOON_E);
+        pCreature->SetFactionTemporary(FACTION_SMOON_E, TEMPFACTION_RESTORE_RESPAWN);
 
         if (npc_ranger_lilathaAI* pEscortAI = dynamic_cast<npc_ranger_lilathaAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -212,58 +153,13 @@ bool QuestAccept_npc_ranger_lilatha(Player* pPlayer, Creature* pCreature, const 
     return true;
 }
 
-/*######
-## npc_rathis_tomber
-######*/
-
-bool GossipHello_npc_rathis_tomber(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pCreature->isVendor() && pPlayer->GetQuestRewardStatus(9152))
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-        pPlayer->SEND_GOSSIP_MENU(8432, pCreature->GetObjectGuid());
-    }else
-        pPlayer->SEND_GOSSIP_MENU(8431, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_rathis_tomber(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_TRADE)
-        pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
-
-    return true;
-}
-
 void AddSC_ghostlands()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_blood_knight_dawnstar";
-    newscript->pGossipHello = &GossipHello_npc_blood_knight_dawnstar;
-    newscript->pGossipSelect = &GossipSelect_npc_blood_knight_dawnstar;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_budd_nedreck";
-    newscript->pGossipHello = &GossipHello_npc_budd_nedreck;
-    newscript->pGossipSelect = &GossipSelect_npc_budd_nedreck;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_ranger_lilatha";
-    newscript->GetAI = &GetAI_npc_ranger_lilathaAI;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_ranger_lilatha;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_rathis_tomber";
-    newscript->pGossipHello = &GossipHello_npc_rathis_tomber;
-    newscript->pGossipSelect = &GossipSelect_npc_rathis_tomber;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_ranger_lilatha";
+    pNewScript->GetAI = &GetAI_npc_ranger_lilathaAI;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_ranger_lilatha;
+    pNewScript->RegisterSelf();
 }

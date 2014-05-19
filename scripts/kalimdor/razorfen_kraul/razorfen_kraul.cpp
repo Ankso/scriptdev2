@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Razorfen_Kraul
 SD%Complete: 100
-SDComment: Willix the Importer Escort Event
+SDComment: Quest support: 1144, 1221
 SDCategory: Razorfen Kraul
 EndScriptData */
 
@@ -27,6 +27,11 @@ EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
+#include "pet_ai.h"
+
+/*######
+## npc_willix_the_importer
+######*/
 
 enum
 {
@@ -62,12 +67,12 @@ struct MANGOS_DLL_DECL npc_willix_the_importerAI : public npc_escortAI
 {
     npc_willix_the_importerAI(Creature* m_creature) : npc_escortAI(m_creature) { Reset(); }
 
-    void Reset() {}
+    void Reset() override {}
 
     // Exact use of these texts remains unknown, it seems that he should only talk when he initiates the attack or he is the first who is attacked by a npc
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
-        switch(urand(0, 6))                                 // Not always said
+        switch (urand(0, 6))                                // Not always said
         {
             case 0: DoScriptText(SAY_WILLIX_AGGRO_1, m_creature, pWho); break;
             case 1: DoScriptText(SAY_WILLIX_AGGRO_2, m_creature, pWho); break;
@@ -76,12 +81,12 @@ struct MANGOS_DLL_DECL npc_willix_the_importerAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         switch (uiPointId)
         {
@@ -97,8 +102,8 @@ struct MANGOS_DLL_DECL npc_willix_the_importerAI : public npc_escortAI
             case 14:
                 DoScriptText(SAY_WILLIX_4, m_creature);
                 // Summon 2 boars on the pathway
-                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[0][0], aBoarSpawn[0][1], aBoarSpawn[0][2], 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
-                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[1][0], aBoarSpawn[1][1], aBoarSpawn[1][2], 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[0][0], aBoarSpawn[0][1], aBoarSpawn[0][2], 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 25000);
+                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[1][0], aBoarSpawn[1][1], aBoarSpawn[1][2], 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 25000);
                 break;
             case 25:
                 DoScriptText(SAY_WILLIX_5, m_creature);
@@ -109,8 +114,8 @@ struct MANGOS_DLL_DECL npc_willix_the_importerAI : public npc_escortAI
             case 44:
                 DoScriptText(SAY_WILLIX_7, m_creature);
                 // Summon 2 boars at the end
-                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[2][0], aBoarSpawn[2][1], aBoarSpawn[2][2], 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
-                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[3][0], aBoarSpawn[3][1], aBoarSpawn[3][2], 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[2][0], aBoarSpawn[2][1], aBoarSpawn[2][2], 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 25000);
+                m_creature->SummonCreature(NPC_RAGING_AGAMAR, aBoarSpawn[3][0], aBoarSpawn[3][1], aBoarSpawn[3][2], 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 25000);
                 break;
             case 45:
                 DoScriptText(SAY_WILLIX_END, m_creature);
@@ -121,7 +126,6 @@ struct MANGOS_DLL_DECL npc_willix_the_importerAI : public npc_escortAI
                 SetEscortPaused(true);
                 break;
         }
-
     }
 };
 
@@ -139,11 +143,113 @@ bool QuestAccept_npc_willix_the_importer(Player* pPlayer, Creature* pCreature, c
             // After 4.0.1 set run = true
             pEscortAI->Start(false, pPlayer, pQuest);
             DoScriptText(SAY_WILLIX_READY, pCreature, pPlayer);
-            pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_PASSIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
         }
     }
 
+    return true;
+}
+
+/*######
+## npc_snufflenose_gopher
+######*/
+
+enum
+{
+    SPELL_SNUFFLENOSE_COMMAND   = 8283,
+    NPC_SNUFFLENOSE_GOPHER      = 4781,
+    GO_BLUELEAF_TUBBER          = 20920,
+};
+
+struct MANGOS_DLL_DECL npc_snufflenose_gopherAI : public ScriptedPetAI
+{
+    npc_snufflenose_gopherAI(Creature* pCreature) : ScriptedPetAI(pCreature) { Reset(); }
+
+    bool m_bIsMovementActive;
+
+    ObjectGuid m_targetTubberGuid;
+
+    void Reset() override
+    {
+        m_bIsMovementActive  = false;
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    {
+        if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
+            return;
+
+        if (GameObject* pGo = m_creature->GetMap()->GetGameObject(m_targetTubberGuid))
+        {
+            pGo->SetRespawnTime(5 * MINUTE);
+            pGo->Refresh();
+
+            pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND);
+        }
+
+        m_bIsMovementActive = false;
+    }
+
+    // Function to search for new tubber in range
+    void DoFindNewTubber()
+    {
+        std::list<GameObject*> lTubbersInRange;
+        GetGameObjectListWithEntryInGrid(lTubbersInRange, m_creature, GO_BLUELEAF_TUBBER, 40.0f);
+
+        if (lTubbersInRange.empty())
+            return;
+
+        lTubbersInRange.sort(ObjectDistanceOrder(m_creature));
+        GameObject* pNearestTubber = NULL;
+
+        // Always need to find new ones
+        for (std::list<GameObject*>::const_iterator itr = lTubbersInRange.begin(); itr != lTubbersInRange.end(); ++itr)
+        {
+            if (!(*itr)->isSpawned() && (*itr)->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND) && (*itr)->IsWithinLOSInMap(m_creature))
+            {
+                pNearestTubber = *itr;
+                break;
+            }
+        }
+
+        if (!pNearestTubber)
+            return;
+        m_targetTubberGuid = pNearestTubber->GetObjectGuid();
+
+        float fX, fY, fZ;
+        pNearestTubber->GetContactPoint(m_creature, fX, fY, fZ);
+        m_creature->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
+        m_bIsMovementActive = true;
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (!m_bIsMovementActive)
+            ScriptedPetAI::UpdateAI(uiDiff);
+    }
+};
+
+CreatureAI* GetAI_npc_snufflenose_gopher(Creature* pCreature)
+{
+    return new npc_snufflenose_gopherAI(pCreature);
+}
+
+bool EffectDummyCreature_npc_snufflenose_gopher(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
+{
+    // always check spellid and effectindex
+    if (uiSpellId == SPELL_SNUFFLENOSE_COMMAND && uiEffIndex == EFFECT_INDEX_0)
+    {
+        if (pCreatureTarget->GetEntry() == NPC_SNUFFLENOSE_GOPHER)
+        {
+            if (npc_snufflenose_gopherAI* pGopherAI = dynamic_cast<npc_snufflenose_gopherAI*>(pCreatureTarget->AI()))
+                pGopherAI->DoFindNewTubber();
+        }
+
+        // always return true when we are handling this spell and effect
         return true;
+    }
+
+    return false;
 }
 
 void AddSC_razorfen_kraul()
@@ -154,5 +260,11 @@ void AddSC_razorfen_kraul()
     pNewScript->Name = "npc_willix_the_importer";
     pNewScript->GetAI = &GetAI_npc_willix_the_importer;
     pNewScript->pQuestAcceptNPC = &QuestAccept_npc_willix_the_importer;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_snufflenose_gopher";
+    pNewScript->GetAI = &GetAI_npc_snufflenose_gopher;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_npc_snufflenose_gopher;
     pNewScript->RegisterSelf();
 }

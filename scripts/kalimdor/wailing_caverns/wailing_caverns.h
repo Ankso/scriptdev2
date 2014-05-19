@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -18,7 +18,12 @@ enum
 
     NPC_NARALEX     = 3679,
     NPC_DISCIPLE    = 3678,
+
     SAY_INTRO       = -1043000,                             // Say when the first 4 encounter are DONE
+
+    GO_MYSTERIOUS_CHEST     = 180055,                       // used for quest 7944; spawns in the instance only if one of the players has the quest
+
+    QUEST_FORTUNE_AWAITS    = 7944,
 };
 
 class MANGOS_DLL_DECL instance_wailing_caverns : public ScriptedInstance
@@ -27,22 +32,20 @@ class MANGOS_DLL_DECL instance_wailing_caverns : public ScriptedInstance
         instance_wailing_caverns(Map* pMap);
         ~instance_wailing_caverns() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        void OnCreatureCreate(Creature* pCreature);
+        void OnPlayerEnter(Player* pPlayer) override;
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        const char* Save() { return strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
     protected:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        std::string strInstData;
-
-        uint64 m_uiNaralexGUID;
-        uint64 m_uiDiscipleGUID;
+        std::string m_strInstData;
 };
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,40 +16,42 @@
 
 /* ScriptData
 SDName: Boss_Blackheart_the_Inciter
-SD%Complete: 75
-SDComment: Incite Chaos not functional since core lacks Mind Control support
+SD%Complete: 90
+SDComment: Not all yells are implemented.
 SDCategory: Auchindoun, Shadow Labyrinth
 EndScriptData */
 
 #include "precompiled.h"
 #include "shadow_labyrinth.h"
 
-#define SPELL_INCITE_CHAOS    33676
-#define SPELL_INCITE_CHAOS_B  33684                         //debuff applied to each member of party
-#define SPELL_CHARGE          33709
-#define SPELL_WAR_STOMP       33707
+enum
+{
+    SPELL_INCITE_CHAOS      = 33676,                        // triggers 33684 on party members
+    SPELL_CHARGE            = 33709,
+    SPELL_WAR_STOMP         = 33707,
 
-#define SAY_INTRO1          -1555008
-#define SAY_INTRO2          -1555009
-#define SAY_INTRO3          -1555010
-#define SAY_AGGRO1          -1555011
-#define SAY_AGGRO2          -1555012
-#define SAY_AGGRO3          -1555013
-#define SAY_SLAY1           -1555014
-#define SAY_SLAY2           -1555015
-#define SAY_HELP            -1555016
-#define SAY_DEATH           -1555017
+    SAY_INTRO1              = -1555008,
+    SAY_INTRO2              = -1555009,
+    SAY_INTRO3              = -1555010,
+    SAY_AGGRO1              = -1555011,
+    SAY_AGGRO2              = -1555012,
+    SAY_AGGRO3              = -1555013,
+    SAY_SLAY1               = -1555014,
+    SAY_SLAY2               = -1555015,
+    SAY_HELP                = -1555016,
+    SAY_DEATH               = -1555017,
 
-#define SAY2_INTRO1         -1555018
-#define SAY2_INTRO2         -1555019
-#define SAY2_INTRO3         -1555020
-#define SAY2_AGGRO1         -1555021
-#define SAY2_AGGRO2         -1555022
-#define SAY2_AGGRO3         -1555023
-#define SAY2_SLAY1          -1555024
-#define SAY2_SLAY2          -1555025
-#define SAY2_HELP           -1555026
-#define SAY2_DEATH          -1555027
+    SAY2_INTRO1             = -1555018,
+    SAY2_INTRO2             = -1555019,
+    SAY2_INTRO3             = -1555020,
+    SAY2_AGGRO1             = -1555021,
+    SAY2_AGGRO2             = -1555022,
+    SAY2_AGGRO3             = -1555023,
+    SAY2_SLAY1              = -1555024,
+    SAY2_SLAY2              = -1555025,
+    SAY2_HELP               = -1555026,
+    SAY2_DEATH              = -1555027,
+};
 
 struct MANGOS_DLL_DECL boss_blackheart_the_inciterAI : public ScriptedAI
 {
@@ -61,30 +63,27 @@ struct MANGOS_DLL_DECL boss_blackheart_the_inciterAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    bool InciteChaos;
-    uint32 InciteChaos_Timer;
-    uint32 InciteChaosWait_Timer;
-    uint32 Charge_Timer;
-    uint32 Knockback_Timer;
+    uint32 m_uiInciteChaosTimer;
+    uint32 m_uiInciteChaosWaitTimer;
+    uint32 m_uiChargeTimer;
+    uint32 m_uiKnockbackTimer;
 
-    void Reset()
+    GuidVector m_vTargetsGuids;
+
+    void Reset() override
     {
-        InciteChaos = false;
-        InciteChaos_Timer = 20000;
-        InciteChaosWait_Timer = 15000;
-        Charge_Timer = 5000;
-        Knockback_Timer = 15000;
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_INCITER, NOT_STARTED);
+        m_uiInciteChaosWaitTimer = 0;
+        m_uiInciteChaosTimer = 15000;
+        m_uiChargeTimer      = urand(30000, 37000);
+        m_uiKnockbackTimer   = urand(10000, 14000);
     }
 
-    void KilledUnit(Unit *victim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void JustDied(Unit *victim)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -92,9 +91,9 @@ struct MANGOS_DLL_DECL boss_blackheart_the_inciterAI : public ScriptedAI
             m_pInstance->SetData(TYPE_INCITER, DONE);
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO1, m_creature); break;
             case 1: DoScriptText(SAY_AGGRO2, m_creature); break;
@@ -105,61 +104,87 @@ struct MANGOS_DLL_DECL boss_blackheart_the_inciterAI : public ScriptedAI
             m_pInstance->SetData(TYPE_INCITER, IN_PROGRESS);
     }
 
-    void UpdateAI(const uint32 diff)
+    void JustReachedHome() override
     {
-        //Return since we have no target
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_INCITER, FAIL);
+    }
+
+    void EnterEvadeMode() override
+    {
+        // if we are waiting for Incite chaos to expire don't evade
+        if (m_uiInciteChaosWaitTimer)
+            return;
+
+        ScriptedAI::EnterEvadeMode();
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiInciteChaosWaitTimer)
+        {
+            if (m_uiInciteChaosWaitTimer <= uiDiff)
+            {
+                // Restart attack on all targets
+                for (GuidVector::const_iterator itr = m_vTargetsGuids.begin(); itr != m_vTargetsGuids.end(); ++itr)
+                {
+                    if (Unit* pTarget = m_creature->GetMap()->GetUnit(*itr))
+                        AttackStart(pTarget);
+                }
+
+                m_creature->HandleEmote(EMOTE_STATE_NONE);
+                m_uiInciteChaosWaitTimer = 0;
+            }
+            else
+                m_uiInciteChaosWaitTimer -= uiDiff;
+        }
+
+        // Return since we have no pTarget
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (InciteChaos)
+        if (m_uiInciteChaosTimer < uiDiff)
         {
-            if (InciteChaosWait_Timer < diff)
+            // Store the threat list
+            m_vTargetsGuids.clear();
+            m_creature->FillGuidsListFromThreatList(m_vTargetsGuids);
+
+            if (DoCastSpellIfCan(m_creature, SPELL_INCITE_CHAOS) == CAST_OK)
             {
-                InciteChaos = false;
-                InciteChaosWait_Timer = 15000;
-            }else InciteChaosWait_Timer -= diff;
-
-            return;
-        }
-
-        if (InciteChaos_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature, SPELL_INCITE_CHAOS);
-
-            std::vector<ObjectGuid> vGuids;
-            m_creature->FillGuidsListFromThreatList(vGuids);
-            for (std::vector<ObjectGuid>::const_iterator itr = vGuids.begin();itr != vGuids.end(); ++itr)
-            {
-                Unit* target = m_creature->GetMap()->GetUnit(*itr);
-
-                if (target && target->GetTypeId() == TYPEID_PLAYER)
-                    target->CastSpell(target,SPELL_INCITE_CHAOS_B,true);
+                m_creature->HandleEmote(EMOTE_STATE_LAUGH);
+                m_uiInciteChaosTimer = 55000;
+                m_uiInciteChaosWaitTimer = 16000;
+                return;
             }
+        }
+        else
+            m_uiInciteChaosTimer -= uiDiff;
 
-            DoResetThreat();
-            InciteChaos = true;
-            InciteChaos_Timer = 40000;
-            return;
-        }else InciteChaos_Timer -= diff;
-
-        //Charge_Timer
-        if (Charge_Timer < diff)
+        // Charge Timer
+        if (m_uiChargeTimer < uiDiff)
         {
-            if (Unit *target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(target, SPELL_CHARGE);
-            Charge_Timer = urand(15000, 25000);
-        }else Charge_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1, SPELL_CHARGE, SELECT_FLAG_NOT_IN_MELEE_RANGE))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_CHARGE) == CAST_OK)
+                    m_uiChargeTimer = urand(30000, 43000);
+            }
+        }
+        else
+            m_uiChargeTimer -= uiDiff;
 
-        //Knockback_Timer
-        if (Knockback_Timer < diff)
+        // Knockback Timer
+        if (m_uiKnockbackTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature, SPELL_WAR_STOMP);
-            Knockback_Timer = urand(18000, 24000);
-        }else Knockback_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature, SPELL_WAR_STOMP) == CAST_OK)
+                m_uiKnockbackTimer = urand(15000, 30000);
+        }
+        else
+            m_uiKnockbackTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_boss_blackheart_the_inciter(Creature* pCreature)
 {
     return new boss_blackheart_the_inciterAI(pCreature);
@@ -167,9 +192,10 @@ CreatureAI* GetAI_boss_blackheart_the_inciter(Creature* pCreature)
 
 void AddSC_boss_blackheart_the_inciter()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_blackheart_the_inciter";
-    newscript->GetAI = &GetAI_boss_blackheart_the_inciter;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_blackheart_the_inciter";
+    pNewScript->GetAI = &GetAI_boss_blackheart_the_inciter;
+    pNewScript->RegisterSelf();
 }

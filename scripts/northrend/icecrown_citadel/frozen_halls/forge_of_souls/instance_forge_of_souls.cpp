@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,9 +26,7 @@ EndScriptData */
 
 instance_forge_of_souls::instance_forge_of_souls(Map* pMap) : ScriptedInstance(pMap),
     m_bCriteriaPhantomBlastFailed(false),
-    m_uiTeam(0),
-    m_uiBronjahmGUID(0),
-    m_uiDevourerOrSoulsGUID(0)
+    m_uiTeam(0)
 {
     Initialize();
 }
@@ -40,11 +38,15 @@ void instance_forge_of_souls::Initialize()
 
 void instance_forge_of_souls::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
-        case NPC_BRONJAHM:                  m_uiBronjahmGUID = pCreature->GetGUID(); break;
-        case NPC_DEVOURER:                  m_uiDevourerOrSoulsGUID = pCreature->GetGUID(); break;
-        case NPC_CORRUPTED_SOUL_FRAGMENT:   m_luiSoulFragmentAliveGUIDs.push_back(pCreature->GetGUID()); break;
+        case NPC_BRONJAHM:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+
+        case NPC_CORRUPTED_SOUL_FRAGMENT:
+            m_luiSoulFragmentAliveGUIDs.push_back(pCreature->GetObjectGuid());
+            break;
     }
 }
 
@@ -65,11 +67,11 @@ void instance_forge_of_souls::ProcessEventNpcs(Player* pPlayer, bool bChanged)
     if (m_auiEncounter[0] != DONE || m_auiEncounter[1] != DONE)
     {
         // Spawn Begin Mobs
-        for (uint8 i = 0; i < sizeof(aEventBeginLocations)/sizeof(sIntoEventNpcSpawnLocations); ++i)
+        for (uint8 i = 0; i < countof(aEventBeginLocations); ++i)
         {
             if (Creature* pSummon = pPlayer->SummonCreature(m_uiTeam == HORDE ? aEventBeginLocations[i].uiEntryHorde : aEventBeginLocations[i].uiEntryAlliance,
-                                                            aEventBeginLocations[i].fSpawnX, aEventBeginLocations[i].fSpawnY, aEventBeginLocations[i].fSpawnZ, aEventBeginLocations[i].fSpawnO, TEMPSUMMON_DEAD_DESPAWN, 24*HOUR*IN_MILLISECONDS))
-                m_lEventMobGUIDs.push_back(pSummon->GetGUID());
+                                    aEventBeginLocations[i].fSpawnX, aEventBeginLocations[i].fSpawnY, aEventBeginLocations[i].fSpawnZ, aEventBeginLocations[i].fSpawnO, TEMPSUMMON_DEAD_DESPAWN, 24 * HOUR * IN_MILLISECONDS))
+                m_lEventMobGUIDs.push_back(pSummon->GetObjectGuid());
         }
     }
     else
@@ -77,32 +79,33 @@ void instance_forge_of_souls::ProcessEventNpcs(Player* pPlayer, bool bChanged)
         // if bChanged, despawn Begin Mobs, spawn End Mobs at Spawn, else spawn EndMobs at End
         if (bChanged)
         {
-            for (std::list<ObjectGuid>::const_iterator itr = m_lEventMobGUIDs.begin(); itr != m_lEventMobGUIDs.end(); ++itr)
+            for (GuidList::const_iterator itr = m_lEventMobGUIDs.begin(); itr != m_lEventMobGUIDs.end(); ++itr)
             {
                 if (Creature* pSummoned = instance->GetCreature(*itr))
                     pSummoned->ForcedDespawn();
             }
 
-            for (uint8 i = 0; i < sizeof(aEventEndLocations)/sizeof(sExtroEventNpcLocations); ++i)
+            for (uint8 i = 0; i < countof(aEventEndLocations); ++i)
             {
                 pPlayer->SummonCreature(m_uiTeam == HORDE ? aEventEndLocations[i].uiEntryHorde : aEventEndLocations[i].uiEntryAlliance,
-                                        aEventEndLocations[i].fSpawnX, aEventEndLocations[i].fSpawnY, aEventEndLocations[i].fSpawnZ, aEventEndLocations[i].fStartO, TEMPSUMMON_DEAD_DESPAWN, 24*HOUR*IN_MILLISECONDS);
+                                        aEventEndLocations[i].fSpawnX, aEventEndLocations[i].fSpawnY, aEventEndLocations[i].fSpawnZ, aEventEndLocations[i].fStartO, TEMPSUMMON_DEAD_DESPAWN, 24 * HOUR * IN_MILLISECONDS);
 
                 // TODO: Let the NPCs Move along their paths
             }
         }
         else
-        {   // Summon at end, without event
-            for (uint8 i = 0; i < sizeof(aEventEndLocations)/sizeof(sExtroEventNpcLocations); ++i)
+        {
+            // Summon at end, without event
+            for (uint8 i = 0; i < countof(aEventEndLocations); ++i)
             {
                 pPlayer->SummonCreature(m_uiTeam == HORDE ? aEventEndLocations[i].uiEntryHorde : aEventEndLocations[i].uiEntryAlliance,
-                                        aEventEndLocations[i].fEndX, aEventEndLocations[i].fEndY, aEventEndLocations[i].fEndZ, aEventEndLocations[i].fEndO, TEMPSUMMON_DEAD_DESPAWN, 24*HOUR*IN_MILLISECONDS);
+                                        aEventEndLocations[i].fEndX, aEventEndLocations[i].fEndY, aEventEndLocations[i].fEndZ, aEventEndLocations[i].fEndO, TEMPSUMMON_DEAD_DESPAWN, 24 * HOUR * IN_MILLISECONDS);
             }
         }
     }
 }
 
-bool instance_forge_of_souls::CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/)
+bool instance_forge_of_souls::CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* /*pSource*/, Unit const* /*pTarget*/, uint32 /*uiMiscValue1 = 0*/) const
 {
     switch (uiCriteriaId)
     {
@@ -117,20 +120,20 @@ bool instance_forge_of_souls::CheckAchievementCriteriaMeet(uint32 uiCriteriaId, 
 
 void instance_forge_of_souls::SetData(uint32 uiType, uint32 uiData)
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_BRONJAHM:
             m_auiEncounter[0] = uiData;
 
             // Despawn remaining adds and clear list
-            for (std::list<ObjectGuid>::const_iterator itr = m_luiSoulFragmentAliveGUIDs.begin(); itr != m_luiSoulFragmentAliveGUIDs.end(); ++itr)
+            for (GuidList::const_iterator itr = m_luiSoulFragmentAliveGUIDs.begin(); itr != m_luiSoulFragmentAliveGUIDs.end(); ++itr)
             {
                 if (Creature* pFragment = instance->GetCreature(*itr))
                     pFragment->ForcedDespawn();
             }
             m_luiSoulFragmentAliveGUIDs.clear();
             break;
-        case TYPE_DEVOURER:
+        case TYPE_DEVOURER_OF_SOULS:
             m_auiEncounter[1] = uiData;
             if (uiData == DONE)
                 ProcessEventNpcs(GetPlayerInMap(), true);
@@ -147,7 +150,7 @@ void instance_forge_of_souls::SetData(uint32 uiType, uint32 uiData)
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1];
 
-        strInstData = saveStream.str();
+        m_strInstData = saveStream.str();
 
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
@@ -167,7 +170,7 @@ void instance_forge_of_souls::Load(const char* chrIn)
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1];
 
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;
@@ -176,27 +179,14 @@ void instance_forge_of_souls::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_forge_of_souls::GetData(uint32 uiType)
+uint32 instance_forge_of_souls::GetData(uint32 uiType) const
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_BRONJAHM:
             return m_auiEncounter[0];
-        case TYPE_DEVOURER:
+        case TYPE_DEVOURER_OF_SOULS:
             return m_auiEncounter[1];
-        default:
-            return 0;
-    }
-}
-
-uint64 instance_forge_of_souls::GetData64(uint32 uiData)
-{
-    switch(uiData)
-    {
-        case NPC_BRONJAHM:
-            return m_uiBronjahmGUID;
-        case NPC_DEVOURER:
-            return m_uiDevourerOrSoulsGUID;
         default:
             return 0;
     }
@@ -205,7 +195,7 @@ uint64 instance_forge_of_souls::GetData64(uint32 uiData)
 void instance_forge_of_souls::SetData64(uint32 uiType, uint64 uiData)
 {
     if (uiType == DATA_SOULFRAGMENT_REMOVE)
-        m_luiSoulFragmentAliveGUIDs.remove(uiData);
+        m_luiSoulFragmentAliveGUIDs.remove(ObjectGuid(uiData));
 }
 
 InstanceData* GetInstanceData_instance_forge_of_souls(Map* pMap)

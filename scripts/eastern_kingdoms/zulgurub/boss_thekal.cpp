@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -45,7 +45,7 @@ enum
     SPELL_GREATER_HEAL      = 24208,
     SPELL_DISARM            = 22691,
 
-    //Zealot Lor'Khan Spells
+    // Zealot Lor'Khan Spells
     SPELL_SWEEPING_STRIKES  = 18765,
     SPELL_SINISTER_STRIKE   = 15667,
     SPELL_GOUGE             = 24698,
@@ -71,7 +71,7 @@ struct MANGOS_DLL_DECL boss_thekalBaseAI : public ScriptedAI
     virtual void OnFakeingDeath() {}
     virtual void OnRevive() {}
 
-    void DamageTaken(Unit* pKiller, uint32& uiDamage)
+    void DamageTaken(Unit* /*pKiller*/, uint32& uiDamage) override
     {
         if (uiDamage < m_creature->GetHealth())
             return;
@@ -158,7 +158,7 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
 
     bool m_bEnraged;
 
-    void Reset()
+    void Reset() override
     {
         m_uiMortalCleaveTimer   = 4000;
         m_uiSilenceTimer        = 9000;
@@ -176,12 +176,12 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
         Revive(true);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -191,13 +191,13 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
         m_pInstance->SetData(TYPE_THEKAL, DONE);
 
         // remove the two adds
-        if (Creature* pZath = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_ZATH)))
+        if (Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH))
             pZath->ForcedDespawn();
-        if (Creature* pLorkhan = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_LORKHAN)))
+        if (Creature* pLorkhan = m_pInstance->GetSingleCreatureFromStorage(NPC_LORKHAN))
             pLorkhan->ForcedDespawn();
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_THEKAL, FAIL);
@@ -211,12 +211,12 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
             return false;
 
         // Else Prevent them Resurrecting
-        if (Creature* pLorkhan = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_LORKHAN)))
+        if (Creature* pLorkhan = m_pInstance->GetSingleCreatureFromStorage(NPC_LORKHAN))
         {
             if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pLorkhan->AI()))
                 pFakerAI->PreventRevive();
         }
-        Creature* pZath = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_ZATH));
+        if (Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH))
         {
             if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pZath->AI()))
                 pFakerAI->PreventRevive();
@@ -252,7 +252,7 @@ struct MANGOS_DLL_DECL boss_thekalAI : public boss_thekalBaseAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -373,7 +373,7 @@ struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public boss_thekalBaseAI
     uint32 m_uiDisarmTimer;
     uint32 m_uiResurrectTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiShieldTimer         = 1000;
         m_uiBloodLustTimer      = 16000;
@@ -387,7 +387,7 @@ struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public boss_thekalBaseAI
         Revive(true);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_LORKHAN, IN_PROGRESS);
@@ -401,7 +401,7 @@ struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public boss_thekalBaseAI
             m_pInstance->SetData(TYPE_LORKHAN, SPECIAL);
     }
 
-    void UpdateAI (const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -455,17 +455,17 @@ struct MANGOS_DLL_DECL mob_zealot_lorkhanAI : public boss_thekalBaseAI
                 {
                     if (m_pInstance)
                     {
-                        Creature* pThekal = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_THEKAL));
-                        Creature* pZath = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_ZATH));
+                        Creature* pThekal = m_pInstance->GetSingleCreatureFromStorage(NPC_THEKAL);
+                        Creature* pZath = m_pInstance->GetSingleCreatureFromStorage(NPC_ZATH);
 
-                        switch(urand(0, 1))
+                        switch (urand(0, 1))
                         {
                             case 0:
-                                if (pThekal && m_creature->IsWithinDistInMap(pThekal, 3*ATTACK_DISTANCE))
+                                if (pThekal && m_creature->IsWithinDistInMap(pThekal, 3 * ATTACK_DISTANCE))
                                     DoCastSpellIfCan(pThekal, SPELL_GREATER_HEAL);
                                 break;
                             case 1:
-                                if (pZath && m_creature->IsWithinDistInMap(pZath, 3*ATTACK_DISTANCE))
+                                if (pZath && m_creature->IsWithinDistInMap(pZath, 3 * ATTACK_DISTANCE))
                                     DoCastSpellIfCan(pZath, SPELL_GREATER_HEAL);
                                 break;
                         }
@@ -513,7 +513,7 @@ struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
     uint32 m_uiBlindTimer;
     uint32 m_uiResurrectTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiSweepingStrikesTimer    = 13000;
         m_uiSinisterStrikeTimer     = 8000;
@@ -528,7 +528,7 @@ struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
         Revive(true);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_ZATH, IN_PROGRESS);
@@ -542,7 +542,7 @@ struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
             m_pInstance->SetData(TYPE_ZATH, SPECIAL);
     }
 
-    void UpdateAI (const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -595,7 +595,7 @@ struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
                     if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_GOUGE) == CAST_OK)
                     {
                         if (m_creature->getThreatManager().getThreat(m_creature->getVictim()))
-                            m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(),-100);
+                            m_creature->getThreatManager().modifyThreatPercent(m_creature->getVictim(), -100);
 
                         m_uiGougeTimer = urand(17000, 27000);
                     }
@@ -628,15 +628,15 @@ struct MANGOS_DLL_DECL mob_zealot_zathAI : public boss_thekalBaseAI
     }
 };
 
-bool EffectDummyCreature_thekal_resurrection(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
+bool EffectDummyCreature_thekal_resurrection(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-    //always check spellid and effectindex
+    // always check spellid and effectindex
     if (uiSpellId == SPELL_RESURRECT && uiEffIndex == EFFECT_INDEX_0)
     {
         if (boss_thekalBaseAI* pFakerAI = dynamic_cast<boss_thekalBaseAI*>(pCreatureTarget->AI()))
             pFakerAI->Revive();
 
-        //always return true when we are handling this spell and effect
+        // always return true when we are handling this spell and effect
         return true;
     }
 

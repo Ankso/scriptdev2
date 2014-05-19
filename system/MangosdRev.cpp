@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
 * This program is free software licensed under GPL version 2
 * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -11,7 +11,6 @@
 #else
 #   define MANGOS_DLL_EXPORT extern "C" export
 #endif
-
 
 MANGOS_DLL_EXPORT
 char const* GetMangosRevStr()

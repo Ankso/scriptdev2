@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -14,182 +14,270 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-
 /* ScriptData
-SDName: boss_hadronox
-SD%Complete: ?%
-SDComment: by MaxXx2021
-SDCategory: Azjol-Nerub instance
+SDName: Boss_Hadronox
+SD%Complete: 90%
+SDComment: Some details and timers can be improved.
+SDCategory: Azjol'Nerub
 EndScriptData */
-/*
-* Comment: No Waves atm and the doors spells are crazy...
-*
-* When your group enters the main room (the one after the bridge), you will notice a group of 3 Nerubians.
-* When you engage them, 2 more groups like this one spawn behind the first one - it is important to pull the first group back,
-* so you don't aggro all 3. Hadronox will be under you, fighting Nerubians.
-*
-* This is the timed gauntlet - waves of non-elite spiders
-* will spawn from the 3 doors located a little above the main room, and will then head down to fight Hadronox. After clearing the
-* main room, it is recommended to just stay in it, kill the occasional non-elites that will attack you instead of the boss, and wait for
-* Hadronox to make his way to you. When Hadronox enters the main room, she will web the doors, and no more non-elites will spawn.
-*/
 
 #include "precompiled.h"
 #include "azjol-nerub.h"
 
 enum
 {
-    SPELL_ACID_CLOUD                              = 53400, // Victim
-    SPELL_LEECH_POISON                            = 53030, // Victim
-    SPELL_PIERCE_ARMOR                            = 53418, // Victim
-    SPELL_WEB_GRAB                                = 57731, // Victim
-    SPELL_WEB_FRONT_DOORS                         = 53177, // Self
-    SPELL_WEB_SIDE_DOORS                          = 53185, // Self
+    EMOTE_MOVE_TUNNEL           = -1601013,
+
+    SPELL_TAUNT                 = 53799,
+    SPELL_PIERCE_ARMOR          = 53418,
+    SPELL_ACID_CLOUD            = 53400,
+    SPELL_ACID_CLOUD_H          = 59419,
+    SPELL_LEECH_POISON          = 53030,
+    SPELL_LEECH_POISON_H        = 59417,
+    SPELL_WEB_GRAB              = 57731,
+    SPELL_WEB_GRAB_H            = 59421,
+
+    // Gauntlet spells
+    SPELL_SUMMON_CHAMPION       = 53035,
+    SPELL_SUMMON_NECROMANCER    = 53036,
+    SPELL_SUMMON_CRYPT_FIEND    = 53037,
+    SPELL_WEB_FRONT_DOORS       = 53177,            // sends event 19101
+    SPELL_WEB_SIDE_DOORS        = 53185,            // sends event 19102 - it seems that this isn't actually used here
+
+    MAX_SPIDERS                 = 9,
 };
+
+static const uint32 aSpiderEntries[MAX_SPIDERS] = {28924, 28925, 29051, 29062, 29063, 29064, 29096, 29097, 29098};
+
+/* ##### Gauntlet description #####
+ * This is the timed gauntlet - waves of non-elite spiders will spawn from the 3 doors located a little above the main room
+ * They will make their way down to fight Hadronox but she will head to the main room, fighting the spiders
+ * When Hadronox enters the main room, she will web the doors, and no more spiders will spawn.
+ */
+
+/*######
+## boss_hadronox
+######*/
 
 struct MANGOS_DLL_DECL boss_hadronoxAI : public ScriptedAI
 {
     boss_hadronoxAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_azjol_nerub*)pCreature->GetInstanceData();
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        m_uiGauntletStartTimer = 1000;
         Reset();
-        bFirstTime = true;
     }
 
-    ScriptedInstance* pInstance;
+    instance_azjol_nerub* m_pInstance;
+    bool m_bIsRegularMode;
 
-    uint32 uiAcidTimer;
-    uint32 uiLeechTimer;
-    uint32 uiPierceTimer;
-    uint32 uiGrabTimer;
-    uint32 uiDoorsTimer;
-    uint32 uiCheckDistanceTimer;
+    uint32 m_uiGauntletStartTimer;
 
-    bool bFirstTime;
+    uint32 m_uiAcidTimer;
+    uint32 m_uiLeechTimer;
+    uint32 m_uiPierceTimer;
+    uint32 m_uiGrabTimer;
+    uint32 m_uiTauntTimer;
 
-    float fMaxDistance;
-
-    void Reset()
+    void Reset() override
     {
-        m_creature->SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, 9.0f);
-        m_creature->SetFloatValue(UNIT_FIELD_COMBATREACH, 9.0f);
-
-        uiAcidTimer = urand(10000,14000);
-        uiLeechTimer = urand(3000,9000);
-        uiPierceTimer = urand(1000,3000);
-        uiGrabTimer = urand(15000,19000);
-        uiDoorsTimer = urand(20000,30000);
-        uiCheckDistanceTimer = 2000;
-
-        fMaxDistance = 50.0f;
-
-        if (pInstance && (pInstance->GetData(TYPE_HADRONOX) != DONE && !bFirstTime))
-            pInstance->SetData(TYPE_HADRONOX, FAIL);
-
-        bFirstTime = false;
+        m_uiAcidTimer   = urand(10000, 14000);
+        m_uiLeechTimer  = urand(3000, 9000);
+        m_uiPierceTimer = urand(1000, 3000);
+        m_uiGrabTimer   = urand(15000, 19000);
+        m_uiTauntTimer  = urand(2000, 5000);
     }
 
-    //when Hadronox kills any enemy (that includes a party member) she will regain 10% of her HP if the target had Leech Poison on
-    void KilledUnit(Unit* Victim)
+    void Aggro(Unit* pWho) override
     {
-        // not sure if this aura check is correct, I think it is though
-        if (!Victim || !Victim->HasAura(SPELL_LEECH_POISON) || !m_creature->isAlive())
+        if (pWho->GetTypeId() == TYPEID_PLAYER && m_pInstance)
+            m_pInstance->SetData(TYPE_HADRONOX, IN_PROGRESS);
+    }
+
+    void AttackStart(Unit* pWho) override
+    {
+        // No more attacks during the movement upstairs
+        if ((m_pInstance && m_pInstance->GetData(TYPE_HADRONOX) == SPECIAL) && pWho->GetTypeId() != TYPEID_PLAYER)
             return;
 
-        uint32 health = m_creature->GetMaxHealth()/10;
-
-        if ((m_creature->GetHealth()+health) >= m_creature->GetMaxHealth())
-            m_creature->SetHealth(m_creature->GetMaxHealth());
-        else
-            m_creature->SetHealth(m_creature->GetHealth()+health);
+        ScriptedAI::AttackStart(pWho);
     }
 
-    void JustDied(Unit* Killer)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        if (pInstance)
-            pInstance->SetData(TYPE_HADRONOX, DONE);
-    }
-
-    void EnterCombat(Unit* who)
-    {
-        if (pInstance)
-            pInstance->SetData(TYPE_HADRONOX, IN_PROGRESS);
-        m_creature->SetInCombatWithZone();
-    }
-
-    void CheckDistance(float dist, const uint32 uiDiff)
-    {
-        if (!m_creature->isInCombat())
-            return;
-
-        float x=0.0f, y=0.0f, z=0.0f;
-        m_creature->GetRespawnCoord(x,y,z);
-
-        if (uiCheckDistanceTimer <= uiDiff)
-            uiCheckDistanceTimer = 5000;
-        else
+        // Force the spiders to attack him
+        if (pWho->GetTypeId() == TYPEID_UNIT && m_creature->IsWithinDistInMap(pWho, 2 * ATTACK_DISTANCE) && !pWho->getVictim())
         {
-            uiCheckDistanceTimer -= uiDiff;
-            return;
+            for (uint8 i = 0; i < MAX_SPIDERS; ++i)
+            {
+                if (pWho->GetEntry() == aSpiderEntries[i])
+                    ((Creature*)pWho)->AI()->AttackStart(m_creature);
+            }
         }
-        if (m_creature->IsInEvadeMode() || !m_creature->getVictim())
+
+        // No more attacks during the movement upstairs
+        if ((m_pInstance && m_pInstance->GetData(TYPE_HADRONOX) == SPECIAL) && pWho->GetTypeId() != TYPEID_PLAYER)
             return;
-        if (m_creature->GetDistance(x,y,z) > dist)
-            EnterEvadeMode();
+
+        ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void UpdateAI(const uint32 diff)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
-        //Return since we have no target
+        m_creature->SetHealth(m_creature->GetHealth() + (m_creature->GetMaxHealth() * 0.1));
+    }
+
+    void JustDied(Unit* /*pKiller*/) override
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_HADRONOX, DONE);
+    }
+
+    void EnterEvadeMode() override
+    {
+        m_creature->RemoveAllAurasOnEvade();
+        m_creature->DeleteThreatList();
+        m_creature->CombatStop(true);
+        m_creature->LoadCreatureAddon(true);
+
+        m_creature->SetLootRecipient(NULL);
+
+        Reset();
+
+        if (!m_creature->isAlive() || !m_pInstance)
+            return;
+
+        // Moving upstairs, don't disturb
+        if (m_pInstance->GetData(TYPE_HADRONOX) == SPECIAL)
+        {
+            m_creature->GetMotionMaster()->MoveWaypoint();
+            DoScriptText(EMOTE_MOVE_TUNNEL, m_creature);
+        }
+        // Stay upstairs if evade from players
+        else if (m_pInstance->GetData(TYPE_HADRONOX) == IN_PROGRESS)
+            m_creature->GetMotionMaster()->MovePoint(1, 530.42f, 560.003f, 733.0308f);
+        else
+            m_creature->GetMotionMaster()->MoveTargetedHome();
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    {
+        // Mark as failed if evaded while upstairs
+        if (uiMoveType == POINT_MOTION_TYPE && uiPointId)
+        {
+            if (m_pInstance)
+                m_pInstance->SetData(TYPE_HADRONOX, FAIL);
+        }
+        // Web the doors when upstairs
+        else if (uiMoveType == WAYPOINT_MOTION_TYPE && uiPointId == 10)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_WEB_FRONT_DOORS, CAST_TRIGGERED) == CAST_OK)
+            {
+                // These should be handled by the scripted event
+                if (m_pInstance)
+                {
+                    m_pInstance->SetData(TYPE_HADRONOX, IN_PROGRESS);
+                    m_pInstance->ResetHadronoxTriggers();
+                    m_pInstance->SetHadronoxDeniedAchievCriteria(false);
+                }
+
+                // No more movement
+                m_creature->GetMotionMaster()->MoveIdle();
+            }
+        }
+    }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        // Allow the spawns to make a few steps so we can use move maps
+        pSummoned->SetWalk(false);
+        pSummoned->GetMotionMaster()->MoveWaypoint();
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiGauntletStartTimer)
+        {
+            if (m_uiGauntletStartTimer <= uiDiff)
+            {
+                if (!m_pInstance)
+                {
+                    script_error_log("Instance Azjol-Nerub: ERROR Failed to load instance data for this instace.");
+                    return;
+                }
+
+                GuidList m_lTriggersGuids;
+                m_pInstance->GetHadronoxTriggerList(m_lTriggersGuids);
+
+                // Need to force the triggers to cast this with Hadronox Guid so we can control the summons better
+                for (GuidList::const_iterator itr = m_lTriggersGuids.begin(); itr != m_lTriggersGuids.end(); ++itr)
+                {
+                    if (Creature* pTrigger = m_creature->GetMap()->GetCreature(*itr))
+                    {
+                        pTrigger->CastSpell(pTrigger, SPELL_SUMMON_CHAMPION, true, NULL, NULL, m_creature->GetObjectGuid());
+                        pTrigger->CastSpell(pTrigger, SPELL_SUMMON_NECROMANCER, true, NULL, NULL, m_creature->GetObjectGuid());
+                        pTrigger->CastSpell(pTrigger, SPELL_SUMMON_CRYPT_FIEND, true, NULL, NULL, m_creature->GetObjectGuid());
+                    }
+                }
+
+                m_uiGauntletStartTimer = 0;
+            }
+            else
+                m_uiGauntletStartTimer -= uiDiff;
+        }
+
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        // Without he comes up through the air to players on the bridge after krikthir if players crossing this bridge!
-        CheckDistance(fMaxDistance, diff);
-
-        if (m_creature->HasAura(SPELL_WEB_FRONT_DOORS) || m_creature->HasAura(SPELL_WEB_SIDE_DOORS))
+        if (m_uiPierceTimer < uiDiff)
         {
-            if (IsCombatMovement())
-                SetCombatMovement(false);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_PIERCE_ARMOR) == CAST_OK)
+                m_uiPierceTimer = urand(8000, 15000);
         }
-        else if (!IsCombatMovement())
-            SetCombatMovement(true);
+        else
+            m_uiPierceTimer -= uiDiff;
 
-        if (uiPierceTimer <= diff)
+        if (m_uiAcidTimer < uiDiff)
         {
-            DoCast(m_creature->getVictim(), SPELL_PIERCE_ARMOR);
-            uiPierceTimer = 8000;
-        } else uiPierceTimer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_ACID_CLOUD : SPELL_ACID_CLOUD_H) == CAST_OK)
+                    m_uiAcidTimer = urand(10000, 15000);
+            }
+        }
+        else
+            m_uiAcidTimer -= uiDiff;
 
-        if (uiAcidTimer <= diff)
+        if (m_uiLeechTimer < uiDiff)
         {
-            if (Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCast(pTarget, SPELL_ACID_CLOUD);
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_LEECH_POISON : SPELL_LEECH_POISON_H) == CAST_OK)
+                    m_uiLeechTimer = urand(10000, 15000);
+            }
+        }
+        else
+            m_uiLeechTimer -= uiDiff;
 
-            uiAcidTimer = urand(20000,30000);
-        } else uiAcidTimer -= diff;
-
-        if (uiLeechTimer <= diff)
+        if (m_uiGrabTimer < uiDiff)
         {
-            if (Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCast(pTarget, SPELL_LEECH_POISON);
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WEB_GRAB : SPELL_WEB_GRAB_H) == CAST_OK)
+                m_uiGrabTimer = urand(25000, 30000);
+        }
+        else
+            m_uiGrabTimer -= uiDiff;
 
-            uiLeechTimer = urand(11000,14000);
-        } else uiLeechTimer -= diff;
-
-        if (uiGrabTimer <= diff)
+        if (m_uiTauntTimer < uiDiff)
         {
-            if (Unit *pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0)) // Draws all players (and attacking Mobs) to itself.
-                DoCast(pTarget, SPELL_WEB_GRAB);
-
-            uiGrabTimer = urand(15000,30000);
-        } else uiGrabTimer -= diff;
-
-        if (uiDoorsTimer <= diff)
-        {
-            //DoCast(me, urand(SPELL_WEB_FRONT_DOORS, SPELL_WEB_SIDE_DOORS));
-            uiDoorsTimer = urand(30000,60000);
-        } else uiDoorsTimer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_TAUNT) == CAST_OK)
+                    m_uiTauntTimer = urand(7000, 14000);
+            }
+        }
+        else
+            m_uiTauntTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -197,15 +285,15 @@ struct MANGOS_DLL_DECL boss_hadronoxAI : public ScriptedAI
 
 CreatureAI* GetAI_boss_hadronox(Creature* pCreature)
 {
-    return new boss_hadronoxAI (pCreature);
+    return new boss_hadronoxAI(pCreature);
 }
 
 void AddSC_boss_hadronox()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_hadronox";
-    newscript->GetAI = &GetAI_boss_hadronox;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_hadronox";
+    pNewScript->GetAI = &GetAI_boss_hadronox;
+    pNewScript->RegisterSelf();
 }

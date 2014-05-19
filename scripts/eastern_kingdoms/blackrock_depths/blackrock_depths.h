@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -7,13 +7,17 @@
 
 enum
 {
-    MAX_ENCOUNTER           = 6,
+    MAX_ENCOUNTER           = 7,
+    MAX_RELIC_DOORS         = 12,
+    MAX_DWARFS              = 7,
+
     TYPE_RING_OF_LAW        = 1,
     TYPE_VAULT              = 2,
     TYPE_BAR                = 3,
     TYPE_TOMB_OF_SEVEN      = 4,
     TYPE_LYCEUM             = 5,
     TYPE_IRON_HALL          = 6,
+    TYPE_QUEST_JAIL_BREAK   = 7,
 
     NPC_EMPEROR             = 9019,
     NPC_PRINCESS            = 8929,
@@ -25,6 +29,17 @@ enum
     NPC_SEETHREL            = 9038,
     NPC_DOOMREL             = 9039,
     NPC_DOPEREL             = 9040,
+    NPC_MAGMUS              = 9938,
+    NPC_WATCHER_DOOMGRIP    = 9476,
+    NPC_WARBRINGER_CONST    = 8905,                         // Four of them in Relict Vault are related to Doomgrip summon event
+
+    // Jail Break event related
+    NPC_OGRABISI            = 9677,
+    NPC_SHILL               = 9678,
+    NPC_CREST               = 9680,
+    NPC_JAZ                 = 9681,
+    NPC_TOBIAS              = 9679,
+    NPC_DUGHAL              = 9022,
 
     GO_ARENA_1              = 161525,
     GO_ARENA_2              = 161522,
@@ -48,6 +63,15 @@ enum
     GO_SPECTRAL_CHALICE     = 164869,
     GO_CHEST_SEVEN          = 169243,
     GO_ARENA_SPOILS         = 181074,
+    GO_SECRET_DOOR          = 174553,
+
+    // Jail break event related
+    GO_JAIL_DOOR_SUPPLY     = 170561,
+    GO_JAIL_SUPPLY_CRATE    = 166872,
+
+    SPELL_STONED            = 10255,                        // Aura of Warbringer Constructs in Relict Vault
+
+    FACTION_DWARF_HOSTILE   = 754,                          // Hostile faction for the Tomb of the Seven dwarfs
 };
 
 enum ArenaNPCs
@@ -88,69 +112,53 @@ static const uint32 aArenaNPCs[] =
     NPC_GOROSH, NPC_GRIZZLE, NPC_EVISCERATOR, NPC_OKTHOR, NPC_ANUBSHIAH, NPC_HEDRUM
 };
 
+// Used to summon Watcher Doomgrip
+static const float aVaultPositions[4] = {821.905f, -338.382f, -50.134f, 3.78736f};
+
+// Tomb of the Seven dwarfs
+static const uint32 aTombDwarfes[MAX_DWARFS] = {NPC_ANGERREL, NPC_SEETHREL, NPC_DOPEREL, NPC_GLOOMREL, NPC_VILEREL, NPC_HATEREL, NPC_DOOMREL};
+
 class MANGOS_DLL_DECL instance_blackrock_depths : public ScriptedInstance
 {
     public:
         instance_blackrock_depths(Map* pMap);
         ~instance_blackrock_depths() {}
 
-        void Initialize();
+        void Initialize() override;
 
-        void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
-
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
-
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnCreatureEnterCombat(Creature* pCreature) override;
+        void OnCreatureDeath(Creature* pCreature) override;
         void OnCreatureEvade(Creature* pCreature);
+        void OnObjectCreate(GameObject* pGo) override;
+
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
+
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
+
+        void Update(uint32 uiDiff) override;
 
         // Arena Event
         void SetArenaCenterCoords(float fX, float fY, float fZ) { m_fArenaCenterX = fX; m_fArenaCenterY = fY; m_fArenaCenterZ = fZ; }
-        void GetArenaCenterCoords(float &fX, float &fY, float &fZ) { fX = m_fArenaCenterX; fY = m_fArenaCenterY; fZ = m_fArenaCenterZ; }
+        void GetArenaCenterCoords(float& fX, float& fY, float& fZ) { fX = m_fArenaCenterX; fY = m_fArenaCenterY; fZ = m_fArenaCenterZ; }
 
     private:
+        void DoCallNextDwarf();
+
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string m_strInstData;
 
-        uint64 m_uiEmperorGUID;
-        uint64 m_uiPrincessGUID;
-        uint64 m_uiPhalanxGUID;
-        uint64 m_uiHaterelGUID;
-        uint64 m_uiAngerrelGUID;
-        uint64 m_uiVilerelGUID;
-        uint64 m_uiGloomrelGUID;
-        uint64 m_uiSeethrelGUID;
-        uint64 m_uiDoomrelGUID;
-        uint64 m_uiDoperelGUID;
-
-        uint64 m_uiGoArena1GUID;
-        uint64 m_uiGoArena2GUID;
-        uint64 m_uiGoArena3GUID;
-        uint64 m_uiGoArena4GUID;
-        uint64 m_uiGoShadowLockGUID;
-        uint64 m_uiGoShadowMechGUID;
-        uint64 m_uiGoShadowGiantGUID;
-        uint64 m_uiGoShadowDummyGUID;
-        uint64 m_uiGoBarKegGUID;
-        uint64 m_uiGoBarKegTrapGUID;
-        uint64 m_uiGoBarDoorGUID;
-        uint64 m_uiGoTombEnterGUID;
-        uint64 m_uiGoTombExitGUID;
-        uint64 m_uiGoLyceumGUID;
-        uint64 m_uiGoGolemNGUID;
-        uint64 m_uiGoGolemSGUID;
-        uint64 m_uiGoThroneGUID;
-
-        uint64 m_uiSpectralChaliceGUID;
-        uint64 m_uiSevensChestGUID;
-        uint64 m_uiArenaSpoilsGUID;
-
         uint32 m_uiBarAleCount;
+        uint8 m_uiCofferDoorsOpened;
+
+        uint8 m_uiDwarfRound;
+        uint32 m_uiDwarfFightTimer;
 
         float m_fArenaCenterX, m_fArenaCenterY, m_fArenaCenterZ;
+
+        GuidSet m_sVaultNpcGuids;
 };
 
 #endif

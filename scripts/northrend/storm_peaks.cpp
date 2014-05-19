@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,553 +17,231 @@
 /* ScriptData
 SDName: Storm_Peaks
 SD%Complete: 100
-SDComment: Vendor Support (31247). Quest support: 12970, 12684, 12983
+SDComment: Quest support: 12832, 12977.
 SDCategory: Storm Peaks
 EndScriptData */
 
 /* ContentData
-npc_loklira_the_crone
-npc_roxi_ramrocket
-npc_frostborn_scout
-npc_freed_protodrake
-npc_brunnhildar_prisoner
-npc_kirgaraak
-npc_harnessed_icemaw_matriarch
+npc_floating_spirit
+npc_restless_frostborn
+npc_injured_miner
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
-#include "Vehicle.h"
 
 /*######
-## npc_frostborn_scout
+## npc_floating_spirit
 ######*/
-
-enum Scout
-{
-    QUEST_MISSING_SCOUT          = 12864,
-
-    GOSSIP_TEXTID_SCOUT_1        = 13611,
-    GOSSIP_TEXTID_SCOUT_2        = 13612,
-    GOSSIP_TEXTID_SCOUT_3        = 13613,
-    GOSSIP_TEXTID_SCOUT_4        = 13614
-
-};
-
-#define GOSSIP_ITEM_SCOUT_1     "Are you okay? I've come to take you back to Frosthold if you can stand."
-#define GOSSIP_ITEM_SCOUT_2     "I'm sorry that I didn't get here sooner. What happened?"
-#define GOSSIP_ITEM_SCOUT_3     "I'll go get some help. Hang in there."
-
-bool GossipHello_npc_frostborn_scout(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(QUEST_MISSING_SCOUT) == QUEST_STATUS_INCOMPLETE)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SCOUT_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_SCOUT_1, pCreature->GetObjectGuid());
-        return true;
-    }
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_frostborn_scout(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SCOUT_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_SCOUT_2, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SCOUT_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_SCOUT_3, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_SCOUT_4, pCreature->GetObjectGuid());
-            pPlayer->AreaExploredOrEventHappens(QUEST_MISSING_SCOUT);
-            break;
-    }
-    return true;
-}
-
-/*######
-## npc_loklira_the_crone
-######*/
-
-#define GOSSIP_ITEM_TELL_ME         "Tell me about this proposal."
-#define GOSSIP_ITEM_WHAT_HAPPENED   "What happened then?"
-#define GOSSIP_ITEM_YOU_WANT_ME     "You want me to take part in the Hyldsmeet to end the war?"
-#define GOSSIP_ITEM_VERY_WELL       "Very well. I'll take part in this competition."
 
 enum
 {
-    GOSSIP_TEXTID_LOKLIRA1    = 13777,
-    GOSSIP_TEXTID_LOKLIRA2    = 13778,
-    GOSSIP_TEXTID_LOKLIRA3    = 13779,
-    GOSSIP_TEXTID_LOKLIRA4    = 13780,
+    SPELL_BLOW_HODIRS_HORN              = 55983,
+    SPELL_SUMMON_FROST_GIANG_SPIRIT     = 55986,
+    SPELL_SUMMON_FROST_WARRIOR_SPIRIT   = 55991,
+    SPELL_SUMMON_FROST_GHOST_SPIRIT     = 55992,
 
-    QUEST_THE_HYLDSMEET       = 12970,
+    NPC_FROST_GIANT_GHOST_KC            = 30138,
+    NPC_FROST_DWARF_GHOST_KC            = 30139,
 
-    CREDIT_LOKLIRA            = 30467
+    NPC_NIFFELEM_FOREFATHER             = 29974,
+    NPC_FROSTBORN_WARRIOR               = 30135,
+    NPC_FROSTBORN_GHOST                 = 30144,
 };
 
-bool GossipHello_npc_loklira_the_crone(Player* pPlayer, Creature* pCreature)
+struct MANGOS_DLL_DECL npc_floating_spiritAI : public ScriptedAI
+{
+    npc_floating_spiritAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+
+    void Reset() override
+    {
+        // Simple animation for the floating spirit
+        m_creature->SetLevitate(true);
+        m_creature->ForcedDespawn(5000);
+
+        m_creature->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ() + 50.0f);
+    }
+};
+
+CreatureAI* GetAI_npc_floating_spirit(Creature* pCreature)
+{
+    return new npc_floating_spiritAI(pCreature);
+}
+
+/*######
+## npc_restless_frostborn
+######*/
+
+bool EffectDummyCreature_npc_restless_frostborn(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
+{
+    if (uiSpellId == SPELL_BLOW_HODIRS_HORN && uiEffIndex == EFFECT_INDEX_0 && !pCreatureTarget->isAlive() && pCaster->GetTypeId() == TYPEID_PLAYER)
+    {
+        uint32 uiCredit = 0;
+        uint32 uiSpawnSpell = 0;
+        switch (pCreatureTarget->GetEntry())
+        {
+            case NPC_NIFFELEM_FOREFATHER:
+                uiCredit = NPC_FROST_GIANT_GHOST_KC;
+                uiSpawnSpell = SPELL_SUMMON_FROST_GIANG_SPIRIT;
+                break;
+            case NPC_FROSTBORN_WARRIOR:
+                uiCredit = NPC_FROST_DWARF_GHOST_KC;
+                uiSpawnSpell = SPELL_SUMMON_FROST_WARRIOR_SPIRIT;
+                break;
+            case NPC_FROSTBORN_GHOST:
+                uiCredit = NPC_FROST_DWARF_GHOST_KC;
+                uiSpawnSpell = SPELL_SUMMON_FROST_GHOST_SPIRIT;
+                break;
+        }
+
+        // spawn the spirit and give the credit; spirit animation is handled by the script above
+        pCaster->CastSpell(pCaster, uiSpawnSpell, true);
+        ((Player*)pCaster)->KilledMonsterCredit(uiCredit);
+        return true;
+    }
+
+    return false;
+}
+
+/*######
+## npc_injured_miner
+######*/
+
+enum
+{
+    // yells
+    SAY_MINER_READY                     = -1001051,
+    SAY_MINER_COMPLETE                  = -1001052,
+
+    // gossip
+    GOSSIP_ITEM_ID_READY                = -3000112,
+    TEXT_ID_POISONED                    = 13650,
+    TEXT_ID_READY                       = 13651,
+
+    // misc
+    SPELL_FEIGN_DEATH                   = 51329,
+    QUEST_ID_BITTER_DEPARTURE           = 12832,
+};
+
+struct MANGOS_DLL_DECL npc_injured_minerAI : public npc_escortAI
+{
+    npc_injured_minerAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
+
+    void Reset() override { }
+
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* pInvoker, uint32 uiMiscValue) override
+    {
+        if (eventType == AI_EVENT_START_ESCORT && pInvoker->GetTypeId() == TYPEID_PLAYER)
+        {
+            Start(true, (Player*)pInvoker, GetQuestTemplateStore(uiMiscValue));
+            SetEscortPaused(true);
+
+            // set alternative waypoints if required
+            if (m_creature->GetPositionX() > 6650.0f)
+                SetCurrentWaypoint(7);
+            else if (m_creature->GetPositionX() > 6635.0f)
+                SetCurrentWaypoint(35);
+
+            DoScriptText(SAY_MINER_READY, m_creature);
+            m_creature->SetStandState(UNIT_STAND_STATE_STAND);
+            m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            m_creature->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
+            m_creature->SetFactionTemporary(FACTION_ESCORT_N_FRIEND_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
+        }
+        else if (eventType == AI_EVENT_CUSTOM_A && pInvoker->GetTypeId() == TYPEID_PLAYER)
+        {
+            SetEscortPaused(false);
+            m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        }
+    }
+
+    void WaypointReached(uint32 uiPointId) override
+    {
+        switch (uiPointId)
+        {
+            case 33:
+                DoScriptText(SAY_MINER_COMPLETE, m_creature);
+                if (Player* pPlayer = GetPlayerForEscort())
+                {
+                    pPlayer->GroupEventHappens(QUEST_ID_BITTER_DEPARTURE, m_creature);
+                    m_creature->SetFacingToObject(pPlayer);
+                }
+                break;
+            case 34:
+                m_creature->ForcedDespawn();
+                break;
+            case 46:
+                // merge with the other wp path
+                SetEscortPaused(true);
+                SetCurrentWaypoint(13);
+                SetEscortPaused(false);
+                break;
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_injured_miner(Creature* pCreature)
+{
+    return new npc_injured_minerAI(pCreature);
+}
+
+bool GossipHello_npc_injured_miner(Player* pPlayer, Creature* pCreature)
 {
     if (pCreature->isQuestGiver())
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
-    if (pPlayer->GetQuestStatus(QUEST_THE_HYLDSMEET) == QUEST_STATUS_INCOMPLETE)
+    if (!pCreature->HasAura(SPELL_FEIGN_DEATH))
     {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TELL_ME, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_LOKLIRA1, pCreature->GetObjectGuid());
+        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_ID_READY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        pPlayer->SEND_GOSSIP_MENU(TEXT_ID_READY, pCreature->GetObjectGuid());
         return true;
     }
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
+    pPlayer->SEND_GOSSIP_MENU(TEXT_ID_POISONED, pCreature->GetObjectGuid());
     return true;
 }
 
-bool GossipSelect_npc_loklira_the_crone(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_injured_miner(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    switch(uiAction)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_WHAT_HAPPENED, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_LOKLIRA2, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_YOU_WANT_ME, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_LOKLIRA3, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_VERY_WELL, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_LOKLIRA4, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->TalkedToCreature(CREDIT_LOKLIRA, pCreature->GetObjectGuid());
-            pPlayer->CLOSE_GOSSIP_MENU();
-            break;
-    }
-    return true;
-}
-
-/*######
-## npc_thorim
-######*/
-
-#define GOSSIP_ITEM_THORIM1         "Can you tell me what became of Sif?"
-#define GOSSIP_ITEM_THORIM2         "He did more than that, Thorim. He controls Ulduar now."
-#define GOSSIP_ITEM_THORIM3         "It needn't end this way."
-
-enum
-{
-    QUEST_SIBLING_RIVALRY           = 13064,
-
-    SPELL_THORIM_STORY_KILL_CREDIT  = 56940,
-
-    GOSSIP_TEXTID_THORIM1           = 13799,
-    GOSSIP_TEXTID_THORIM2           = 13801,
-    GOSSIP_TEXTID_THORIM3           = 13802,
-    GOSSIP_TEXTID_THORIM4           = 13803
-};
-
-bool GossipHello_npc_thorim(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestStatus(QUEST_SIBLING_RIVALRY) == QUEST_STATUS_INCOMPLETE)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_THORIM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_THORIM1, pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_thorim(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_THORIM2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_THORIM2, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_THORIM3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_THORIM3, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_THORIM4, pCreature->GetObjectGuid());
-            pCreature->CastSpell(pPlayer, SPELL_THORIM_STORY_KILL_CREDIT, true);
-            break;
+        pPlayer->CLOSE_GOSSIP_MENU();
+        pCreature->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, pPlayer, pCreature);
     }
 
     return true;
 }
 
-/*######
-## npc_roxi_ramrocket
-######*/
-
-#define GOSSIP_TEXT_RAMROCKET1  "How do you fly in this cold climate?"
-#define GOSSIP_TEXT_RAMROCKET2  "I hear you sell motorcycle parts."
-
-enum
+bool QuestAccept_npc_injured_miner(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
-    SPELL_MECHANO_HOG           = 60866,
-    SPELL_MEKGINEER_CHOPPER     = 60867
-};
-
-bool GossipHello_npc_roxi_ramrocket(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isTrainer())
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_TRAINER, GOSSIP_TEXT_RAMROCKET1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRAIN);
-
-    if (pCreature->isVendor())
+    if (pQuest->GetQuestId() == QUEST_ID_BITTER_DEPARTURE)
     {
-        if (pPlayer->HasSpell(SPELL_MECHANO_HOG) || pPlayer->HasSpell(SPELL_MEKGINEER_CHOPPER))
-        {
-            if (pPlayer->HasSkill(SKILL_ENGINEERING) && pPlayer->GetBaseSkillValue(SKILL_ENGINEERING) >= 450)
-                pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_RAMROCKET2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-        }
+        pCreature->AI()->SendAIEvent(AI_EVENT_START_ESCORT, pPlayer, pCreature, pQuest->GetQuestId());
+        return true;
     }
 
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    return true;
-}
-
-bool GossipSelect_npc_roxi_ramrocket(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
-    {
-        case GOSSIP_ACTION_TRAIN:
-            pPlayer->SEND_TRAINERLIST(pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_TRADE:
-            pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
-            break;
-    }
-
-    return true;
-}
-
-/*######
-## npc_freed_protodrake
-######*/
-
-enum
-{
-    ENTRY_LIBERATED_BRUNNHILDAR = 29734,
-    ENTRY_FREED_PROTODRAKE = 29709,
-};
-
-struct MANGOS_DLL_DECL npc_freed_protodrakeAI : public npc_escortAI
-{
-    npc_freed_protodrakeAI(Creature* pCreature) : npc_escortAI(pCreature)
-    {
-        Reset();
-    }
-
-    bool m_bNotOnRoute;
-
-    void Reset()
-    {
-        m_bNotOnRoute = false;
-        if (m_creature->getFaction() != m_creature->GetCreatureInfo()->faction_A)
-            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-    }
-
-    void WaypointReached(uint32 uiPointId)
-    {
-
-        if (uiPointId == 5) //reached village, give credits
-        {
-            Unit* pPlayer = m_creature->GetVehicleKit()->GetPassenger(0);
-            if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
-            {
-                for (uint8 i = 1; i < 4; ++i)
-                    if (Unit* pPrisoner = m_creature->GetVehicleKit()->GetPassenger(i))
-                    {
-                        ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_LIBERATED_BRUNNHILDAR);
-                        pPrisoner->ExitVehicle();
-                    }
-
-                ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_FREED_PROTODRAKE);
-                pPlayer->ExitVehicle();
-            }
-
-            m_creature->SetVisibility(VISIBILITY_OFF);
-            m_creature->ForcedDespawn(1000);
-        }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_bNotOnRoute && m_creature->GetPositionY() > -2595.0f)
-            if (m_creature->isCharmed())
-            {
-                ((Player*)(m_creature->GetCharmer()))->SetClientControl(m_creature, 0);
-                m_bNotOnRoute = true;
-
-                //flight he don't accept so we walk o_O
-                m_creature->SetSpeedRate(MOVE_WALK, 3.0f,true);
-
-                m_creature->setFaction(35);
-
-                Start(false, (Player*)(m_creature->GetCharmer()));
-            }
-        npc_escortAI::UpdateAI(uiDiff);
-    }
-};
-
-CreatureAI* GetAI_npc_freed_protodrake(Creature* pCreature)
-{
-    return new npc_freed_protodrakeAI(pCreature);
-}
-
-/*######
-## npc_brunnhildar_prisoner
-######*/
-
-enum
-{
-    SPELL_ICE_BLOCK = 54894,
-    SPELL_ICE_SHARD = 55046,
-    SPELL_ICE_SHARD_IMPACT = 55047
-};
-
-struct npc_brunnhildar_prisonerAI : public ScriptedAI
-{
-    npc_brunnhildar_prisonerAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
-
-    uint32 m_uiCheckTimer;
-
-    void Reset()
-    {
-        m_uiCheckTimer = 10000;
-        m_creature->CastSpell(m_creature, SPELL_ICE_BLOCK, true);
-    }
-
-    void SpellHit(Unit *pCaster, const SpellEntry *spell)
-    {
-        if (spell->Id == SPELL_ICE_SHARD)
-        {
-            m_creature->CastSpell(m_creature, SPELL_ICE_SHARD_IMPACT, true);
-
-            if (pCaster->IsVehicle())
-            {
-                m_creature->EnterVehicle(pCaster->GetVehicleKit());
-                m_creature->RemoveAurasDueToSpell(SPELL_ICE_BLOCK);
-            }
-        }
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (m_uiCheckTimer < diff)
-        {
-            if (!m_creature->hasUnitState(UNIT_STAT_ON_VEHICLE))
-            {
-                //return home if not passenger
-                float x;
-                float y;
-                float z;
-
-                m_creature->GetRespawnCoord(x, y, z);
-                
-                if(m_creature->GetDistance(x,y,z) > 20.0f)
-                {
-                    m_creature->SetDeathState(JUST_DIED);
-                    m_creature->Respawn();
-                }
-            }
-            m_uiCheckTimer = 10000;
-        }
-        else
-            m_uiCheckTimer -= diff;
-    }
-};
-
-CreatureAI* GetAI_npc_brunnhildar_prisoner(Creature* pCreature)
-{
-    return new npc_brunnhildar_prisonerAI(pCreature);
-}
-
-/*######
-## npc_kirgaraak
-######*/
-
-enum
-{
-    QUEST_THE_WARM_UP       = 12996,
-    NPC_KIRGARAAK_CREDIT    = 30221
-};
-
-struct MANGOS_DLL_DECL npc_kirgaraakAI : public ScriptedAI
-{
-    npc_kirgaraakAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        Reset();
-    }
-
-    bool m_bKirgaraakBeaten;
-
-    void Reset()
-    {
-        m_bKirgaraakBeaten =  false;
-        m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-    }
-
-    void DamageTaken(Unit* pDoneBy, uint32& uiDamage)
-    {
-        if (uiDamage > m_creature->GetHealth() || (m_creature->GetHealth() - uiDamage)*100 / m_creature->GetMaxHealth() < 10)
-        {
-            if (Player* pPlayer = pDoneBy->GetCharmerOrOwnerPlayerOrPlayerItself())
-            {
-                if (!m_bKirgaraakBeaten && pPlayer->GetQuestStatus(QUEST_THE_WARM_UP) == QUEST_STATUS_INCOMPLETE)
-                {
-                    uiDamage = 0;
-                    
-                    m_creature->setFaction(35);
-                    m_creature->CombatStop(true);
-                    m_creature->RemoveAllAuras();
-                    m_creature->DeleteThreatList();
-                    pPlayer->KilledMonsterCredit(NPC_KIRGARAAK_CREDIT);
-                    m_bKirgaraakBeaten = true;
-                }
-            }
-        }
-    }
-
-    void MoveInLineOfSight(Unit* pWho) 
-    {
-        if (pWho->GetTypeId() == TYPEID_PLAYER)
-        {
-            if (pWho->hasUnitState(UNIT_STAT_ON_VEHICLE) && ((Player*)pWho)->GetQuestStatus(QUEST_THE_WARM_UP) == QUEST_STATUS_INCOMPLETE)
-            {
-                m_creature->setFaction(90);
-            }
-        }
-    }
-};
-
-CreatureAI* GetAI_npc_kirgaraak(Creature* pCreature)
-{
-    return new npc_kirgaraakAI(pCreature);
-}
-
-/*######
-## npc_harnessed_icemaw_matriarch
-######*/
-
-enum
-{
-    ENTRY_HARNESSED_MATRIARCH = 29563,
-};
-
-struct MANGOS_DLL_DECL npc_harnessed_icemaw_matriarchAI : public npc_escortAI
-{
-    npc_harnessed_icemaw_matriarchAI(Creature* pCreature) : npc_escortAI(pCreature)
-    {
-        Reset();
-    }
-
-    bool m_bNotOnRoute;
-
-    void Reset()
-    {
-        m_bNotOnRoute = false;
-    }
-
-    void WaypointReached(uint32 uiPointId)
-    {
-
-        if (uiPointId == 16) //reached village, give credits
-        {
-            Unit* pPlayer = m_creature->GetVehicleKit()->GetPassenger(0);
-            if (pPlayer && pPlayer->GetTypeId() == TYPEID_PLAYER)
-            {
-                ((Player*)pPlayer)->KilledMonsterCredit(ENTRY_HARNESSED_MATRIARCH);
-                pPlayer->ExitVehicle();
-            }
-
-            m_creature->SetVisibility(VISIBILITY_OFF);
-            m_creature->ForcedDespawn();
-        }
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_bNotOnRoute && m_creature->isCharmed())
-        {
-            ((Player*)(m_creature->GetCharmer()))->SetClientControl(m_creature, 0);
-            m_bNotOnRoute = true;
-
-            m_creature->SetSpeedRate(MOVE_WALK, 3.0f,true);
-
-            Start(false, (Player*)(m_creature->GetCharmer()));
-        }
-        npc_escortAI::UpdateAI(uiDiff);
-    }
-};
-
-CreatureAI* GetAI_npc_harnessed_icemaw_matriarch(Creature* pCreature)
-{
-    return new npc_harnessed_icemaw_matriarchAI(pCreature);
+    return false;
 }
 
 void AddSC_storm_peaks()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_frostborn_scout";
-    newscript->pGossipHello = &GossipHello_npc_frostborn_scout;
-    newscript->pGossipSelect = &GossipSelect_npc_frostborn_scout;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_floating_spirit";
+    pNewScript->GetAI = &GetAI_npc_floating_spirit;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_loklira_the_crone";
-    newscript->pGossipHello = &GossipHello_npc_loklira_the_crone;
-    newscript->pGossipSelect = &GossipSelect_npc_loklira_the_crone;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_restless_frostborn";
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_npc_restless_frostborn;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_thorim";
-    newscript->pGossipHello = &GossipHello_npc_thorim;
-    newscript->pGossipSelect = &GossipSelect_npc_thorim;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_roxi_ramrocket";
-    newscript->pGossipHello = &GossipHello_npc_roxi_ramrocket;
-    newscript->pGossipSelect = &GossipSelect_npc_roxi_ramrocket;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_freed_protodrake";
-    newscript->GetAI = &GetAI_npc_freed_protodrake;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_brunnhildar_prisoner";
-    newscript->GetAI = &GetAI_npc_brunnhildar_prisoner;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_kirgaraak";
-    newscript->GetAI = &GetAI_npc_kirgaraak;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_harnessed_icemaw_matriarch";
-    newscript->GetAI = &GetAI_npc_harnessed_icemaw_matriarch;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_injured_miner";
+    pNewScript->GetAI = &GetAI_npc_injured_miner;
+    pNewScript->pGossipHello = &GossipHello_npc_injured_miner;
+    pNewScript->pGossipSelect = &GossipSelect_npc_injured_miner;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_injured_miner;
+    pNewScript->RegisterSelf();
 }

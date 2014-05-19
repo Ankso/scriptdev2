@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,27 +16,29 @@
 
 /* ScriptData
 SDName: Boss_Chrono_Lord_Deja
-SD%Complete: 65
-SDComment: All abilities not implemented
+SD%Complete: 90
+SDComment: Small adjustments; Timers
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
 #include "precompiled.h"
 #include "dark_portal.h"
 
-#define SAY_ENTER                   -1269006
-#define SAY_AGGRO                   -1269007
-#define SAY_BANISH                  -1269008
-#define SAY_SLAY1                   -1269009
-#define SAY_SLAY2                   -1269010
-#define SAY_DEATH                   -1269011
+enum
+{
+    SAY_AGGRO                   = -1269007,
+    SAY_BANISH                  = -1269008,
+    SAY_SLAY1                   = -1269009,
+    SAY_SLAY2                   = -1269010,
+    SAY_DEATH                   = -1269011,
 
-#define SPELL_ARCANE_BLAST          31457
-#define H_SPELL_ARCANE_BLAST        38538
-#define SPELL_ARCANE_DISCHARGE      31472
-#define H_SPELL_ARCANE_DISCHARGE    38539
-#define SPELL_TIME_LAPSE            31467
-#define SPELL_ATTRACTION            38540                       //Not Implemented (Heroic mode)
+    SPELL_ARCANE_BLAST          = 31457,
+    SPELL_ARCANE_BLAST_H        = 38538,
+    SPELL_ARCANE_DISCHARGE      = 31472,
+    SPELL_ARCANE_DISCHARGE_H    = 38539,
+    SPELL_TIME_LAPSE            = 31467,
+    SPELL_ATTRACTION            = 38540
+};
 
 struct MANGOS_DLL_DECL boss_chrono_lord_dejaAI : public ScriptedAI
 {
@@ -50,89 +52,92 @@ struct MANGOS_DLL_DECL boss_chrono_lord_dejaAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
 
-    uint32 ArcaneBlast_Timer;
-    uint32 TimeLapse_Timer;
-    uint32 Attraction_Timer;
-    uint32 ArcaneDischarge_Timer;
+    uint32 m_uiArcaneBlastTimer;
+    uint32 m_uiTimeLapseTimer;
+    uint32 m_uiAttractionTimer;
+    uint32 m_uiArcaneDischargeTimer;
 
-    void Reset()
+    void Reset() override
     {
-        ArcaneBlast_Timer = urand(18000, 23000);
-        TimeLapse_Timer = urand(10000, 15000);
-        ArcaneDischarge_Timer = urand(20000, 30000);
-        Attraction_Timer = urand(25000, 35000);
+        m_uiArcaneBlastTimer     = urand(18000, 23000);
+        m_uiTimeLapseTimer       = urand(10000, 15000);
+        m_uiArcaneDischargeTimer = urand(20000, 30000);
+        m_uiAttractionTimer      = urand(25000, 35000);
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void MoveInLineOfSight(Unit *who)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        //Despawn Time Keeper
-        if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_TIME_KEEPER)
+        // Despawn Time Keeper
+        if (pWho->GetTypeId() == TYPEID_UNIT && pWho->GetEntry() == NPC_TIME_KEEPER)
         {
-            if (m_creature->IsWithinDistInMap(who,20.0f))
+            if (m_creature->IsWithinDistInMap(pWho, 20.0f))
             {
-                DoScriptText(SAY_BANISH, m_creature);
-                m_creature->DealDamage(who, who->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                if (DoCastSpellIfCan(pWho, SPELL_BANISH_HELPER) == CAST_OK)
+                    DoScriptText(SAY_BANISH, m_creature);
             }
         }
 
-        ScriptedAI::MoveInLineOfSight(who);
+        ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void KilledUnit(Unit *victim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void JustDied(Unit *victim)
+    void JustDied(Unit* /*pVictim*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RIFT,SPECIAL);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Arcane Blast
-        if (ArcaneBlast_Timer < diff)
+        // Arcane Blast
+        if (m_uiArcaneBlastTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_ARCANE_BLAST : H_SPELL_ARCANE_BLAST);
-            ArcaneBlast_Timer = urand(15000, 25000);
-        }else ArcaneBlast_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_ARCANE_BLAST : SPELL_ARCANE_BLAST_H) == CAST_OK)
+                m_uiArcaneBlastTimer = urand(15000, 25000);
+        }
+        else
+            m_uiArcaneBlastTimer -= uiDiff;
 
-        //Arcane Discharge
-        if (ArcaneDischarge_Timer < diff)
+        // Arcane Discharge
+        if (m_uiArcaneDischargeTimer < uiDiff)
         {
-            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(target, m_bIsRegularMode ? SPELL_ARCANE_DISCHARGE : H_SPELL_ARCANE_DISCHARGE);
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_ARCANE_DISCHARGE : SPELL_ARCANE_DISCHARGE_H) == CAST_OK)
+                m_uiArcaneDischargeTimer = urand(20000, 30000);
+        }
+        else
+            m_uiArcaneDischargeTimer -= uiDiff;
 
-            ArcaneDischarge_Timer = urand(20000, 30000);
-        }else ArcaneDischarge_Timer -= diff;
-
-        //Time Lapse
-        if (TimeLapse_Timer < diff)
+        // Time Lapse
+        if (m_uiTimeLapseTimer < uiDiff)
         {
-            DoScriptText(SAY_BANISH, m_creature);
-            DoCastSpellIfCan(m_creature, SPELL_TIME_LAPSE);
-            TimeLapse_Timer = urand(15000, 25000);
-        }else TimeLapse_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature, SPELL_TIME_LAPSE) == CAST_OK)
+                m_uiTimeLapseTimer = urand(15000, 25000);
+        }
+        else
+            m_uiTimeLapseTimer -= uiDiff;
 
+        // Attraction
         if (!m_bIsRegularMode)
         {
-            if (Attraction_Timer < diff)
+            if (m_uiAttractionTimer < uiDiff)
             {
-                DoCastSpellIfCan(m_creature,SPELL_ATTRACTION);
-                Attraction_Timer = urand(25000, 35000);
-            }else Attraction_Timer -= diff;
+                if (DoCastSpellIfCan(m_creature, SPELL_ATTRACTION) == CAST_OK)
+                    m_uiAttractionTimer = urand(25000, 35000);
+            }
+            else
+                m_uiAttractionTimer -= uiDiff;
         }
 
         DoMeleeAttackIfReady();
@@ -146,9 +151,10 @@ CreatureAI* GetAI_boss_chrono_lord_deja(Creature* pCreature)
 
 void AddSC_boss_chrono_lord_deja()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_chrono_lord_deja";
-    newscript->GetAI = &GetAI_boss_chrono_lord_deja;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_chrono_lord_deja";
+    pNewScript->GetAI = &GetAI_boss_chrono_lord_deja;
+    pNewScript->RegisterSelf();
 }

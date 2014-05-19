@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Hydromancer_Thespia
 SD%Complete: 80
-SDComment: Needs additional adjustments (when instance script is adjusted)
+SDComment: Timers may need small adjustments; Elementals summon needs further research
 SDCategory: Coilfang Resevoir, The Steamvault
 EndScriptData */
 
@@ -29,17 +29,22 @@ EndContentData */
 #include "precompiled.h"
 #include "steam_vault.h"
 
-#define SAY_SUMMON                  -1545000
-#define SAY_AGGRO_1                 -1545001
-#define SAY_AGGRO_2                 -1545002
-#define SAY_AGGRO_3                 -1545003
-#define SAY_SLAY_1                  -1545004
-#define SAY_SLAY_2                  -1545005
-#define SAY_DEAD                    -1545006
+enum
+{
+    SAY_SUMMON                  = -1545000,
+    SAY_CLOUD                   = -1545024,
+    SAY_AGGRO_1                 = -1545001,
+    SAY_AGGRO_2                 = -1545002,
+    SAY_AGGRO_3                 = -1545003,
+    SAY_SLAY_1                  = -1545004,
+    SAY_SLAY_2                  = -1545005,
+    SAY_DEAD                    = -1545006,
 
-#define SPELL_LIGHTNING_CLOUD       25033
-#define SPELL_LUNG_BURST            31481
-#define SPELL_ENVELOPING_WINDS      31718
+    SPELL_LIGHTNING_CLOUD       = 25033,
+    SPELL_LUNG_BURST            = 31481,
+    SPELL_ENVELOPING_WINDS      = 31718,
+    SPELL_SUMMON_ELEMENTALS     = 31476,            // not sure where to use this
+};
 
 struct MANGOS_DLL_DECL boss_thespiaAI : public ScriptedAI
 {
@@ -53,21 +58,24 @@ struct MANGOS_DLL_DECL boss_thespiaAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
 
-    uint32 LightningCloud_Timer;
-    uint32 LungBurst_Timer;
-    uint32 EnvelopingWinds_Timer;
+    uint32 m_uiLightningCloudTimer;
+    uint32 m_uiLungBurstTimer;
+    uint32 m_uiEnvelopingWindsTimer;
 
-    void Reset()
+    void Reset() override
     {
-        LightningCloud_Timer = 15000;
-        LungBurst_Timer = 7000;
-        EnvelopingWinds_Timer = 9000;
-
-        if (m_pInstance && m_creature->isAlive())
-            m_pInstance->SetData(TYPE_HYDROMANCER_THESPIA,NOT_STARTED);
+        m_uiLightningCloudTimer  = 15000;
+        m_uiLungBurstTimer       = urand(15000, 18000);
+        m_uiEnvelopingWindsTimer = urand(20000, 25000);
     }
 
-    void JustDied(Unit* Killer)
+    void JustReachedHome() override
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_HYDROMANCER_THESPIA, FAIL);
+    }
+
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEAD, m_creature);
 
@@ -75,14 +83,14 @@ struct MANGOS_DLL_DECL boss_thespiaAI : public ScriptedAI
             m_pInstance->SetData(TYPE_HYDROMANCER_THESPIA, DONE);
     }
 
-    void KilledUnit(Unit* victim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO_1, m_creature); break;
             case 1: DoScriptText(SAY_AGGRO_2, m_creature); break;
@@ -93,76 +101,50 @@ struct MANGOS_DLL_DECL boss_thespiaAI : public ScriptedAI
             m_pInstance->SetData(TYPE_HYDROMANCER_THESPIA, IN_PROGRESS);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //LightningCloud_Timer
-        if (LightningCloud_Timer < diff)
+        // LightningCloud_Timer
+        if (m_uiLightningCloudTimer < uiDiff)
         {
-            //cast twice in Heroic mode
-            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                DoCastSpellIfCan(target, SPELL_LIGHTNING_CLOUD);
-            if (!m_bIsRegularMode)
-                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(target, SPELL_LIGHTNING_CLOUD);
-            LightningCloud_Timer = urand(15000, 25000);
-        }else LightningCloud_Timer -=diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_LIGHTNING_CLOUD) == CAST_OK)
+                {
+                    if (urand(0, 1))
+                        DoScriptText(SAY_CLOUD, m_creature);
+                    m_uiLightningCloudTimer = m_bIsRegularMode ? 30000 : 10000;
+                }
+            }
+        }
+        else
+            m_uiLightningCloudTimer -= uiDiff;
 
-        //LungBurst_Timer
-        if (LungBurst_Timer < diff)
+        // LungBurst_Timer
+        if (m_uiLungBurstTimer < uiDiff)
         {
-            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                DoCastSpellIfCan(target, SPELL_LUNG_BURST);
-            LungBurst_Timer = urand(7000, 12000);
-        }else LungBurst_Timer -=diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_LUNG_BURST) == CAST_OK)
+                    m_uiLungBurstTimer = urand(7000, 12000);
+            }
+        }
+        else
+            m_uiLungBurstTimer -= uiDiff;
 
-        //EnvelopingWinds_Timer
-        if (EnvelopingWinds_Timer < diff)
+        // EnvelopingWinds_Timer
+        if (m_uiEnvelopingWindsTimer < uiDiff)
         {
-            //cast twice in Heroic mode
-            if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                DoCastSpellIfCan(target, SPELL_ENVELOPING_WINDS);
-            if (!m_bIsRegularMode)
-                if (Unit* target = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                    DoCastSpellIfCan(target, SPELL_ENVELOPING_WINDS);
-            EnvelopingWinds_Timer = urand(10000, 15000);
-        }else EnvelopingWinds_Timer -=diff;
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-#define SPELL_WATER_BOLT_VOLLEY     34449
-#define H_SPELL_WATER_BOLT_VOLLEY   37924
-
-struct MANGOS_DLL_DECL mob_coilfang_waterelementalAI : public ScriptedAI
-{
-    mob_coilfang_waterelementalAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool m_bIsRegularMode;
-    uint32 WaterBoltVolley_Timer;
-
-    void Reset()
-    {
-        WaterBoltVolley_Timer = urand(3000, 6000);
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (WaterBoltVolley_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WATER_BOLT_VOLLEY : H_SPELL_WATER_BOLT_VOLLEY);
-            WaterBoltVolley_Timer = urand(7000, 12000);
-        }else WaterBoltVolley_Timer -= diff;
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_ENVELOPING_WINDS) == CAST_OK)
+                    m_uiEnvelopingWindsTimer = m_bIsRegularMode ? 10000 : 15000;
+            }
+        }
+        else
+            m_uiEnvelopingWindsTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -173,22 +155,12 @@ CreatureAI* GetAI_boss_thespiaAI(Creature* pCreature)
     return new boss_thespiaAI(pCreature);
 }
 
-CreatureAI* GetAI_mob_coilfang_waterelementalAI(Creature* pCreature)
-{
-    return new mob_coilfang_waterelementalAI(pCreature);
-}
-
 void AddSC_boss_hydromancer_thespia()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_hydromancer_thespia";
-    newscript->GetAI = &GetAI_boss_thespiaAI;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "mob_coilfang_waterelemental";
-    newscript->GetAI = &GetAI_mob_coilfang_waterelementalAI;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_hydromancer_thespia";
+    pNewScript->GetAI = &GetAI_boss_thespiaAI;
+    pNewScript->RegisterSelf();
 }

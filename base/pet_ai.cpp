@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -15,6 +15,12 @@ EndScriptData */
 ScriptedPetAI::ScriptedPetAI(Creature* pCreature) : CreatureAI(pCreature)
 {}
 
+bool ScriptedPetAI::IsVisible(Unit* pWho) const
+{
+    return pWho && m_creature->IsWithinDist(pWho, VISIBLE_RANGE)
+           && pWho->isVisibleForOrDetect(m_creature, m_creature, true);
+}
+
 void ScriptedPetAI::MoveInLineOfSight(Unit* pWho)
 {
     if (m_creature->getVictim())
@@ -24,7 +30,7 @@ void ScriptedPetAI::MoveInLineOfSight(Unit* pWho)
         return;
 
     if (m_creature->CanInitiateAttack() && pWho->isTargetableForAttack() &&
-        m_creature->IsHostileTo(pWho) && pWho->isInAccessablePlaceFor(m_creature))
+            m_creature->IsHostileTo(pWho) && pWho->isInAccessablePlaceFor(m_creature))
     {
         if (!m_creature->CanFly() && m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
             return;
@@ -49,7 +55,7 @@ void ScriptedPetAI::AttackedBy(Unit* pAttacker)
         return;
 
     if (m_creature->GetCharmInfo() && !m_creature->GetCharmInfo()->HasReactState(REACT_PASSIVE) &&
-        m_creature->CanReachWithMeleeAttack(pAttacker))
+            m_creature->CanReachWithMeleeAttack(pAttacker))
         AttackStart(pAttacker);
 }
 
@@ -73,7 +79,7 @@ void ScriptedPetAI::ResetPetCombat()
     Reset();
 }
 
-void ScriptedPetAI::UpdatePetAI(const uint32 uiDiff)
+void ScriptedPetAI::UpdatePetAI(const uint32 /*uiDiff*/)
 {
     DoMeleeAttackIfReady();
 }

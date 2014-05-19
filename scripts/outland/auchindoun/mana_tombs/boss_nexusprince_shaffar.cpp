@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_NexusPrince_Shaffar
-SD%Complete: 80
-SDComment: Need more tuning of spell timers, it should not be as linear fight as current. Also should possibly find a better way to deal with his three initial beacons to make sure all aggro.
+SD%Complete: 100
+SDComment: ToDo: move the Ethereal Beacon script to eventAI
 SDCategory: Auchindoun, Mana Tombs
 EndScriptData */
 
@@ -44,10 +44,8 @@ enum
     SPELL_FIREBALL                  = 32363,
     SPELL_FROSTNOVA                 = 32365,
 
-    SPELL_ETHEREAL_BEACON           = 32371,                // Summons NPC_BEACON
-    SPELL_ETHEREAL_BEACON_VISUAL    = 32368,
-
-    NPC_BEACON                      = 18431
+    SPELL_ETHEREAL_BEACON           = 32371,                // Summons 18431
+    // SPELL_ETHEREAL_BEACON_VISUAL  = 32368,               // included in creature_template_addon
 };
 
 struct MANGOS_DLL_DECL boss_nexusprince_shaffarAI : public ScriptedAI
@@ -58,29 +56,26 @@ struct MANGOS_DLL_DECL boss_nexusprince_shaffarAI : public ScriptedAI
         Reset();
     }
 
-    uint32 m_uiBlink_Timer;
-    uint32 m_uiBeacon_Timer;
-    uint32 m_uiFireBall_Timer;
-    uint32 m_uiFrostbolt_Timer;
-    uint32 m_uiFrostNova_Timer;
+    uint32 m_uiBlinkTimer;
+    uint32 m_uiBeaconTimer;
+    uint32 m_uiFireBallTimer;
+    uint32 m_uiFrostboltTimer;
+    uint32 m_uiFrostNovaTimer;
 
     bool m_bHasTaunted;
-    bool m_bCanBlink;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiBlink_Timer = 1500;
-        m_uiBeacon_Timer = 10000;
-        m_uiFireBall_Timer = 8000;
-        m_uiFrostbolt_Timer = 4000;
-        m_uiFrostNova_Timer = 15000;
-
-        m_bCanBlink = false;
+        m_uiBlinkTimer      = 30000;
+        m_uiBeaconTimer     = urand(12000, 15000);
+        m_uiFireBallTimer   = urand(2000, 12000);
+        m_uiFrostboltTimer  = urand(1000, 14000);
+        m_uiFrostNovaTimer  = urand(18000, 25000);
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        if (!m_bHasTaunted && pWho->GetTypeId() == TYPEID_PLAYER && m_creature->IsWithinDistInMap(pWho, 100.0f))
+        if (!m_bHasTaunted && pWho->GetTypeId() == TYPEID_PLAYER && m_creature->IsWithinDistInMap(pWho, 100.0f) && m_creature->IsWithinLOSInMap(pWho))
         {
             DoScriptText(SAY_INTRO, m_creature);
             m_bHasTaunted = true;
@@ -89,9 +84,9 @@ struct MANGOS_DLL_DECL boss_nexusprince_shaffarAI : public ScriptedAI
         ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_AGGRO_1, m_creature); break;
             case 1: DoScriptText(SAY_AGGRO_2, m_creature); break;
@@ -99,82 +94,78 @@ struct MANGOS_DLL_DECL boss_nexusprince_shaffarAI : public ScriptedAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
-        if (pSummoned->GetEntry() == NPC_BEACON)
-        {
-            pSummoned->CastSpell(pSummoned,SPELL_ETHEREAL_BEACON_VISUAL,false);
-
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
-                pSummoned->AI()->AttackStart(pTarget);
-        }
+        if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            pSummoned->AI()->AttackStart(pTarget);
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEAD, m_creature);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (m_uiFrostNova_Timer < uiDiff)
+        if (m_uiFrostNovaTimer < uiDiff)
         {
-            if (m_creature->IsNonMeleeSpellCasted(false))
-                m_creature->InterruptNonMeleeSpells(true);
+            if (DoCastSpellIfCan(m_creature, SPELL_FROSTNOVA) == CAST_OK)
+                m_uiFrostNovaTimer = urand(10000, 20000);
+        }
+        else
+            m_uiFrostNovaTimer -= uiDiff;
 
-            DoCastSpellIfCan(m_creature,SPELL_FROSTNOVA);
-            m_uiFrostNova_Timer = urand(17500, 25000);
-            m_bCanBlink = true;
-        }else m_uiFrostNova_Timer -= uiDiff;
-
-        if (m_uiFrostbolt_Timer < uiDiff)
+        if (m_uiFrostboltTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FROSTBOLT);
-            m_uiFrostbolt_Timer = urand(4500, 6000);
-        }else m_uiFrostbolt_Timer -= uiDiff;
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROSTBOLT) == CAST_OK)
+                m_uiFrostboltTimer = urand(3000, 8000);
+        }
+        else
+            m_uiFrostboltTimer -= uiDiff;
 
-        if (m_uiFireBall_Timer < uiDiff)
+        if (m_uiFireBallTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FIREBALL);
-            m_uiFireBall_Timer = urand(4500, 6000);
-        }else m_uiFireBall_Timer -= uiDiff;
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_FIREBALL) == CAST_OK)
+                m_uiFireBallTimer = urand(3000, 8000);
+        }
+        else
+            m_uiFireBallTimer -= uiDiff;
 
-        if (m_bCanBlink)
+        if (m_uiBlinkTimer <= uiDiff)
         {
-            if (m_uiBlink_Timer < uiDiff)
+            if (DoCastSpellIfCan(m_creature, SPELL_BLINK) == CAST_OK)
             {
-                if (m_creature->IsNonMeleeSpellCasted(false))
-                    m_creature->InterruptNonMeleeSpells(true);
-
-                //expire movement, will prevent from running right back to victim after cast
+                // expire movement, will prevent from running right back to victim after cast
                 //(but should MoveChase be used again at a certain time or should he not move?)
                 if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE)
                     m_creature->GetMotionMaster()->MovementExpired();
 
-                DoCastSpellIfCan(m_creature,SPELL_BLINK);
-
-                m_uiBlink_Timer = urand(1000, 2500);
-                m_bCanBlink = false;
-            }else m_uiBlink_Timer -= uiDiff;
+                m_uiBlinkTimer = urand(25000, 30000);
+            }
         }
+        else
+            m_uiBlinkTimer -= uiDiff;
 
-        if (m_uiBeacon_Timer < uiDiff)
+        if (m_uiBeaconTimer < uiDiff)
         {
-            if (!urand(0,3))
-                DoScriptText(SAY_SUMMON, m_creature);
+            if (DoCastSpellIfCan(m_creature, SPELL_ETHEREAL_BEACON) == CAST_OK)
+            {
+                if (!urand(0, 3))
+                    DoScriptText(SAY_SUMMON, m_creature);
 
-            DoCastSpellIfCan(m_creature, SPELL_ETHEREAL_BEACON, CAST_TRIGGERED);
-
-            m_uiBeacon_Timer = 10000;
-        }else m_uiBeacon_Timer -= uiDiff;
+                m_uiBeaconTimer = urand(45000, 75000);
+            }
+        }
+        else
+            m_uiBeaconTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -185,81 +176,12 @@ CreatureAI* GetAI_boss_nexusprince_shaffar(Creature* pCreature)
     return new boss_nexusprince_shaffarAI(pCreature);
 }
 
-enum
-{
-    SPELL_ARCANE_BOLT               = 15254,
-    SPELL_ETHEREAL_APPRENTICE       = 32372                 // Summon 18430
-};
-
-struct MANGOS_DLL_DECL mob_ethereal_beaconAI : public ScriptedAI
-{
-    mob_ethereal_beaconAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        Reset();
-    }
-
-    bool m_bIsRegularMode;
-
-    uint32 m_uiApprentice_Timer;
-    uint32 m_uiArcaneBolt_Timer;
-
-    void Reset()
-    {
-        m_uiApprentice_Timer = m_bIsRegularMode ? 20000 : 10000;
-        m_uiArcaneBolt_Timer = 1000;
-    }
-
-    void JustSummoned(Creature* pSummoned)
-    {
-        if (m_creature->getVictim())
-            pSummoned->AI()->AttackStart(m_creature->getVictim());
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        if (m_uiArcaneBolt_Timer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCANE_BOLT);
-            m_uiArcaneBolt_Timer = urand(2000, 4500);
-        }else m_uiArcaneBolt_Timer -= uiDiff;
-
-        if (m_uiApprentice_Timer < uiDiff)
-        {
-            if (m_creature->IsNonMeleeSpellCasted(false))
-                m_creature->InterruptNonMeleeSpells(true);
-
-            m_creature->CastSpell(m_creature, SPELL_ETHEREAL_APPRENTICE, true);
-
-            m_creature->ForcedDespawn();
-            return;
-
-        }else m_uiApprentice_Timer -= uiDiff;
-
-        //should they do meele?
-        DoMeleeAttackIfReady();
-    }
-};
-
-CreatureAI* GetAI_mob_ethereal_beacon(Creature* pCreature)
-{
-    return new mob_ethereal_beaconAI(pCreature);
-}
-
 void AddSC_boss_nexusprince_shaffar()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_nexusprince_shaffar";
-    newscript->GetAI = &GetAI_boss_nexusprince_shaffar;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "mob_ethereal_beacon";
-    newscript->GetAI = &GetAI_mob_ethereal_beacon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_nexusprince_shaffar";
+    pNewScript->GetAI = &GetAI_boss_nexusprince_shaffar;
+    pNewScript->RegisterSelf();
 }

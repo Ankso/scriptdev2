@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,29 +25,10 @@ EndScriptData */
 #include "zulaman.h"
 
 instance_zulaman::instance_zulaman(Map* pMap) : ScriptedInstance(pMap),
-    m_uiEventTimer(MINUTE*IN_MILLISECONDS),
+    m_uiEventTimer(MINUTE* IN_MILLISECONDS),
     m_uiGongCount(0),
-
-    m_uiAkilzonGUID(0),
-    m_uiNalorakkGUID(0),
-    m_uiJanalaiGUID(0),
-    m_uiHalazziGUID(0),
-    m_uiSpiritLynxGUID(0),
-    m_uiZuljinGUID(0),
-    m_uiMalacrassGUID(0),
-    m_uiHarrisonGUID(0),
-
-    m_uiStrangeGongGUID(0),
-    m_uiMassiveGateGUID(0),
-    m_uiWindDoorGUID(0),
-    m_uiLynxTempleEntranceGUID(0),
-    m_uiLynxTempleExitGUID(0),
-    m_uiMalacrassEntranceGUID(0),
-    m_uiWoodenDoorGUID(0),
-    m_uiFireDoorGUID(0),
-
-    m_uiEggsRemainingCount_Left(20),
-    m_uiEggsRemainingCount_Right(20)
+    m_uiBearEventPhase(0),
+    m_bIsBearPhaseInProgress(false)
 {
     Initialize();
 }
@@ -70,90 +51,169 @@ bool instance_zulaman::IsEncounterInProgress() const
     return false;
 }
 
+void instance_zulaman::OnPlayerEnter(Player* /*pPlayer*/)
+{
+    if (GetData(TYPE_EVENT_RUN) == IN_PROGRESS)
+    {
+        DoUpdateWorldState(WORLD_STATE_ID, 1);
+        DoUpdateWorldState(WORLD_STATE_COUNTER, GetData(TYPE_RUN_EVENT_TIME));
+    }
+}
+
 void instance_zulaman::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
-        case NPC_AKILZON:     m_uiAkilzonGUID     = pCreature->GetGUID(); break;
-        case NPC_NALORAKK:    m_uiNalorakkGUID    = pCreature->GetGUID(); break;
-        case NPC_JANALAI:     m_uiJanalaiGUID     = pCreature->GetGUID(); break;
-        case NPC_HALAZZI:     m_uiHalazziGUID     = pCreature->GetGUID(); break;
-        case NPC_MALACRASS:   m_uiMalacrassGUID   = pCreature->GetGUID(); break;
-        case NPC_ZULJIN:      m_uiZuljinGUID      = pCreature->GetGUID(); break;
-        case NPC_HARRISON:    m_uiHarrisonGUID    = pCreature->GetGUID(); break;
-        case NPC_SPIRIT_LYNX: m_uiSpiritLynxGUID  = pCreature->GetGUID(); break;
+        case NPC_AKILZON:
+        case NPC_HALAZZI:
+        case NPC_NALORAKK:
+        case NPC_JANALAI:
+        case NPC_MALACRASS:
+        case NPC_ZULJIN:
+        case NPC_HARRISON:
+        case NPC_BEAR_SPIRIT:
+        case NPC_EAGLE_SPIRIT:
+        case NPC_LYNX_SPIRIT:
+        case NPC_DRAGONHAWK_SPIRIT:
+            // Insert Malacrass companions here for better handling
+        case NPC_ALYSON:
+        case NPC_THURG:
+        case NPC_SLITHER:
+        case NPC_RADAAN:
+        case NPC_GAZAKROTH:
+        case NPC_FENSTALKER:
+        case NPC_DARKHEART:
+        case NPC_KORAGG:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
 
         case NPC_TANZAR:      m_aEventNpcInfo[INDEX_NALORAKK].npGuid = pCreature->GetObjectGuid(); break;
         case NPC_KRAZ:        m_aEventNpcInfo[INDEX_JANALAI].npGuid =  pCreature->GetObjectGuid(); break;
         case NPC_ASHLI:       m_aEventNpcInfo[INDEX_HALAZZI].npGuid =  pCreature->GetObjectGuid(); break;
         case NPC_HARKOR:      m_aEventNpcInfo[INDEX_AKILZON].npGuid =  pCreature->GetObjectGuid(); break;
 
-        case NPC_EGG:
-            if (m_auiEncounter[3] != DONE)
-                m_lEggsGUIDList.push_back(pCreature->GetGUID());
+        case NPC_MEDICINE_MAN:
+        case NPC_TRIBES_MAN:
+        case NPC_WARBRINGER:
+        case NPC_AXETHROWER:
+            if (pCreature->GetPositionZ() > 10.0f && pCreature->GetPositionZ() < 15.0f)
+                m_aNalorakkEvent[0].sBearTrashGuidSet.insert(pCreature->GetObjectGuid());
+            else if (pCreature->GetPositionZ() > 25.0f && pCreature->GetPositionZ() < 30.0f)
+                m_aNalorakkEvent[1].sBearTrashGuidSet.insert(pCreature->GetObjectGuid());
+            else if (pCreature->GetPositionZ() > 40.0f && pCreature->GetPositionZ() < 41.0f)
+                m_aNalorakkEvent[2].sBearTrashGuidSet.insert(pCreature->GetObjectGuid());
+            else if (pCreature->GetPositionZ() > 41.0f)
+                m_aNalorakkEvent[3].sBearTrashGuidSet.insert(pCreature->GetObjectGuid());
+            break;
+    }
+}
+
+void instance_zulaman::OnCreatureDeath(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
+    {
+        case NPC_MEDICINE_MAN:
+        case NPC_TRIBES_MAN:
+        case NPC_WARBRINGER:
+        case NPC_AXETHROWER:
+            if (m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.find(pCreature->GetObjectGuid()) != m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.end())
+            {
+                ++m_aNalorakkEvent[m_uiBearEventPhase].uiTrashKilled;
+                if (m_aNalorakkEvent[m_uiBearEventPhase].uiTrashKilled == m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.size())
+                {
+                    if (Creature* pNalorakk = GetSingleCreatureFromStorage(NPC_NALORAKK))
+                    {
+                        ++m_uiBearEventPhase;
+                        if (m_uiBearEventPhase == MAX_BEAR_WAVES)
+                            pNalorakk->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+                        else
+                        {
+                            pNalorakk->SetWalk(false);
+                            pNalorakk->GetMotionMaster()->MovePoint(1, aBearEventInfo[m_uiBearEventPhase].fX, aBearEventInfo[m_uiBearEventPhase].fY, aBearEventInfo[m_uiBearEventPhase].fZ);
+                        }
+                    }
+                }
+            }
+            break;
+    }
+}
+
+void instance_zulaman::OnCreatureEvade(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
+    {
+        case NPC_MEDICINE_MAN:
+        case NPC_TRIBES_MAN:
+        case NPC_WARBRINGER:
+        case NPC_AXETHROWER:
+            for (GuidSet::const_iterator itr = m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.begin(); itr != m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.end(); ++itr)
+            {
+                Creature* pTemp = instance->GetCreature(*itr);
+                if (pTemp && !pTemp->isAlive())
+                    pTemp->Respawn();
+            }
+            m_aNalorakkEvent[m_uiBearEventPhase].uiTrashKilled = 0;
+            m_bIsBearPhaseInProgress = false;
             break;
     }
 }
 
 void instance_zulaman::OnObjectCreate(GameObject* pGo)
 {
-    switch(pGo->GetEntry())
+    switch (pGo->GetEntry())
     {
         case GO_STRANGE_GONG:
-            m_uiStrangeGongGUID = pGo->GetGUID();
             break;
         case GO_MASSIVE_GATE:
-            m_uiMassiveGateGUID = pGo->GetGUID();
-            if (m_auiEncounter[0] == DONE || m_auiEncounter[0] == FAIL)
+            // The gate needs to be opened even if the event is still in progress
+            if (m_auiEncounter[TYPE_EVENT_RUN] == DONE || m_auiEncounter[TYPE_EVENT_RUN] == FAIL || m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_WIND_DOOR:
-            m_uiWindDoorGUID = pGo->GetGUID();
             break;
         case GO_LYNX_TEMPLE_ENTRANCE:
-            m_uiLynxTempleEntranceGUID = pGo->GetGUID();
             break;
         case GO_LYNX_TEMPLE_EXIT:
-            m_uiLynxTempleExitGUID = pGo->GetGUID();
-            if (m_auiEncounter[4] == DONE)
+            if (m_auiEncounter[TYPE_HALAZZI] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_HEXLORD_ENTRANCE:
-            m_uiMalacrassEntranceGUID = pGo->GetGUID();
             if (GetKilledPreBosses() == 4)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_WOODEN_DOOR:
-            m_uiWoodenDoorGUID = pGo->GetGUID();
-            if (m_auiEncounter[5] == DONE)
+            if (m_auiEncounter[TYPE_MALACRASS] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_FIRE_DOOR:
-            m_uiFireDoorGUID = pGo->GetGUID();
             break;
+
+        default:
+            return;
     }
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
 {
-    debug_log("SD2: Instance Zulaman: SetData received for type %u with data %u",uiType,uiData);
+    debug_log("SD2: Instance Zulaman: SetData received for type %u with data %u", uiType, uiData);
 
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_EVENT_RUN:
             if (uiData == SPECIAL)
             {
                 ++m_uiGongCount;
                 if (m_uiGongCount == 5)
-                    m_auiEncounter[0] = uiData;
+                    m_auiEncounter[TYPE_EVENT_RUN] = uiData;
                 return;
             }
             if (uiData == IN_PROGRESS)
             {
                 DoTimeRunSay(RUN_START);
-                DoUseDoorOrButton(m_uiMassiveGateGUID);
-                if (m_auiEncounter[7])
-                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[7]);
+                DoUseDoorOrButton(GO_MASSIVE_GATE);
+                if (m_auiEncounter[TYPE_RUN_EVENT_TIME])
+                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                 else
                     SetData(TYPE_RUN_EVENT_TIME, 20);   // 20 Minutes as default time
                 DoUpdateWorldState(WORLD_STATE_ID, 1);
@@ -178,86 +238,66 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
                 DoTimeRunSay(RUN_DONE);
                 DoUpdateWorldState(WORLD_STATE_ID, 0);
             }
-            m_auiEncounter[0] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_AKILZON:
-            DoUseDoorOrButton(m_uiWindDoorGUID);
+            DoUseDoorOrButton(GO_WIND_DOOR);
             if (uiData == DONE)
             {
-                if (m_auiEncounter[0] == IN_PROGRESS)
+                if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                 {
-                    m_auiEncounter[7] += 10;            // Add 10 minutes
-                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[7]);
+                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 10; // Add 10 minutes
+                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                     DoChestEvent(INDEX_AKILZON);
                 }
             }
-            m_auiEncounter[1] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_NALORAKK:
             if (uiData == DONE)
             {
-                if (m_auiEncounter[0] == IN_PROGRESS)
+                if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                 {
-                    m_auiEncounter[7] += 15;            // Add 15 minutes
-                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[7]);
+                    m_auiEncounter[TYPE_RUN_EVENT_TIME] += 15; // Add 15 minutes
+                    SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
                     DoChestEvent(INDEX_NALORAKK);
                 }
             }
-            m_auiEncounter[2] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_JANALAI:
-            if (uiData == NOT_STARTED)
-            {
-                m_uiEggsRemainingCount_Left = 20;
-                m_uiEggsRemainingCount_Right = 20;
-
-                if (!m_lEggsGUIDList.empty())
-                {
-                    for(GUIDList::const_iterator itr = m_lEggsGUIDList.begin(); itr != m_lEggsGUIDList.end(); ++itr)
-                    {
-                        if (Creature* pEgg = instance->GetCreature(*itr))
-                        {
-                            if (!pEgg->isAlive())
-                                pEgg->Respawn();
-                        }
-                    }
-                }
-            }
             if (uiData == DONE)
             {
-                m_lEggsGUIDList.clear();
-
-                if (m_auiEncounter[0] == IN_PROGRESS)
+                if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                     DoChestEvent(INDEX_JANALAI);
             }
-            m_auiEncounter[3] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_HALAZZI:
-            DoUseDoorOrButton(m_uiLynxTempleEntranceGUID);
+            DoUseDoorOrButton(GO_LYNX_TEMPLE_ENTRANCE);
             if (uiData == DONE)
             {
-                DoUseDoorOrButton(m_uiLynxTempleExitGUID);
-                if (m_auiEncounter[0] == IN_PROGRESS)
+                DoUseDoorOrButton(GO_LYNX_TEMPLE_EXIT);
+                if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
                     DoChestEvent(INDEX_HALAZZI);
             }
-            m_auiEncounter[4] = uiData;
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_MALACRASS:
-            DoUseDoorOrButton(m_uiMalacrassEntranceGUID);
+            DoUseDoorOrButton(GO_HEXLORD_ENTRANCE);
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiWoodenDoorGUID);
-            m_auiEncounter[5] = uiData;
+                DoUseDoorOrButton(GO_WOODEN_DOOR);
+            m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_ZULJIN:
-            DoUseDoorOrButton(m_uiFireDoorGUID);
-            m_auiEncounter[6] = uiData;
+            DoUseDoorOrButton(GO_FIRE_DOOR);
+            m_auiEncounter[uiType] = uiData;
             break;
-        case TYPE_J_EGGS_RIGHT:
-            --m_uiEggsRemainingCount_Right;
+        case TYPE_RUN_EVENT_TIME:
+            m_auiEncounter[uiType] = uiData;
+            DoUpdateWorldState(WORLD_STATE_COUNTER, m_auiEncounter[uiType]);
             break;
-        case TYPE_J_EGGS_LEFT:
-            --m_uiEggsRemainingCount_Left;
-            break;
+
         case TYPE_RAND_VENDOR_1:
             m_auiRandVendor[0] = uiData;
             break;
@@ -265,20 +305,15 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
             m_auiRandVendor[1] = uiData;
             break;
 
-        case TYPE_RUN_EVENT_TIME:
-            m_auiEncounter[7] = uiData;
-            DoUpdateWorldState(WORLD_STATE_COUNTER, m_auiEncounter[7]);
-            break;
-
         default:
-            error_log("SD2: Instance Zulaman: ERROR SetData = %u for type %u does not exist/not implemented.",uiType,uiData);
+            script_error_log("Instance Zulaman: ERROR SetData = %u for type %u does not exist/not implemented.", uiType, uiData);
             return;
     }
 
     if (uiData == DONE && GetKilledPreBosses() == 4 && (uiType == TYPE_AKILZON || uiType == TYPE_NALORAKK || uiType == TYPE_JANALAI || uiType == TYPE_HALAZZI))
     {
-        DoUseDoorOrButton(m_uiMalacrassEntranceGUID);
-        if (m_auiEncounter[0] == IN_PROGRESS)
+        DoUseDoorOrButton(GO_HEXLORD_ENTRANCE);
+        if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
             SetData(TYPE_EVENT_RUN, DONE);
     }
 
@@ -288,8 +323,8 @@ void instance_zulaman::SetData(uint32 uiType, uint32 uiData)
 
         std::ostringstream saveStream;
         saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-            << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
-            << m_auiEncounter[6] << " " << m_auiEncounter[7];
+                   << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
+                   << m_auiEncounter[6] << " " << m_auiEncounter[7];
 
         m_strInstData = saveStream.str();
 
@@ -310,7 +345,7 @@ void instance_zulaman::Load(const char* chrIn)
 
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
-        >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7];
+               >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7];
 
     // Skip m_auiEncounter[7], to start the time event properly if needed
     for (uint8 i = 0; i < MAX_ENCOUNTER - 1; ++i)
@@ -320,88 +355,128 @@ void instance_zulaman::Load(const char* chrIn)
     }
 
     // Restart TYPE_EVENT_RUN if was already started
-    if (m_auiEncounter[7] != 0 && m_auiEncounter[0] != DONE && m_auiEncounter[0] != FAIL)
+    if (m_auiEncounter[TYPE_RUN_EVENT_TIME] != 0 && m_auiEncounter[TYPE_EVENT_RUN] != DONE && m_auiEncounter[TYPE_EVENT_RUN] != FAIL)
         SetData(TYPE_EVENT_RUN, IN_PROGRESS);
 
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_zulaman::GetData(uint32 uiType)
+uint32 instance_zulaman::GetData(uint32 uiType) const
 {
-    switch(uiType)
+    switch (uiType)
     {
-        case TYPE_EVENT_RUN:     return m_auiEncounter[0];
-        case TYPE_AKILZON:       return m_auiEncounter[1];
-        case TYPE_NALORAKK:      return m_auiEncounter[2];
-        case TYPE_JANALAI:       return m_auiEncounter[3];
-        case TYPE_HALAZZI:       return m_auiEncounter[4];
-        case TYPE_ZULJIN:        return m_auiEncounter[5];
-        case TYPE_MALACRASS:     return m_auiEncounter[6];
-        case TYPE_J_EGGS_LEFT:   return m_uiEggsRemainingCount_Left;
-        case TYPE_J_EGGS_RIGHT:  return m_uiEggsRemainingCount_Right;
+        case TYPE_EVENT_RUN:
+        case TYPE_AKILZON:
+        case TYPE_NALORAKK:
+        case TYPE_JANALAI:
+        case TYPE_HALAZZI:
+        case TYPE_ZULJIN:
+        case TYPE_MALACRASS:
+        case TYPE_RUN_EVENT_TIME:
+            return m_auiEncounter[uiType];
         case TYPE_RAND_VENDOR_1: return m_auiRandVendor[0];
         case TYPE_RAND_VENDOR_2: return m_auiRandVendor[1];
-
         default:
             return 0;
     }
 }
 
-uint64 instance_zulaman::GetData64(uint32 uiData)
+void instance_zulaman::SendNextBearWave(Unit* pTarget)
 {
-    switch(uiData)
+    for (GuidSet::const_iterator itr = m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.begin(); itr != m_aNalorakkEvent[m_uiBearEventPhase].sBearTrashGuidSet.end(); ++itr)
     {
-        case NPC_AKILZON:         return m_uiAkilzonGUID;
-        case NPC_NALORAKK:        return m_uiNalorakkGUID;
-        case NPC_JANALAI:         return m_uiJanalaiGUID;
-        case NPC_HALAZZI:         return m_uiHalazziGUID;
-        case NPC_SPIRIT_LYNX:     return m_uiSpiritLynxGUID;
-        case NPC_ZULJIN:          return m_uiZuljinGUID;
-        case NPC_MALACRASS:       return m_uiMalacrassGUID;
-        case NPC_HARRISON:        return m_uiHarrisonGUID;
+        Creature* pTemp = instance->GetCreature(*itr);
+        if (pTemp && pTemp->isAlive())
+        {
+            pTemp->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+            pTemp->AI()->AttackStart(pTarget);
 
-        case GO_STRANGE_GONG:     return m_uiStrangeGongGUID;
-        case GO_MASSIVE_GATE:     return m_uiMassiveGateGUID;
-        case GO_HEXLORD_ENTRANCE: return m_uiMalacrassEntranceGUID;
-
-        default:
-            return 0;
+            // For the first wave we need to make them jump to the ground before attacking
+            if (!m_uiBearEventPhase)
+            {
+                float fX, fY, fZ;
+                pTemp->GetRandomPoint(35.31f, 1412.24f, 2.04f, 3.0f, fX, fY, fZ);
+                pTemp->GetMotionMaster()->MoveJump(fX, fY, fZ, pTemp->GetSpeed(MOVE_RUN) * 2, 5.0f);
+            }
+        }
     }
+
+    m_bIsBearPhaseInProgress = true;
+}
+
+bool instance_zulaman::CheckConditionCriteriaMeet(Player const* pPlayer, uint32 uiInstanceConditionId, WorldObject const* pConditionSource, uint32 conditionSourceType) const
+{
+    switch (uiInstanceConditionId)
+    {
+        case INSTANCE_CONDITION_ID_NORMAL_MODE:             // Not rescued
+        case INSTANCE_CONDITION_ID_HARD_MODE:               // Rescued as first
+        case INSTANCE_CONDITION_ID_HARD_MODE_2:             // Rescued as first
+        case INSTANCE_CONDITION_ID_HARD_MODE_3:             // Rescued as second
+        case INSTANCE_CONDITION_ID_HARD_MODE_4:             // Rescued as third
+        {
+            if (!pConditionSource)
+                break;
+
+            int32 index = -1;
+            switch (pConditionSource->GetEntry())
+            {
+                case NPC_TANZAR:
+                case GO_TANZARS_TRUNK:
+                    index = INDEX_NALORAKK;
+                    break;
+                case NPC_KRAZ:
+                case GO_KRAZS_PACKAGE:
+                    index = INDEX_JANALAI;
+                    break;
+                case NPC_ASHLI:
+                case GO_ASHLIS_BAG:
+                    index = INDEX_HALAZZI;
+                    break;
+                case NPC_HARKOR:
+                case GO_HARKORS_SATCHEL:
+                    index = INDEX_AKILZON;
+                    break;
+            }
+            if (index < 0)
+                break;
+
+            return m_aEventNpcInfo[index].uiSavePosition == uiInstanceConditionId;
+        }
+    }
+
+    script_error_log("instance_zulaman::CheckConditionCriteriaMeet called with unsupported Id %u. Called with param plr %s, src %s, condition source type %u",
+                     uiInstanceConditionId, pPlayer ? pPlayer->GetGuidStr().c_str() : "NULL", pConditionSource ? pConditionSource->GetGuidStr().c_str() : "NULL", conditionSourceType);
+    return false;
 }
 
 uint8 instance_zulaman::GetKilledPreBosses()
 {
-    return (GetData(TYPE_AKILZON) == DONE ? 1 : 0) + (GetData(TYPE_NALORAKK) == DONE ? 1 : 0) + (GetData(TYPE_JANALAI) == DONE ? 1 : 0) + (GetData(TYPE_HALAZZI) == DONE ? 1 : 0);
+    return (m_auiEncounter[TYPE_AKILZON] == DONE ? 1 : 0) + (m_auiEncounter[TYPE_NALORAKK] == DONE ? 1 : 0) + (m_auiEncounter[TYPE_JANALAI] == DONE ? 1 : 0) + (m_auiEncounter[TYPE_HALAZZI] == DONE ? 1 : 0);
 }
 
 void instance_zulaman::DoTimeRunSay(RunEventSteps uiData)
 {
-    // TODO - This yell must be made independend of load state of Malacrass
-    Creature* pHexlord = instance->GetCreature(m_uiMalacrassGUID);
-    if (!pHexlord)
-        return;
-
     switch (uiData)
     {
-        case RUN_START:     DoScriptText(SAY_INST_BEGIN, pHexlord); break;
-        case RUN_FAIL:      DoScriptText(urand(0, 1) ? SAY_INST_SACRIF1 : SAY_INST_SACRIF2, pHexlord); break;
-        case RUN_DONE:      DoScriptText(SAY_INST_COMPLETE, pHexlord); break;
+        case RUN_START:     DoOrSimulateScriptTextForThisInstance(SAY_INST_BEGIN, NPC_MALACRASS); break;
+        case RUN_FAIL:      DoOrSimulateScriptTextForThisInstance(urand(0, 1) ? SAY_INST_SACRIF1 : SAY_INST_SACRIF2, NPC_MALACRASS); break;
+        case RUN_DONE:      DoOrSimulateScriptTextForThisInstance(SAY_INST_COMPLETE, NPC_MALACRASS); break;
         case RUN_PROGRESS:
             // This function is on progress called before the data is set to the array
             switch (GetKilledPreBosses() + 1)
             {
-                case 1:     DoScriptText(SAY_INST_PROGRESS_1, pHexlord); break;
-                case 2:     DoScriptText(SAY_INST_PROGRESS_2, pHexlord); break;
-                case 3:     DoScriptText(SAY_INST_PROGRESS_3, pHexlord); break;
+                case 1:     DoOrSimulateScriptTextForThisInstance(SAY_INST_PROGRESS_1, NPC_MALACRASS); break;
+                case 2:     DoOrSimulateScriptTextForThisInstance(SAY_INST_PROGRESS_2, NPC_MALACRASS); break;
+                case 3:     DoOrSimulateScriptTextForThisInstance(SAY_INST_PROGRESS_3, NPC_MALACRASS); break;
             }
             break;
         case RUN_FAIL_SOON:
             switch (GetKilledPreBosses())
             {
-                case 0:     DoScriptText(SAY_INST_WARN_1, pHexlord); break;
-                case 1:     DoScriptText(SAY_INST_WARN_2, pHexlord); break;
-                case 2:     DoScriptText(SAY_INST_WARN_3, pHexlord); break;
-                case 3:     DoScriptText(SAY_INST_WARN_4, pHexlord); break;
+                case 0:     DoOrSimulateScriptTextForThisInstance(SAY_INST_WARN_1, NPC_MALACRASS); break;
+                case 1:     DoOrSimulateScriptTextForThisInstance(SAY_INST_WARN_2, NPC_MALACRASS); break;
+                case 2:     DoOrSimulateScriptTextForThisInstance(SAY_INST_WARN_3, NPC_MALACRASS); break;
+                case 3:     DoOrSimulateScriptTextForThisInstance(SAY_INST_WARN_4, NPC_MALACRASS); break;
             }
             break;
     }
@@ -421,25 +496,25 @@ void instance_zulaman::DoChestEvent(BossToChestIndex uiIndex)
 
 void instance_zulaman::Update(uint32 uiDiff)
 {
-    if (GetData(TYPE_EVENT_RUN) == IN_PROGRESS)
+    if (m_auiEncounter[TYPE_EVENT_RUN] == IN_PROGRESS)
     {
         if (m_uiEventTimer <= uiDiff)
         {
-            if (m_auiEncounter[7] == 5)                 // TODO, verify 5min for warning texts
+            if (m_auiEncounter[TYPE_RUN_EVENT_TIME] == 5)   // TODO, verify 5min for warning texts
                 DoTimeRunSay(RUN_FAIL_SOON);
 
-            if (m_auiEncounter[7] == 0)
+            if (m_auiEncounter[TYPE_RUN_EVENT_TIME] == 0)
             {
                 debug_log("SD2: Instance Zulaman: event time reach end, event failed.");
                 SetData(TYPE_EVENT_RUN, FAIL);
                 return;
             }
 
-            --m_auiEncounter[7];
-            SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[7]);
-            debug_log("SD2: Instance Zulaman: minute decrease to %u.", m_auiEncounter[7]);
+            --m_auiEncounter[TYPE_RUN_EVENT_TIME];
+            SetData(TYPE_RUN_EVENT_TIME, m_auiEncounter[TYPE_RUN_EVENT_TIME]);
+            debug_log("SD2: Instance Zulaman: minute decrease to %u.", m_auiEncounter[TYPE_RUN_EVENT_TIME]);
 
-            m_uiEventTimer = MINUTE*IN_MILLISECONDS;
+            m_uiEventTimer = MINUTE * IN_MILLISECONDS;
         }
         else
             m_uiEventTimer -= uiDiff;

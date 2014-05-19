@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -95,7 +95,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
     uint32 m_uiPoint;
     uint8 m_uiSubeventPhase;
 
-    void Reset()
+    void Reset() override
     {
         m_uiSleepTimer      = 5000;
         m_uiPotionTimer     = 5000;
@@ -114,7 +114,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
         }
     }
 
-    void JustRespawned()
+    void JustRespawned() override
     {
         npc_escortAI::JustRespawned();
 
@@ -123,7 +123,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
             m_pInstance->SetData(TYPE_DISCIPLE, FAIL);
     }
 
-    void AttackedBy(Unit* pAttacker)
+    void AttackedBy(Unit* pAttacker) override
     {
         if (!m_bIsFirstHit)
         {
@@ -141,7 +141,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
     }
 
     // Overwrite the evade function, to change the combat stop function (keep casting some spells)
-    void EnterEvadeMode()
+    void EnterEvadeMode() override
     {
         // Do not stop casting at these points
         if (m_uiPoint == 15 || m_uiPoint == 32)
@@ -152,13 +152,13 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
             Reset();
 
             // Remove running
-            m_creature->AddSplineFlag(SPLINEFLAG_WALKMODE);
+            m_creature->SetWalk(true);
         }
         else
             npc_escortAI::EnterEvadeMode();
     }
 
-    void JustStartedEscort()
+    void JustStartedEscort() override
     {
         DoScriptText(SAY_PREPARE, m_creature);
 
@@ -166,7 +166,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
             m_pInstance->SetData(TYPE_DISCIPLE, IN_PROGRESS);
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         switch (uiPointId)
         {
@@ -187,7 +187,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                 DoScriptText(SAY_NARALEX_CHAMBER, m_creature);
                 break;
             case 32:
-                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                     m_creature->SetFacingToObject(pNaralex);
 
                 m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
@@ -199,7 +199,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         // Attack the disciple
         pSummoned->AI()->AttackStart(m_creature);
@@ -207,7 +207,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
         ++m_uiSummonedAlive;
     }
 
-    void SummonedCreatureJustDied(Creature* pSummoned)
+    void SummonedCreatureJustDied(Creature* /*pSummoned*/) override
     {
         if (m_uiSummonedAlive == 0)
             return;                                         // Actually if this happens, something went wrong before
@@ -225,10 +225,10 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
         float fX, fY, fZ;
         m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, fDistance, fAngle);
 
-        m_creature->SummonCreature(uiEntry, fX, fY, fZ, 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 20000);
+        m_creature->SummonCreature(uiEntry, fX, fY, fZ, 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 20000);
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
         if (m_uiEventTimer)
         {
@@ -236,7 +236,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
             {
                 switch (m_uiPoint)
                 {
-                    // Corner stop -> raptors
+                        // Corner stop -> raptors
                     case 7:
                         switch (m_uiSubeventPhase)
                         {
@@ -255,7 +255,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 break;
                         }
                         break;
-                    // Circle stop -> vipers
+                        // Circle stop -> vipers
                     case 15:
                         switch (m_uiSubeventPhase)
                         {
@@ -272,7 +272,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                             case 2:
                                 // Summon vipers at the first circle
                                 for (uint8 i = 0; i < 3; ++i)
-                                    DoSpawnMob(NPC_DEVIATE_VIPER, aSummonPositions[2][0], aSummonPositions[2][1] + 2*M_PI_F/3 * i);
+                                    DoSpawnMob(NPC_DEVIATE_VIPER, aSummonPositions[2][0], aSummonPositions[2][1] + 2 * M_PI_F / 3 * i);
                                 m_uiEventTimer = 0;
                                 ++m_uiSubeventPhase;
                                 break;
@@ -289,7 +289,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 break;
                         }
                         break;
-                    // Chamber stop -> ritual and final boss
+                        // Chamber stop -> ritual and final boss
                     case 32:
                         switch (m_uiSubeventPhase)
                         {
@@ -306,7 +306,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 2:
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                     DoScriptText(EMOTE_NARALEX_AWAKE, pNaralex);
                                 m_uiEventTimer = 5000;
                                 ++m_uiSubeventPhase;
@@ -314,27 +314,27 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                             case 3:
                                 // First set of mobs
                                 for (uint8 i = 0; i < 3; ++i)
-                                    DoSpawnMob(NPC_DEVIATE_MOCCASIN, aSummonPositions[3][0], aSummonPositions[3][1] + M_PI_F /3 * i);
+                                    DoSpawnMob(NPC_DEVIATE_MOCCASIN, aSummonPositions[3][0], aSummonPositions[3][1] + M_PI_F / 3 * i);
                                 m_uiEventTimer = 20000;
                                 ++m_uiSubeventPhase;
                                 break;
                             case 4:
                                 // Second set of mobs
                                 for (uint8 i = 0; i < 7; ++i)
-                                    DoSpawnMob(NPC_NIGHTMARE_ECTOPLASM, aSummonPositions[3][0], aSummonPositions[3][1] + M_PI_F /7 * i);
+                                    DoSpawnMob(NPC_NIGHTMARE_ECTOPLASM, aSummonPositions[3][0], aSummonPositions[3][1] + M_PI_F / 7 * i);
                                 m_uiEventTimer = 0;
                                 ++m_uiSubeventPhase;
                                 break;
                             case 5:
                                 // Advance only when all mobs are dead
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
-                                   DoScriptText(EMOTE_BREAK_THROUGH, pNaralex);
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
+                                    DoScriptText(EMOTE_BREAK_THROUGH, pNaralex);
                                 ++m_uiSubeventPhase;
                                 m_uiEventTimer = 10000;
                                 break;
                             case 6:
                                 // Mutanus
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                     DoScriptText(EMOTE_VISION, pNaralex);
                                 DoSpawnMob(NPC_MUTANUS, aSummonPositions[4][0], aSummonPositions[4][1]);
                                 m_uiEventTimer = 0;
@@ -342,7 +342,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 break;
                             case 7:
                                 // Awaken Naralex after mutanus is defeated
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     pNaralex->SetStandState(UNIT_STAND_STATE_SIT);
                                     DoScriptText(SAY_NARALEX_AWAKE, pNaralex);
@@ -359,7 +359,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 ++m_uiSubeventPhase;
                                 break;
                             case 9:
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     DoScriptText(SAY_NARALEX_THANKYOU, pNaralex);
                                     pNaralex->SetStandState(UNIT_STAND_STATE_STAND);
@@ -369,7 +369,7 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 break;
                             case 10:
                                 // Shapeshift into a bird
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     DoScriptText(SAY_FAREWELL, pNaralex);
                                     pNaralex->CastSpell(pNaralex, SPELL_SHAPESHIFT, false);
@@ -380,18 +380,18 @@ struct MANGOS_DLL_DECL npc_disciple_of_naralexAI : public npc_escortAI
                                 break;
                             case 11:
                                 SetEscortPaused(false);
-                                m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
+                                m_creature->SetLevitate(true);
                                 SetRun();
                                 // Send them flying somewhere outside of the room
-                                if (Creature* pNaralex = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_NARALEX)))
+                                if (Creature* pNaralex = m_pInstance->GetSingleCreatureFromStorage(NPC_NARALEX))
                                 {
                                     // ToDo: Make Naralex fly
                                     // sort of a hack, compare to boss_onyxia
                                     pNaralex->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_UNK_2);
 
                                     // Set to flying
-                                    pNaralex->AddSplineFlag(SPLINEFLAG_FLYING);
-                                    pNaralex->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
+                                    pNaralex->SetLevitate(true);
+                                    pNaralex->SetWalk(false);
 
                                     // Set following
                                     pNaralex->GetMotionMaster()->MoveFollow(m_creature, 5.0f, 0);
@@ -461,19 +461,19 @@ bool GossipHello_npc_disciple_of_naralex(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-bool GossipSelect_npc_disciple_of_naralex(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_disciple_of_naralex(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     ScriptedInstance* m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
 
     if (!m_pInstance)
         return false;
 
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         if (npc_disciple_of_naralexAI* pEscortAI = dynamic_cast<npc_disciple_of_naralexAI*>(pCreature->AI()))
         {
             pEscortAI->Start(false, pPlayer);               // Note: after 4.0.3 set him run = true
-            pCreature->setFaction(FACTION_ESCORT_N_ACTIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_N_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
         }
         pPlayer->CLOSE_GOSSIP_MENU();
     }

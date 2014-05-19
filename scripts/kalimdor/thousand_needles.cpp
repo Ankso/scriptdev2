@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -44,17 +44,17 @@ enum
     NPC_GALAK_ASS               = 10720
 };
 
-const float m_afGalakLoc[] = {-4867.387695f, -1357.353760f, -48.226f};
+const float m_afGalakLoc[] = { -4867.387695f, -1357.353760f, -48.226f};
 
 struct MANGOS_DLL_DECL npc_kanatiAI : public npc_escortAI
 {
     npc_kanatiAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 0:
                 DoScriptText(SAY_KAN_START, m_creature);
@@ -69,13 +69,13 @@ struct MANGOS_DLL_DECL npc_kanatiAI : public npc_escortAI
 
     void DoSpawnGalak()
     {
-        for(int i = 0; i < 3; ++i)
+        for (int i = 0; i < 3; ++i)
             m_creature->SummonCreature(NPC_GALAK_ASS,
-            m_afGalakLoc[0], m_afGalakLoc[1], m_afGalakLoc[2], 0.0f,
-            TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 25000);
+                                       m_afGalakLoc[0], m_afGalakLoc[1], m_afGalakLoc[2], 0.0f,
+                                       TEMPSUMMON_TIMED_OOC_DESPAWN, 25000);
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         pSummoned->AI()->AttackStart(m_creature);
     }
@@ -116,25 +116,25 @@ enum
     ID_AMBUSH_3                 = 4
 };
 
-float m_afBanditLoc[6][6]=
+float m_afBanditLoc[6][6] =
 {
-    {-4905.479492f, -2062.732666f, 84.352f},
-    {-4915.201172f, -2073.528320f, 84.733f},
-    {-4878.883301f, -1986.947876f, 91.966f},
-    {-4877.503906f, -1966.113403f, 91.859f},
-    {-4767.985352f, -1873.169189f, 90.192f},
-    {-4788.861328f, -1888.007813f, 89.888f}
+    { -4905.479492f, -2062.732666f, 84.352f},
+    { -4915.201172f, -2073.528320f, 84.733f},
+    { -4878.883301f, -1986.947876f, 91.966f},
+    { -4877.503906f, -1966.113403f, 91.859f},
+    { -4767.985352f, -1873.169189f, 90.192f},
+    { -4788.861328f, -1888.007813f, 89.888f}
 };
 
 struct MANGOS_DLL_DECL npc_lakota_windsongAI : public npc_escortAI
 {
     npc_lakota_windsongAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 8:
                 DoScriptText(SAY_LAKO_LOOK_OUT, m_creature);
@@ -157,10 +157,10 @@ struct MANGOS_DLL_DECL npc_lakota_windsongAI : public npc_escortAI
 
     void DoSpawnBandits(int uiAmbushId)
     {
-        for(int i = 0; i < 2; ++i)
+        for (int i = 0; i < 2; ++i)
             m_creature->SummonCreature(NPC_GRIM_BANDIT,
-            m_afBanditLoc[i+uiAmbushId][0], m_afBanditLoc[i+uiAmbushId][1], m_afBanditLoc[i+uiAmbushId][2], 0.0f,
-            TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 60000);
+                                       m_afBanditLoc[i + uiAmbushId][0], m_afBanditLoc[i + uiAmbushId][1], m_afBanditLoc[i + uiAmbushId][2], 0.0f,
+                                       TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
     }
 };
 
@@ -174,7 +174,7 @@ bool QuestAccept_npc_lakota_windsong(Player* pPlayer, Creature* pCreature, const
     if (pQuest->GetQuestId() == QUEST_FREE_AT_LAST)
     {
         DoScriptText(SAY_LAKO_START, pCreature, pPlayer);
-        pCreature->setFaction(FACTION_ESCORT_H_NEUTRAL_ACTIVE);
+        pCreature->SetFactionTemporary(FACTION_ESCORT_H_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         if (npc_lakota_windsongAI* pEscortAI = dynamic_cast<npc_lakota_windsongAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -196,22 +196,22 @@ enum
     NPC_WYVERN          = 4107
 };
 
-float m_afWyvernLoc[3][3]=
+float m_afWyvernLoc[3][3] =
 {
-    {-4990.606f, -906.057f, -5.343f},
-    {-4970.241f, -927.378f, -4.951f},
-    {-4985.364f, -952.528f, -5.199f}
+    { -4990.606f, -906.057f, -5.343f},
+    { -4970.241f, -927.378f, -4.951f},
+    { -4985.364f, -952.528f, -5.199f}
 };
 
 struct MANGOS_DLL_DECL npc_paoka_swiftmountainAI : public npc_escortAI
 {
     npc_paoka_swiftmountainAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
-        switch(uiPointId)
+        switch (uiPointId)
         {
             case 15:
                 DoScriptText(SAY_WYVERN, m_creature);
@@ -229,10 +229,10 @@ struct MANGOS_DLL_DECL npc_paoka_swiftmountainAI : public npc_escortAI
 
     void DoSpawnWyvern()
     {
-        for(int i = 0; i < 3; ++i)
+        for (int i = 0; i < 3; ++i)
             m_creature->SummonCreature(NPC_WYVERN,
-            m_afWyvernLoc[i][0], m_afWyvernLoc[i][1], m_afWyvernLoc[i][2], 0.0f,
-            TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 60000);
+                                       m_afWyvernLoc[i][0], m_afWyvernLoc[i][1], m_afWyvernLoc[i][2], 0.0f,
+                                       TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 60000);
     }
 };
 
@@ -246,7 +246,7 @@ bool QuestAccept_npc_paoka_swiftmountain(Player* pPlayer, Creature* pCreature, c
     if (pQuest->GetQuestId() == QUEST_HOMEWARD)
     {
         DoScriptText(SAY_START, pCreature, pPlayer);
-        pCreature->setFaction(FACTION_ESCORT_H_NEUTRAL_ACTIVE);
+        pCreature->SetFactionTemporary(FACTION_ESCORT_H_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         if (npc_paoka_swiftmountainAI* pEscortAI = dynamic_cast<npc_paoka_swiftmountainAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -272,19 +272,14 @@ struct MANGOS_DLL_DECL npc_plucky_johnsonAI : public ScriptedAI
 {
     npc_plucky_johnsonAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiNormFaction = pCreature->getFaction();
         Reset();
     }
 
-    uint32 m_uiNormFaction;
     uint32 m_uiResetTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiResetTimer = 120000;
-
-        if (m_creature->getFaction() != m_uiNormFaction)
-            m_creature->setFaction(m_uiNormFaction);
 
         if (m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
             m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
@@ -292,13 +287,13 @@ struct MANGOS_DLL_DECL npc_plucky_johnsonAI : public ScriptedAI
         m_creature->CastSpell(m_creature, SPELL_PLUCKY_CHICKEN, false);
     }
 
-    void ReceiveEmote(Player* pPlayer, uint32 uiTextEmote)
+    void ReceiveEmote(Player* pPlayer, uint32 uiTextEmote) override
     {
         if (pPlayer->GetQuestStatus(QUEST_SCOOP) == QUEST_STATUS_INCOMPLETE)
         {
             if (uiTextEmote == TEXTEMOTE_BECKON)
             {
-                m_creature->setFaction(FACTION_FRIENDLY);
+                m_creature->SetFactionTemporary(FACTION_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_RESTORE_COMBAT_STOP);
                 m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 m_creature->CastSpell(m_creature, SPELL_PLUCKY_HUMAN, false);
             }
@@ -310,7 +305,7 @@ struct MANGOS_DLL_DECL npc_plucky_johnsonAI : public ScriptedAI
                 return;
             else
             {
-                m_creature->setFaction(FACTION_FRIENDLY);
+                m_creature->SetFactionTemporary(FACTION_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN | TEMPFACTION_RESTORE_COMBAT_STOP);
                 m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 m_creature->CastSpell(m_creature, SPELL_PLUCKY_HUMAN, false);
                 m_creature->HandleEmote(EMOTE_ONESHOT_WAVE);
@@ -318,7 +313,7 @@ struct MANGOS_DLL_DECL npc_plucky_johnsonAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
         {
@@ -356,7 +351,7 @@ bool GossipHello_npc_plucky_johnson(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-bool GossipSelect_npc_plucky_johnson(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_plucky_johnson(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF)
     {
@@ -369,30 +364,30 @@ bool GossipSelect_npc_plucky_johnson(Player* pPlayer, Creature* pCreature, uint3
 
 void AddSC_thousand_needles()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kanati";
-    newscript->GetAI = &GetAI_npc_kanati;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_kanati;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kanati";
+    pNewScript->GetAI = &GetAI_npc_kanati;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_kanati;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_lakota_windsong";
-    newscript->GetAI = &GetAI_npc_lakota_windsong;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_lakota_windsong;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_lakota_windsong";
+    pNewScript->GetAI = &GetAI_npc_lakota_windsong;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_lakota_windsong;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_paoka_swiftmountain";
-    newscript->GetAI = &GetAI_npc_paoka_swiftmountain;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_paoka_swiftmountain;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_paoka_swiftmountain";
+    pNewScript->GetAI = &GetAI_npc_paoka_swiftmountain;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_paoka_swiftmountain;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_plucky_johnson";
-    newscript->GetAI = &GetAI_npc_plucky_johnson;
-    newscript->pGossipHello = &GossipHello_npc_plucky_johnson;
-    newscript->pGossipSelect = &GossipSelect_npc_plucky_johnson;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_plucky_johnson";
+    pNewScript->GetAI = &GetAI_npc_plucky_johnson;
+    pNewScript->pGossipHello = &GossipHello_npc_plucky_johnson;
+    pNewScript->pGossipSelect = &GossipSelect_npc_plucky_johnson;
+    pNewScript->RegisterSelf();
 }

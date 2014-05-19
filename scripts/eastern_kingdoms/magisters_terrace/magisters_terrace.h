@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -8,18 +8,28 @@
 enum
 {
     MAX_ENCOUNTER               = 4,
+    MAX_DELRISSA_ADDS           = 4,
 
     TYPE_SELIN                  = 0,
     TYPE_VEXALLUS               = 1,
     TYPE_DELRISSA               = 2,
     TYPE_KAELTHAS               = 3,
 
-    TYPE_FEL_CRYSTAL_SIZE       = 4,
-    TYPE_DELRISSA_DEATH_COUNT   = 5,
-
     NPC_SELIN_FIREHEART         = 24723,
     NPC_DELRISSA                = 24560,
     NPC_FEL_CRYSTAL             = 24722,
+    NPC_KALECGOS_DRAGON         = 24844,
+    NPC_KAELTHAS                = 24664,
+
+    // Delrissa adds
+    NPC_KAGANI                  = 24557,
+    NPC_ELLRYS                  = 24558,
+    NPC_ERAMAS                  = 24554,
+    NPC_YAZZAI                  = 24561,
+    NPC_SALARIS                 = 24559,
+    NPC_GARAXXAS                = 24555,
+    NPC_APOKO                   = 24553,
+    NPC_ZELFAN                  = 24556,
 
     GO_VEXALLUS_DOOR            = 187896,
     GO_SELIN_DOOR               = 187979,                   // SunwellRaid Gate 02
@@ -27,29 +37,30 @@ enum
     GO_SELIN_ENCOUNTER_DOOR     = 188065,                   // Assembly Chamber Door
 
     GO_KAEL_DOOR                = 188064,
-    GO_KAEL_STATUE_LEFT         = 188165,
-    GO_KAEL_STATUE_RIGHT        = 188166,
+    // GO_KAEL_STATUE_LEFT       = 188165,                  // animation statues - they do not reset on fail
+    // GO_KAEL_STATUE_RIGHT      = 188166,
+    GO_ESCAPE_QUEL_DANAS        = 188173,
 };
+
+static const int32 aDelrissaAddDeath[MAX_DELRISSA_ADDS] = { -1585013, -1585014, -1585015, -1585016};
 
 class MANGOS_DLL_DECL instance_magisters_terrace : public ScriptedInstance
 {
     public:
         instance_magisters_terrace(Map* pMap);
 
-        void Initialize();
+        void Initialize() override;
 
-        // Was used, likely wrong for normal dungeon
-        //bool IsEncounterInProgress() const
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
 
-        void OnCreatureCreate(Creature* pCreature);
-        void OnObjectCreate(GameObject* pGo);
+        void OnCreatureDeath(Creature* pCreature) override;
 
-        uint32 GetData(uint32 uiType);
-        void SetData(uint32 uiType, uint32 uiData);
-        uint64 GetData64(uint32 uiData);
+        uint32 GetData(uint32 uiType) const override;
+        void SetData(uint32 uiType, uint32 uiData) override;
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
     private:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
@@ -57,19 +68,7 @@ class MANGOS_DLL_DECL instance_magisters_terrace : public ScriptedInstance
 
         uint32 m_uiDelrissaDeathCount;
 
-        GUIDList FelCrystals;
-        GUIDList::iterator CrystalItr;
-
-        uint64 m_uiSelinGUID;
-        uint64 m_uiDelrissaGUID;
-        uint64 m_uiVexallusDoorGUID;
-        uint64 m_uiSelinDoorGUID;
-        uint64 m_uiSelinEncounterDoorGUID;
-        uint64 m_uiDelrissaDoorGUID;
-        uint64 m_uiKaelDoorGUID;
-        uint64 m_auiKaelStatue[2];
-
-        bool m_bInitializedItr;
+        GuidList m_lFelCrystalGuid;
 };
 
 #endif

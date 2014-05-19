@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -54,43 +54,43 @@ struct MANGOS_DLL_DECL npc_galen_goodwardAI : public npc_escortAI
     ObjectGuid m_galensCageGuid;
     uint32 m_uiPeriodicSay;
 
-    void Reset()
+    void Reset() override
     {
         m_uiPeriodicSay = 6000;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
             DoScriptText(urand(0, 1) ? SAY_ATTACKED_1 : SAY_ATTACKED_2, m_creature, pWho);
     }
 
-    void WaypointStart(uint32 uiPointId)
+    void WaypointStart(uint32 uiPointId) override
     {
         switch (uiPointId)
         {
             case 0:
-                {
-                    GameObject* pCage = NULL;
-                    if (m_galensCageGuid)
-                        pCage = m_creature->GetMap()->GetGameObject(m_galensCageGuid);
-                    else
-                        pCage = GetClosestGameObjectWithEntry(m_creature, GO_GALENS_CAGE, INTERACTION_DISTANCE);
+            {
+                GameObject* pCage = NULL;
+                if (m_galensCageGuid)
+                    pCage = m_creature->GetMap()->GetGameObject(m_galensCageGuid);
+                else
+                    pCage = GetClosestGameObjectWithEntry(m_creature, GO_GALENS_CAGE, INTERACTION_DISTANCE);
 
-                    if (pCage)
-                    {
-                        pCage->UseDoorOrButton();
-                        m_galensCageGuid = pCage->GetObjectGuid();
-                    }
-                    break;
+                if (pCage)
+                {
+                    pCage->UseDoorOrButton();
+                    m_galensCageGuid = pCage->GetObjectGuid();
                 }
+                break;
+            }
             case 21:
                 DoScriptText(EMOTE_DISAPPEAR, m_creature);
                 break;
         }
     }
 
-    void WaypointReached(uint32 uiPointId)
+    void WaypointReached(uint32 uiPointId) override
     {
         switch (uiPointId)
         {
@@ -111,7 +111,7 @@ struct MANGOS_DLL_DECL npc_galen_goodwardAI : public npc_escortAI
         }
     }
 
-    void UpdateEscortAI(const uint32 uiDiff)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
 
         if (m_uiPeriodicSay < uiDiff)
@@ -138,7 +138,7 @@ bool QuestAccept_npc_galen_goodward(Player* pPlayer, Creature* pCreature, const 
         if (npc_galen_goodwardAI* pEscortAI = dynamic_cast<npc_galen_goodwardAI*>(pCreature->AI()))
         {
             pEscortAI->Start(false, pPlayer, pQuest);
-            pCreature->setFaction(FACTION_ESCORT_N_NEUTRAL_ACTIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_ACTIVE, TEMPFACTION_RESTORE_RESPAWN);
             DoScriptText(SAY_QUEST_ACCEPTED, pCreature);
         }
     }
@@ -152,11 +152,11 @@ CreatureAI* GetAI_npc_galen_goodward(Creature* pCreature)
 
 void AddSC_swamp_of_sorrows()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_galen_goodward";
-    newscript->GetAI = &GetAI_npc_galen_goodward;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_galen_goodward;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_galen_goodward";
+    pNewScript->GetAI = &GetAI_npc_galen_goodward;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_galen_goodward;
+    pNewScript->RegisterSelf();
 }

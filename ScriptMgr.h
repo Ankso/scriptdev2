@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -7,7 +7,6 @@
 
 #include "Common.h"
 #include "DBCStructure.h"
-#include "Database/DatabaseEnv.h"
 
 class Player;
 class Creature;
@@ -22,6 +21,7 @@ class Unit;
 class WorldObject;
 class Aura;
 class Object;
+class ObjectGuid;
 
 // *********************************************************
 // ************** Some defines used globally ***************
@@ -29,11 +29,6 @@ class Object;
 // Basic defines
 #define VISIBLE_RANGE       (166.0f)                        // MAX visible range (size of grid)
 #define DEFAULT_TEXT        "<ScriptDev2 Text Entry Missing!>"
-
-// Some typedefs for storing GUIDs
-typedef std::list<uint64> GUIDList;
-typedef std::set<uint64> GUIDSet;
-typedef std::vector<uint64> GUIDVector;
 
 /* Escort Factions
  * TODO: find better namings and definitions.
@@ -73,36 +68,37 @@ struct Script
         pQuestAcceptNPC(NULL), pQuestAcceptGO(NULL), pQuestAcceptItem(NULL),
         pQuestRewardedNPC(NULL), pQuestRewardedGO(NULL),
         pGOUse(NULL), pItemUse(NULL), pAreaTrigger(NULL), pProcessEventId(NULL),
-        pEffectDummyNPC(NULL), pEffectDummyGO(NULL), pEffectDummyItem(NULL), pEffectAuraDummy(NULL),
-        GetAI(NULL), GetInstanceData(NULL)
+        pEffectDummyNPC(NULL), pEffectDummyGO(NULL), pEffectDummyItem(NULL), pEffectScriptEffectNPC(NULL),
+        pEffectAuraDummy(NULL), GetAI(NULL), GetInstanceData(NULL)
     {}
 
     std::string Name;
 
-    bool (*pGossipHello             )(Player*, Creature*);
-    bool (*pGossipHelloGO           )(Player*, GameObject*);
-    bool (*pGossipSelect            )(Player*, Creature*, uint32, uint32);
-    bool (*pGossipSelectGO          )(Player*, GameObject*, uint32, uint32);
-    bool (*pGossipSelectWithCode    )(Player*, Creature*, uint32, uint32, const char*);
-    bool (*pGossipSelectGOWithCode  )(Player*, GameObject*, uint32, uint32, const char*);
-    uint32 (*pDialogStatusNPC       )(Player*, Creature*);
-    uint32 (*pDialogStatusGO        )(Player*, GameObject*);
-    bool (*pQuestAcceptNPC          )(Player*, Creature*, Quest const*);
-    bool (*pQuestAcceptGO           )(Player*, GameObject*, Quest const*);
-    bool (*pQuestAcceptItem         )(Player*, Item*, Quest const*);
-    bool (*pQuestRewardedNPC        )(Player*, Creature*, Quest const*);
-    bool (*pQuestRewardedGO         )(Player*, GameObject*, Quest const*);
-    bool (*pGOUse                   )(Player*, GameObject*);
-    bool (*pItemUse                 )(Player*, Item*, SpellCastTargets const&);
-    bool (*pAreaTrigger             )(Player*, AreaTriggerEntry const*);
-    bool (*pProcessEventId          )(uint32, Object*, Object*, bool);
-    bool (*pEffectDummyNPC          )(Unit*, uint32, SpellEffectIndex, Creature*);
-    bool (*pEffectDummyGO           )(Unit*, uint32, SpellEffectIndex, GameObject*);
-    bool (*pEffectDummyItem         )(Unit*, uint32, SpellEffectIndex, Item*);
-    bool (*pEffectAuraDummy         )(const Aura*, bool);
+    bool (*pGossipHello)(Player*, Creature*);
+    bool (*pGossipHelloGO)(Player*, GameObject*);
+    bool (*pGossipSelect)(Player*, Creature*, uint32, uint32);
+    bool (*pGossipSelectGO)(Player*, GameObject*, uint32, uint32);
+    bool (*pGossipSelectWithCode)(Player*, Creature*, uint32, uint32, const char*);
+    bool (*pGossipSelectGOWithCode)(Player*, GameObject*, uint32, uint32, const char*);
+    uint32(*pDialogStatusNPC)(Player*, Creature*);
+    uint32(*pDialogStatusGO)(Player*, GameObject*);
+    bool (*pQuestAcceptNPC)(Player*, Creature*, Quest const*);
+    bool (*pQuestAcceptGO)(Player*, GameObject*, Quest const*);
+    bool (*pQuestAcceptItem)(Player*, Item*, Quest const*);
+    bool (*pQuestRewardedNPC)(Player*, Creature*, Quest const*);
+    bool (*pQuestRewardedGO)(Player*, GameObject*, Quest const*);
+    bool (*pGOUse)(Player*, GameObject*);
+    bool (*pItemUse)(Player*, Item*, SpellCastTargets const&);
+    bool (*pAreaTrigger)(Player*, AreaTriggerEntry const*);
+    bool (*pProcessEventId)(uint32, Object*, Object*, bool);
+    bool (*pEffectDummyNPC)(Unit*, uint32, SpellEffectIndex, Creature*, ObjectGuid);
+    bool (*pEffectDummyGO)(Unit*, uint32, SpellEffectIndex, GameObject*, ObjectGuid);
+    bool (*pEffectDummyItem)(Unit*, uint32, SpellEffectIndex, Item*, ObjectGuid);
+    bool (*pEffectScriptEffectNPC)(Unit*, uint32, SpellEffectIndex, Creature*, ObjectGuid);
+    bool (*pEffectAuraDummy)(const Aura*, bool);
 
-    CreatureAI* (*GetAI             )(Creature*);
-    InstanceData* (*GetInstanceData )(Map*);
+    CreatureAI* (*GetAI)(Creature*);
+    InstanceData* (*GetInstanceData)(Map*);
 
     void RegisterSelf(bool bReportError = true);
 };
@@ -112,12 +108,7 @@ struct Script
 
 // Generic scripting text function
 void DoScriptText(int32 iTextEntry, WorldObject* pSource, Unit* pTarget = NULL);
-
-//DB query
-QueryResult* strSD2Pquery(char*);
-
-// Not registered scripts storage
-Script* GetScriptByName(std::string scriptName);
+void DoOrSimulateScriptTextForMap(int32 iTextEntry, uint32 uiCreatureEntry, Map* pMap, Creature* pCreatureSource = NULL, Unit* pTarget = NULL);
 
 // *********************************************************
 // **************** Internal hook mechanics ****************

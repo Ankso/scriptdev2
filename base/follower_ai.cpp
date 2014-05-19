@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -20,10 +20,9 @@ enum
 };
 
 FollowerAI::FollowerAI(Creature* pCreature) : ScriptedAI(pCreature),
-    m_leaderGuid(),
-    m_pQuestForFollow(NULL),
     m_uiUpdateFollowTimer(2500),
-    m_uiFollowState(STATE_FOLLOW_NONE)
+    m_uiFollowState(STATE_FOLLOW_NONE),
+    m_pQuestForFollow(NULL)
 {}
 
 void FollowerAI::AttackStart(Unit* pWho)
@@ -42,15 +41,15 @@ void FollowerAI::AttackStart(Unit* pWho)
     }
 }
 
-//This part provides assistance to a player that are attacked by pWho, even if out of normal aggro range
-//It will cause m_creature to attack pWho that are attacking _any_ player (which has been confirmed may happen also on offi)
+// This part provides assistance to a player that are attacked by pWho, even if out of normal aggro range
+// It will cause m_creature to attack pWho that are attacking _any_ player (which has been confirmed may happen also on offi)
 bool FollowerAI::AssistPlayerInCombat(Unit* pWho)
 {
     if (!pWho->getVictim())
         return false;
 
     // experimental (unknown) flag not present
-    if (!(m_creature->GetCreatureInfo()->type_flags & CREATURE_TYPEFLAGS_CAN_ASSIST))
+    if (!(m_creature->GetCreatureInfo()->CreatureTypeFlags & CREATURE_TYPEFLAGS_CAN_ASSIST))
         return false;
 
     // unit state prevents (similar check is done in CanInitiateAttack which also include checking unit_flags. We skip those here)
@@ -119,17 +118,17 @@ void FollowerAI::MoveInLineOfSight(Unit* pWho)
     }
 }
 
-void FollowerAI::JustDied(Unit* pKiller)
+void FollowerAI::JustDied(Unit* /*pKiller*/)
 {
     if (!HasFollowState(STATE_FOLLOW_INPROGRESS) || !m_leaderGuid || !m_pQuestForFollow)
         return;
 
-    //TODO: need a better check for quests with time limit.
+    // TODO: need a better check for quests with time limit.
     if (Player* pPlayer = GetLeaderForFollower())
     {
         if (Group* pGroup = pPlayer->GetGroup())
         {
-            for(GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
+            for (GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
             {
                 if (Player* pMember = pRef->getSource())
                 {
@@ -153,15 +152,12 @@ void FollowerAI::JustRespawned()
     if (!IsCombatMovement())
         SetCombatMovement(true);
 
-    if (m_creature->getFaction() != m_creature->GetCreatureInfo()->faction_A)
-        m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-
     Reset();
 }
 
 void FollowerAI::EnterEvadeMode()
 {
-    m_creature->RemoveAllAuras();
+    m_creature->RemoveAllAurasOnEvade();
     m_creature->DeleteThreatList();
     m_creature->CombatStop(true);
     m_creature->SetLootRecipient(NULL);
@@ -214,7 +210,7 @@ void FollowerAI::UpdateAI(const uint32 uiDiff)
 
                 if (Group* pGroup = pPlayer->GetGroup())
                 {
-                    for(GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
+                    for (GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
                     {
                         Player* pMember = pRef->getSource();
 
@@ -248,7 +244,7 @@ void FollowerAI::UpdateAI(const uint32 uiDiff)
     UpdateFollowerAI(uiDiff);
 }
 
-void FollowerAI::UpdateFollowerAI(const uint32 uiDiff)
+void FollowerAI::UpdateFollowerAI(const uint32 /*uiDiff*/)
 {
     if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         return;
@@ -283,15 +279,15 @@ void FollowerAI::StartFollow(Player* pLeader, uint32 uiFactionForFollower, const
 
     if (HasFollowState(STATE_FOLLOW_INPROGRESS))
     {
-        error_log("SD2: FollowerAI attempt to StartFollow while already following.");
+        script_error_log("FollowerAI attempt to StartFollow while already following.");
         return;
     }
 
-    //set variables
+    // set variables
     m_leaderGuid = pLeader->GetObjectGuid();
 
     if (uiFactionForFollower)
-        m_creature->setFaction(uiFactionForFollower);
+        m_creature->SetFactionTemporary(uiFactionForFollower, TEMPFACTION_RESTORE_RESPAWN);
 
     m_pQuestForFollow = pQuest;
 
@@ -308,7 +304,7 @@ void FollowerAI::StartFollow(Player* pLeader, uint32 uiFactionForFollower, const
 
     m_creature->GetMotionMaster()->MoveFollow(pLeader, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
 
-    debug_log("SD2: FollowerAI start follow %s (%u)", pLeader ? pLeader->GetName() : "", m_leaderGuid.GetCounter());
+    debug_log("SD2: FollowerAI start follow %s (Guid %s)", pLeader->GetName(), m_leaderGuid.GetString().c_str());
 }
 
 Player* FollowerAI::GetLeaderForFollower()
@@ -321,7 +317,7 @@ Player* FollowerAI::GetLeaderForFollower()
         {
             if (Group* pGroup = pLeader->GetGroup())
             {
-                for(GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
+                for (GroupReference* pRef = pGroup->GetFirstMember(); pRef != NULL; pRef = pRef->next())
                 {
                     Player* pMember = pRef->getSource();
 
@@ -330,7 +326,6 @@ Player* FollowerAI::GetLeaderForFollower()
                         debug_log("SD2: FollowerAI GetLeader changed and returned new leader.");
                         m_leaderGuid = pMember->GetObjectGuid();
                         return pMember;
-                        break;
                     }
                 }
             }

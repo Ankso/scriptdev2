@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,14 +16,19 @@
 
 /* ScriptData
 SDName: Halls_of_Stone
-SD%Complete: 20%
-SDComment:
+SD%Complete: 50%
+SDComment: Just base mechanics in script, timers and stuff is very uncertain, event-spells are not working
 SDCategory: Halls of Stone
 EndScriptData */
 
 #include "precompiled.h"
-#include "escort_ai.h"
 #include "halls_of_stone.h"
+#include "escort_ai.h"
+
+/* Notes
+ * The timers and handling of texts is not confirmed, but should also not be too far off
+ * The spells "of the statues" (handled in instance script), need quite much of core support
+ */
 
 enum
 {
@@ -90,173 +95,23 @@ enum
 
     SAY_ENTRANCE_MEET                   = -1599064,
 
+    GOSSIP_ITEM_ID_START                = -3599000,
+    GOSSIP_ITEM_ID_PROGRESS             = -3599001,
+
     TEXT_ID_START                       = 13100,
     TEXT_ID_PROGRESS                    = 13101,
 
-    NPC_TRIBUNAL_OF_THE_AGES           = 28234,
-    NPC_BRANN_BRONZEBEARD              = 28070,
-    SPELL_STEALTH                      = 58506,
+    SPELL_SUMMON_PROTECTOR              = 51780,                // all spells are casted by stalker npcs 28130
+    SPELL_SUMMON_STORMCALLER            = 51050,
+    SPELL_SUMMON_CUSTODIAN              = 51051,
 
-    // KADDRAK
-    SPELL_GLARE_OF_THE_TRIBUNAL        = 50988,
-    SPELL_GLARE_OF_THE_TRIBUNAL_H      = 59870,
+    SPELL_STEALTH                       = 58506,
 
-    // MARNAK
-    SPELL_DARK_MATTER                  = 51012,
-    SPELL_DARK_MATTER_H                = 59868,
-    NPC_DARK_MATTER_TARGET             = 28237,
+    NPC_DARK_RUNE_PROTECTOR             = 27983,
+    NPC_DARK_RUNE_STORMCALLER           = 27984,
+    NPC_IRON_GOLEM_CUSTODIAN            = 27985,
 
-    // ABEDNEUM
-    SPELL_SEARING_GAZE                 = 51136,
-    SPELL_SEARING_GAZE_H               = 59867,
-    NPC_SEARING_GAZE_TARGET            = 28265,
-
-    NPC_DARK_RUNE_PROTECTOR            = 27983,
-    NPC_DARK_RUNE_STORMCALLER          = 27984,
-    NPC_IRON_GOLEM_CUSTODIAN           = 27985,
-
-    QUEST_HALLS_OF_STONE               = 13207,
-};
-
-#define GOSSIP_ITEM_START               "Brann, it would be our honor!"
-#define GOSSIP_ITEM_PROGRESS            "Let's move Brann, enough of the history lessons!"
-
-struct Locations
-{
-    float x, y, z;
-    uint32 id;
-};
-
-static Locations SpawnLoc[]=
-{
-    {946.992f, 397.016f, 208.374f},
-    {960.748f, 382.944f, 208.374f},
-};
-
-
-/*######
-## mob_tribuna_controller
-######*/
-
-struct MANGOS_DLL_DECL mob_tribuna_controllerAI : public ScriptedAI
-{
-    mob_tribuna_controllerAI(Creature *pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
-        SetCombatMovement(false);
-        Reset();
-    }
-
-    ScriptedInstance* m_pInstance;
-    bool m_bIsRegularMode;
-
-    bool m_bIsActivateKaddrak;
-    bool m_bIsActivateMarnak;
-    bool m_bIsActivateAbedneum;
-
-    uint32 m_uiKaddrak_Encounter_timer;
-    uint32 m_uiMarnak_Encounter_timer;
-    uint32 m_uiAbedneum_Encounter_timer;
-
-    void Reset()
-    {
-        m_bIsActivateKaddrak = false;
-        m_bIsActivateMarnak = false;
-        m_bIsActivateAbedneum = false;
-
-        m_uiKaddrak_Encounter_timer = 1500;
-        m_uiMarnak_Encounter_timer = 10000;
-        m_uiAbedneum_Encounter_timer = 10000;
-    }
-
-    void UpdateAI(const uint32 uiDiff)
-    {
-        if (m_bIsActivateKaddrak)
-        { 
-            if (m_uiKaddrak_Encounter_timer < uiDiff)
-            {
-                Map* pMap = m_creature->GetMap();
-                Map::PlayerList const& pPlayers = pMap->GetPlayers();
-                if (pPlayers.isEmpty())
-                    return;
-
-                Map::PlayerList::const_iterator itr = pPlayers.begin();
-                for(uint8 i=0;i<rand()%pPlayers.getSize();i++)
-                    ++itr;
-
-                if (Unit* pTarget = itr->getSource())
-                {
-                    std::list<Creature*> m_lKaddrakList;
-                    GetCreatureListWithEntryInGrid(m_lKaddrakList, m_creature, NPC_KADDRAK, 50.0f);
-
-                    if (!m_lKaddrakList.empty())
-                        for(std::list<Creature*>::iterator itr = m_lKaddrakList.begin(); itr != m_lKaddrakList.end(); ++itr)
-                            if ((*itr) && (*itr)->isAlive())
-                                (*itr)->CastSpell(pTarget, m_bIsRegularMode ? SPELL_GLARE_OF_THE_TRIBUNAL : SPELL_GLARE_OF_THE_TRIBUNAL_H, true);
-                    m_uiKaddrak_Encounter_timer = 1500;
-                }
-            }
-            else
-                m_uiKaddrak_Encounter_timer -= uiDiff;
-        }
-
-        if (m_bIsActivateMarnak)
-        {
-            if (m_uiMarnak_Encounter_timer < uiDiff)
-            {
-                Map* pMap = m_creature->GetMap();
-                Map::PlayerList const& pPlayers = pMap->GetPlayers();
-                if (pPlayers.isEmpty())
-                    return;
-
-                Map::PlayerList::const_iterator itr = pPlayers.begin();
-                for(uint8 i=0;i<rand()%pPlayers.getSize();i++)
-                    ++itr;
-
-                if (Unit* pTarget = itr->getSource())
-                    if (Creature* pTemp = m_creature->SummonCreature(NPC_DARK_MATTER_TARGET, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 1000))
-                    {
-                        pTemp->SetDisplayId(11686);
-                        pTemp->setFaction(14); 
-                        pTemp->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                        pTemp->CastSpell(pTemp, m_bIsRegularMode ? SPELL_DARK_MATTER : SPELL_DARK_MATTER_H, true);
-                    }
-
-                m_uiMarnak_Encounter_timer = 30000 + rand()%1000;
-            }
-            else
-                m_uiMarnak_Encounter_timer -= uiDiff;
-        }
-        if (m_bIsActivateAbedneum)
-        {
-            if (m_uiAbedneum_Encounter_timer < uiDiff)
-            {
-                Map* pMap = m_creature->GetMap();
-                Map::PlayerList const& pPlayers = pMap->GetPlayers();
-                if (pPlayers.isEmpty())
-                    return;
-
-                Map::PlayerList::const_iterator itr = pPlayers.begin();
-                for(uint8 i=0;i<rand()%pPlayers.getSize();i++)
-                    ++itr;
-
-                if (Unit* pTarget = itr->getSource())
-                    if (Creature* pTemp = m_creature->SummonCreature(NPC_SEARING_GAZE_TARGET, pTarget->GetPositionX(), pTarget->GetPositionY(), pTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 10000))
-                    {
-                        pTemp->SetDisplayId(11686);
-                        pTemp->setFaction(14);
-                        pTemp->GetMotionMaster()->MoveIdle();
-                        pTemp->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                        pTemp->CastSpell(pTemp, m_bIsRegularMode ? SPELL_SEARING_GAZE : SPELL_SEARING_GAZE_H, true);
-                    }
-
-                m_uiAbedneum_Encounter_timer = 30000 + rand()%1000;
-            }
-            else
-                m_uiAbedneum_Encounter_timer -= uiDiff;
-        }
-    }
+    QUEST_HALLS_OF_STONE                = 13207,
 };
 
 /*######
@@ -267,91 +122,39 @@ struct MANGOS_DLL_DECL npc_brann_hosAI : public npc_escortAI
 {
     npc_brann_hosAI(Creature* pCreature) : npc_escortAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_halls_of_stone*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_halls_of_stone* m_pInstance;
     bool m_bIsRegularMode;
+
+    bool m_bHasContinued;
     bool m_bIsBattle;
     bool m_bIsLowHP;
 
     uint32 m_uiStep;
-    uint32 m_uiPhase_timer;
+    uint32 m_uiPhaseTimer;
 
-    uint64 m_uiControllerGUID;
-    std::list<uint64> m_lDwarfGUIDList;
+    GuidList m_luiDwarfGUIDs;
 
-    void Reset()
+    void Reset() override
     {
         if (!HasEscortState(STATE_ESCORT_ESCORTING))
         {
             m_bIsLowHP = false;
             m_bIsBattle = false;
+            m_bHasContinued = false;
 
             m_uiStep = 0;
-            m_uiPhase_timer = 0;
-
-            m_uiControllerGUID = 0;
-
-            DespawnDwarf();
-
-            if(m_pInstance)
-                m_pInstance->SetData(TYPE_BRANN, NOT_STARTED);
+            m_uiPhaseTimer = 0;
         }
     }
 
-    void AttackStart(Unit* pWho)
+    void KilledUnit(Unit* /*pVictim*/) override                          // TODO - possible better as SummonedJustDied
     {
-        if (!pWho)
-            return;
-
-        if (!m_bIsBattle)
-            return;
-
-        if (m_creature->Attack(pWho, true))
-        {
-            m_creature->AddThreat(pWho, 0.0f);
-            m_creature->SetInCombatWith(pWho);
-            pWho->SetInCombatWith(m_creature);
-            DoStartMovement(pWho);
-        }
-    }
-
-    void WaypointReached(uint32 uiPointId)
-    {
-        switch(uiPointId)
-        {
-            case 13: 
-                DoScriptText(SAY_EVENT_INTRO_1, m_creature);
-                SetEscortPaused(true);
-                SetRun(true);
-                JumpToNextStep(20000);
-                break;
-            case 17:
-                DoScriptText(SAY_EVENT_INTRO_2, m_creature);
-                if (m_pInstance)
-                    m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_TRIBUNAL_CONSOLE));
-                m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
-                SetEscortPaused(true);
-                if (Creature* pCreature = GetClosestCreatureWithEntry(m_creature, NPC_TRIBUNAL_OF_THE_AGES, 100.0f))
-                {
-                    if (!pCreature->isAlive())
-                        pCreature->Respawn();
-                    m_uiControllerGUID = pCreature->GetGUID();
-                }
-                JumpToNextStep(8500);
-                break;
-            case 18:
-                SetEscortPaused(true);
-                break;
-        }
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-        switch(rand()%3)
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_KILL_1, m_creature); break;
             case 1: DoScriptText(SAY_KILL_2, m_creature); break;
@@ -359,385 +162,501 @@ struct MANGOS_DLL_DECL npc_brann_hosAI : public npc_escortAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
+
+        if (m_pInstance)
+        {
+            m_pInstance->SetData(TYPE_TRIBUNAL, FAIL);
+            // Continue at right state after respawn
+            if (m_bHasContinued)
+                m_pInstance->SetData(TYPE_TRIBUNAL, IN_PROGRESS);
+        }
+
+        for (GuidList::const_iterator itr = m_luiDwarfGUIDs.begin(); itr != m_luiDwarfGUIDs.end(); ++itr)
+        {
+            if (Creature* pDwarf = m_creature->GetMap()->GetCreature(*itr))
+                pDwarf->ForcedDespawn();
+        }
+        m_luiDwarfGUIDs.clear();
     }
 
-    void DespawnDwarf()
+    void AttackStart(Unit* pWho) override
     {
-        if (m_lDwarfGUIDList.empty())
+        if (!pWho)
             return;
 
-        for(std::list<uint64>::iterator itr = m_lDwarfGUIDList.begin(); itr != m_lDwarfGUIDList.end(); ++itr)
-        {
-            if (Creature* pTemp = m_creature->GetMap()->GetCreature(*itr))
-            {
-                if (pTemp->isAlive())
-                    pTemp->ForcedDespawn();
-            }
-        }
+        if (!m_bIsBattle)
+            return;
 
-        m_lDwarfGUIDList.clear();
+        npc_escortAI::AttackStart(pWho);
     }
 
-    void SpawnDwarf(uint32 uiType)
+    void DamageTaken(Unit* /*pDealer*/, uint32& uiDamage) override
     {
-        switch(uiType)
+        // If Brann takes damage, mark the achiev as failed
+        if (uiDamage && m_pInstance)
+            m_pInstance->SetBrannSpankin(false);
+    }
+
+    void ContinueEvent()
+    {
+        if (!m_pInstance || m_pInstance->GetData(TYPE_TRIBUNAL) != IN_PROGRESS)
+            return;
+
+        // Set the achiev in progress
+        m_pInstance->SetBrannSpankin(true);
+
+        m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        SetRun(true);
+        SetEscortPaused(false);
+        m_bHasContinued = true;
+    }
+
+    void JustStartedEscort() override
+    {
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_TRIBUNAL, IN_PROGRESS);
+
+        DoScriptText(SAY_ESCORT_START, m_creature);
+    }
+
+    void WaypointReached(uint32 uiPointId) override
+    {
+        switch (uiPointId)
         {
-            case 1:
+            case 13:                                        // Before Tribunal Event, Continue with Gossip Interaction
+                DoScriptText(SAY_EVENT_INTRO_1, m_creature);
+                SetEscortPaused(true);
+                m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                break;
+            case 17:                                        // Reach Tribunal
+                SetEscortPaused(true);
+                m_uiPhaseTimer = 500;
+                break;
+            case 18:                                        // Reach Floor Event
+                SetEscortPaused(true);
+                if (m_pInstance)
+                {
+                    if (GameObject* pKonsole = m_pInstance->GetSingleGameObjectFromStorage(GO_TRIBUNAL_CONSOLE))
+                        m_creature->SetFacingToObject(pKonsole);
+                    m_pInstance->DoUseDoorOrButton(GO_TRIBUNAL_FLOOR);
+                }
+                m_uiPhaseTimer = 1000;
+                break;
+        }
+    }
+
+    void SpawnDwarf(uint32 uEntry)
+    {
+        if (!m_pInstance)
+            return;
+
+        // each case has an individual spawn stalker
+        switch (uEntry)
+        {
+            case NPC_DARK_RUNE_PROTECTOR:
             {
-                uint32 uiSpawnNumber = (m_bIsRegularMode ? 3 : 2);
+                Creature* pStalker = m_creature->GetMap()->GetCreature(m_pInstance->GetProtectorStalkerGuid());
+                if (!pStalker)
+                    return;
+
+                uint32 uiSpawnNumber = (m_bIsRegularMode ? 2 : 3);
                 for (uint8 i = 0; i < uiSpawnNumber; ++i)
-                    m_creature->SummonCreature(NPC_DARK_RUNE_PROTECTOR, SpawnLoc[0].x, SpawnLoc[0].y, SpawnLoc[0].z, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
-                m_creature->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLoc[0].x, SpawnLoc[0].y, SpawnLoc[0].z, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
+                    pStalker->CastSpell(pStalker, SPELL_SUMMON_PROTECTOR, true, NULL, NULL, m_creature->GetObjectGuid());
+                pStalker->CastSpell(pStalker, SPELL_SUMMON_STORMCALLER, true, NULL, NULL, m_creature->GetObjectGuid());
                 break;
             }
-            case 2:
+            case NPC_DARK_RUNE_STORMCALLER:
+            {
+                Creature* pStalker = m_creature->GetMap()->GetCreature(m_pInstance->GeStormcallerStalkerGuid());
+                if (!pStalker)
+                    return;
+
                 for (uint8 i = 0; i < 2; ++i)
-                    m_creature->SummonCreature(NPC_DARK_RUNE_STORMCALLER, SpawnLoc[1].x, SpawnLoc[1].y, SpawnLoc[1].z, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
+                    pStalker->CastSpell(pStalker, SPELL_SUMMON_STORMCALLER, true, NULL, NULL, m_creature->GetObjectGuid());
                 break;
-            case 3:
-                m_creature->SummonCreature(NPC_IRON_GOLEM_CUSTODIAN, SpawnLoc[1].x, SpawnLoc[1].y, SpawnLoc[1].z, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
+            }
+            case NPC_IRON_GOLEM_CUSTODIAN:
+            {
+                Creature* pStalker = m_creature->GetMap()->GetCreature(m_pInstance->GetCustodianStalkerGuid());
+                if (!pStalker)
+                    return;
+
+                pStalker->CastSpell(pStalker, SPELL_SUMMON_CUSTODIAN, true, NULL, NULL, m_creature->GetObjectGuid());
                 break;
+            }
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
-        m_lDwarfGUIDList.push_back(pSummoned->GetGUID());
-        pSummoned->AddThreat(m_creature, 0.0f);
+        m_luiDwarfGUIDs.push_back(pSummoned->GetObjectGuid());
+
         pSummoned->AI()->AttackStart(m_creature);
     }
 
-    void JumpToNextStep(uint32 uiTimer)
+    void UpdateEscortAI(const uint32 uiDiff) override
     {
-        m_uiPhase_timer = uiTimer;
-        m_uiStep++;
-    }
-
-    void UpdateEscortAI(const uint32 uiDiff)
-    {
-        if (m_uiPhase_timer < uiDiff)
+        if (m_uiPhaseTimer && m_uiPhaseTimer <= uiDiff)
         {
-            switch(m_uiStep)
+            switch (m_uiStep)
             {
-                case 0: // unused
+                    // Begin Event
+                case 0:
+                    // TODO, this is wrong, must be "using or similar"
+                    m_creature->SetStandState(UNIT_STAND_STATE_KNEEL);
+                    m_uiPhaseTimer = 1500;
                     break;
-                case 1: 
+                case 1:
+                    DoScriptText(SAY_EVENT_INTRO_2, m_creature);
+                    m_uiPhaseTimer = 2500;
+                    break;
+                case 2:
                     if (m_pInstance)
-                    {
-                        if (m_pInstance->GetData(TYPE_BRANN) != NOT_STARTED)
-                            return;
-
-                        m_pInstance->SetData(TYPE_BRANN, IN_PROGRESS);
-                    }
-                    m_bIsBattle = false;
-                    DoScriptText(SAY_ESCORT_START, m_creature);
-                    JumpToNextStep(0);
+                        m_pInstance->DoUseDoorOrButton(GO_TRIBUNAL_CONSOLE);
+                    m_uiPhaseTimer = 6500;
                     break;
-                case 3: 
-                    SetEscortPaused(false);
-                    JumpToNextStep(0);
+                case 3:
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_INTRO_3_ABED);
+                    m_uiPhaseTimer = 8500;
+                    break;
+
+                    // Activate Kaddrak
+                case 4:
+                    DoScriptText(SAY_EVENT_A_1, m_creature);
+                    m_uiPhaseTimer = 6500;
                     break;
                 case 5:
                     if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_INTRO_3_ABED, pTemp);
-                    JumpToNextStep(8500);
+                        m_pInstance->DoFaceSpeak(FACE_KADDRAK, SAY_EVENT_A_2_KADD);
+                    m_uiPhaseTimer = 12500;
                     break;
                 case 6:
-                    DoScriptText(SAY_EVENT_A_1, m_creature);
-                    JumpToNextStep(6500);
+                    DoScriptText(SAY_EVENT_A_3, m_creature);
+                    m_uiPhaseTimer = 6000;
                     break;
                 case 7:
                     if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_KADDRAK)))
-                            DoScriptText(SAY_EVENT_A_2_KADD, pTemp);
-                    JumpToNextStep(12500);
+                        m_pInstance->ActivateFace(FACE_KADDRAK, false);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 8:
-                    DoScriptText(SAY_EVENT_A_3, m_creature);
-                    if (m_pInstance)
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_KADDRAK));
-                    if (Creature* pTemp = m_creature->GetMap()->GetCreature(m_uiControllerGUID))
-                        ((mob_tribuna_controllerAI*)pTemp->AI())->m_bIsActivateKaddrak = true;
-                    JumpToNextStep(5000);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 20000;
                     break;
+
+                    // Activate Marnak
                 case 9:
-                    SpawnDwarf(1);
-                    JumpToNextStep(20000);
+                    DoScriptText(SAY_EVENT_B_1, m_creature);
+                    m_uiPhaseTimer = 6000;
                     break;
                 case 10:
-                    DoScriptText(SAY_EVENT_B_1, m_creature);
-                    JumpToNextStep(6000);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_MARNAK, SAY_EVENT_B_2_MARN);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 20000;
                     break;
                 case 11:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_MARNAK)))
-                            DoScriptText(SAY_EVENT_B_2_MARN, pTemp);
-                    SpawnDwarf(1);
-                    JumpToNextStep(20000);
+                    DoScriptText(SAY_EVENT_B_3, m_creature);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 12:
-                    DoScriptText(SAY_EVENT_B_3, m_creature);
                     if (m_pInstance)
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_MARNAK));
-                    if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_uiControllerGUID))
-                        ((mob_tribuna_controllerAI*)pTemp->AI())->m_bIsActivateMarnak = true;
-                    JumpToNextStep(10000);
+                        m_pInstance->ActivateFace(FACE_MARNAK, false);
+                    m_uiPhaseTimer = 10000;
                     break;
                 case 13:
-                    SpawnDwarf(1);
-                    JumpToNextStep(10000);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 10000;
                     break;
                 case 14:
-                    SpawnDwarf(2);
-                    JumpToNextStep(20000);
+                    SpawnDwarf(NPC_DARK_RUNE_STORMCALLER);
+                    m_uiPhaseTimer = (20000);
                     break;
                 case 15:
                     DoScriptText(SAY_EVENT_C_1, m_creature);
-                    SpawnDwarf(1);
-                    JumpToNextStep(10000);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 10000;
                     break;
                 case 16:
-                    SpawnDwarf(2);
-                    JumpToNextStep(20000);
+                    SpawnDwarf(NPC_DARK_RUNE_STORMCALLER);
+                    m_uiPhaseTimer = 20000;
                     break;
+
+                    // Activate Abedneum
                 case 17:
                     if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_C_2_ABED, pTemp);
-                    SpawnDwarf(1);
-                    JumpToNextStep(20000);
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_C_2_ABED);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 20000;
                     break;
                 case 18:
                     DoScriptText(SAY_EVENT_C_3, m_creature);
-                    if (m_pInstance)
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_ABEDNEUM));
-                    if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_uiControllerGUID))
-                        ((mob_tribuna_controllerAI*)pTemp->AI())->m_bIsActivateAbedneum = true;
-                    JumpToNextStep(5000);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 19:
-                    SpawnDwarf(2);
-                    JumpToNextStep(10000);
+                    if (m_pInstance)
+                        m_pInstance->ActivateFace(FACE_ABEDNEUM, false);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 20:
-                    SpawnDwarf(1);
-                    JumpToNextStep(15000);
+                    SpawnDwarf(NPC_DARK_RUNE_STORMCALLER);
+                    m_uiPhaseTimer = 10000;
                     break;
                 case 21:
-                    DoScriptText(SAY_EVENT_D_1, m_creature);
-                    SpawnDwarf(3);
-                    JumpToNextStep(20000);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 15000;
                     break;
+
                 case 22:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_D_2_ABED, pTemp);
-                    SpawnDwarf(1);
-                    JumpToNextStep(5000);
+                    DoScriptText(SAY_EVENT_D_1, m_creature);
+                    SpawnDwarf(NPC_IRON_GOLEM_CUSTODIAN);
+                    m_uiPhaseTimer = 20000;
                     break;
                 case 23:
-                    SpawnDwarf(2);
-                    JumpToNextStep(15000);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_D_2_ABED);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 24:
-                    DoScriptText(SAY_EVENT_D_3, m_creature);
-                    SpawnDwarf(3);
-                    JumpToNextStep(5000);
+                    SpawnDwarf(NPC_DARK_RUNE_STORMCALLER);
+                    m_uiPhaseTimer = 15000;
                     break;
                 case 25:
-                    SpawnDwarf(1);
-                    JumpToNextStep(5000);
+                    DoScriptText(SAY_EVENT_D_3, m_creature);
+                    SpawnDwarf(NPC_IRON_GOLEM_CUSTODIAN);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 26:
-                    SpawnDwarf(2);
-                    JumpToNextStep(10000);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 5000;
                     break;
                 case 27:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_D_4_ABED, pTemp);
-                    SpawnDwarf(1);
-                    JumpToNextStep(10000);
+                    SpawnDwarf(NPC_DARK_RUNE_STORMCALLER);
+                    m_uiPhaseTimer = 10000;
                     break;
                 case 28:
-                    DoScriptText(SAY_EVENT_END_01, m_creature);
-                    m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                     if (m_pInstance)
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_SKY_FLOOR));
-                    if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_uiControllerGUID))
-                        pTemp->DealDamage(pTemp, pTemp->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-                    m_bIsBattle = true;
-                    SetEscortPaused(false);
-                    JumpToNextStep(3500);
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_D_4_ABED);
+                    SpawnDwarf(NPC_DARK_RUNE_PROTECTOR);
+                    m_uiPhaseTimer = 10000;
                     break;
+
+                    // End Event
                 case 29:
-                    DoScriptText(SAY_EVENT_END_02, m_creature);
-                    JumpToNextStep(3500);
+                    DoScriptText(SAY_EVENT_END_01, m_creature);
+                    m_creature->SetStandState(UNIT_STAND_STATE_STAND);// TODO TODO
+                    if (m_pInstance)
+                        m_pInstance->SetData(TYPE_TRIBUNAL, SPECIAL); // Kill remaining npcs
+
+                    // ToDo: the loot and the achiev should be triggered at this point
+                    // Brann should get the gossip option "There will be plenty of time for this later Brann, we need to get moving!"
+                    // This will allow Brann to continue the escort to the last encounter
+                    // When reaching the last door he has the gossip "We're with you Brann! Open it!"
+
+                    SetEscortPaused(false);
+                    m_uiPhaseTimer = 3000;
+                    // break;
+                    // case 30:
+                    if (m_pInstance)
+                        m_pInstance->ActivateFace(FACE_ABEDNEUM, true);
+                    m_uiPhaseTimer = 0;
                     break;
                 case 30:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_END_03_ABED, pTemp);
-                    JumpToNextStep(4500);
+                    DoScriptText(SAY_EVENT_END_02, m_creature);
+                    m_uiPhaseTimer = 5500;
                     break;
                 case 31:
-                    DoScriptText(SAY_EVENT_END_04, m_creature);
-                    JumpToNextStep(6500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_END_03_ABED);
+                    m_uiPhaseTimer = 8500;
                     break;
                 case 32:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_END_05_ABED, pTemp);
-                    JumpToNextStep(6500);
+                    DoScriptText(SAY_EVENT_END_04, m_creature);
+                    m_uiPhaseTimer = 11500;
                     break;
                 case 33:
-                    DoScriptText(SAY_EVENT_END_06, m_creature);
-                    JumpToNextStep(2500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_END_05_ABED);
+                    m_uiPhaseTimer = 11500;
                     break;
                 case 34:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_END_07_ABED, pTemp);
-                    JumpToNextStep(10500);
+                    DoScriptText(SAY_EVENT_END_06, m_creature);
+                    m_uiPhaseTimer = 4500;
                     break;
                 case 35:
-                    DoScriptText(SAY_EVENT_END_08, m_creature);
-                    JumpToNextStep(4500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_END_07_ABED);
+                    m_uiPhaseTimer = 22500;
                     break;
                 case 36:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_KADDRAK)))
-                            DoScriptText(SAY_EVENT_END_09_KADD, pTemp);
-                    JumpToNextStep(7500);
+                    DoScriptText(SAY_EVENT_END_08, m_creature);
+                    m_uiPhaseTimer = 7500;
                     break;
                 case 37:
-                    DoScriptText(SAY_EVENT_END_10, m_creature);
-                    JumpToNextStep(2500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_KADDRAK, SAY_EVENT_END_09_KADD);
+                    m_uiPhaseTimer = 18500;
                     break;
                 case 38:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_KADDRAK)))
-                            DoScriptText(SAY_EVENT_END_11_KADD, pTemp);
-                    JumpToNextStep(10500);
+                    DoScriptText(SAY_EVENT_END_10, m_creature);
+                    m_uiPhaseTimer = 5500;
                     break;
                 case 39:
-                    DoScriptText(SAY_EVENT_END_12, m_creature);
-                    JumpToNextStep(2500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_KADDRAK, SAY_EVENT_END_11_KADD);
+                    m_uiPhaseTimer = 20500;
                     break;
                 case 40:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_KADDRAK)))
-                            DoScriptText(SAY_EVENT_END_13_KADD, pTemp);
-                    JumpToNextStep(9500);
+                    DoScriptText(SAY_EVENT_END_12, m_creature);
+                    m_uiPhaseTimer = 2500;
                     break;
                 case 41:
-                    DoScriptText(SAY_EVENT_END_14, m_creature);
-                    JumpToNextStep(5500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_KADDRAK, SAY_EVENT_END_13_KADD);
+                    m_uiPhaseTimer = 19500;
                     break;
                 case 42:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_MARNAK)))
-                            DoScriptText(SAY_EVENT_END_15_MARN, pTemp);
-                    JumpToNextStep(3500);
+                    DoScriptText(SAY_EVENT_END_14, m_creature);
+                    m_uiPhaseTimer = 10500;
                     break;
                 case 43:
-                    DoScriptText(SAY_EVENT_END_16, m_creature);
-                    JumpToNextStep(3500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_MARNAK, SAY_EVENT_END_15_MARN);
+                    m_uiPhaseTimer = 6500;
                     break;
                 case 44:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_MARNAK)))
-                            DoScriptText(SAY_EVENT_END_17_MARN, pTemp);
-                    JumpToNextStep(11500);
+                    DoScriptText(SAY_EVENT_END_16, m_creature);
+                    m_uiPhaseTimer = 6500;
                     break;
                 case 45:
-                    DoScriptText(SAY_EVENT_END_18, m_creature);
-                    JumpToNextStep(10500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_MARNAK, SAY_EVENT_END_17_MARN);
+                    m_uiPhaseTimer = 25500;
                     break;
                 case 46:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_MARNAK)))
-                            DoScriptText(SAY_EVENT_END_19_MARN, pTemp);
-                    JumpToNextStep(2500);
+                    DoScriptText(SAY_EVENT_END_18, m_creature);
+                    m_uiPhaseTimer = 23500;
                     break;
                 case 47:
-                    DoScriptText(SAY_EVENT_END_20, m_creature);
-                    JumpToNextStep(4500);
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_MARNAK, SAY_EVENT_END_19_MARN);
+                    m_uiPhaseTimer = 3500;
                     break;
                 case 48:
-                    if (m_pInstance)
-                        if (Creature* pTemp = m_creature->GetMap()->GetCreature( m_pInstance->GetData64(DATA_ABEDNEUM)))
-                            DoScriptText(SAY_EVENT_END_21_ABED, pTemp);
-                    JumpToNextStep(3500);
+                    DoScriptText(SAY_EVENT_END_20, m_creature);
+                    m_uiPhaseTimer = 8500;
                     break;
                 case 49:
+                    if (m_pInstance)
+                        m_pInstance->DoFaceSpeak(FACE_ABEDNEUM, SAY_EVENT_END_21_ABED);
+                    m_uiPhaseTimer = 5500;
+                    break;
+                case 50:
                 {
                     if (m_pInstance)
                     {
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_KADDRAK));
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_MARNAK));
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_ABEDNEUM));
-                        m_pInstance->DoUseDoorOrButton(m_pInstance->GetData64(DATA_GO_SKY_FLOOR));
-                        m_pInstance->SetData(TYPE_BRANN, DONE);
+                        m_pInstance->DoUseDoorOrButton(GO_TRIBUNAL_FLOOR);
+                        m_pInstance->SetData(TYPE_TRIBUNAL, DONE);
                     }
 
                     Player* pPlayer = GetPlayerForEscort();
                     if (pPlayer)
                         pPlayer->GroupEventHappens(QUEST_HALLS_OF_STONE, m_creature);
 
-                    m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                    m_creature->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+                    m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    m_creature->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
 
-                    JumpToNextStep(180000);
+                    m_uiPhaseTimer = 180000;
                     break;
                 }
-                case 50:
+                case 51:
                     SetEscortPaused(false);
                     break;
             }
+            ++m_uiStep;
         }
-        else m_uiPhase_timer -= uiDiff;
- 
-        if (!m_bIsLowHP && (m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) <= 30)
+        else if (m_uiPhaseTimer)
+            m_uiPhaseTimer -= uiDiff;
+
+        if (!m_bIsLowHP && m_creature->GetHealthPercent() < 30)
         {
             DoScriptText(SAY_LOW_HEALTH, m_creature);
             m_bIsLowHP = true;
         }
-        else if (m_bIsLowHP && (m_creature->GetHealth()*100 / m_creature->GetMaxHealth()) > 30)
+        else if (m_bIsLowHP && m_creature->GetHealthPercent() > 30)
             m_bIsLowHP = false;
+
+        // No Combat abilities needed here
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
+    }
+
+    // Respawn Handling: Relocate and Set Escort to WP 13
+    void JustRespawned() override
+    {
+        if (!m_pInstance)
+            return;
+
+        Reset();
+
+        if (m_pInstance->GetData(TYPE_TRIBUNAL) == IN_PROGRESS)
+        {
+            SetEscortPaused(true);
+
+            m_uiStep = 0;
+            m_uiPhaseTimer = 0;
+
+            m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
+
+            // Relocate to position of WP 13
+            m_creature->GetMap()->CreatureRelocation(m_creature, 941.101563f, 377.373413f, 207.421f, 3.85f);
+
+            SetCurrentWaypoint(13);
+        }
     }
 };
 
 bool GossipHello_npc_brann_hos(Player* pPlayer, Creature* pCreature)
 {
-        ScriptedInstance* m_pInstance;
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
-
     if (pCreature->isQuestGiver())
         pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
 
-if (m_pInstance->GetData(TYPE_BRANN) != DONE)
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+    if (instance_halls_of_stone* pInstance = (instance_halls_of_stone*)(pCreature->GetInstanceData()))
+    {
+        if (pInstance->GetData(TYPE_TRIBUNAL) == NOT_STARTED || pInstance->GetData(TYPE_TRIBUNAL) == FAIL)
+        {
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_ID_START, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+            pPlayer->SEND_GOSSIP_MENU(TEXT_ID_START, pCreature->GetObjectGuid());
+        }
+        else if (pInstance->GetData(TYPE_TRIBUNAL) == IN_PROGRESS)
+        {
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_ID_PROGRESS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+            pPlayer->SEND_GOSSIP_MENU(TEXT_ID_PROGRESS, pCreature->GetObjectGuid());
+        }
+    }
 
-    pPlayer->SEND_GOSSIP_MENU(TEXT_ID_START, pCreature->GetGUID());
-
-    //pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_PROGRESS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-    //pPlayer->SEND_GOSSIP_MENU(TEXT_ID_PROGRESS, pCreature->GetObjectGuid());
     return true;
 }
 
-bool GossipSelect_npc_brann_hos(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_brann_hos(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1 || uiAction == GOSSIP_ACTION_INFO_DEF+2)
+    switch (uiAction)
     {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        ((npc_brann_hosAI*)pCreature->AI())->m_uiStep = 1;
-        ((npc_brann_hosAI*)pCreature->AI())->Start(false, pPlayer);
+        case GOSSIP_ACTION_INFO_DEF + 1:
+            if (npc_brann_hosAI* pBrannAi = dynamic_cast<npc_brann_hosAI*>(pCreature->AI()))
+                pBrannAi->Start(false, pPlayer);
+            break;
+        case GOSSIP_ACTION_INFO_DEF + 2:
+            if (npc_brann_hosAI* pBrannAi = dynamic_cast<npc_brann_hosAI*>(pCreature->AI()))
+                pBrannAi->ContinueEvent();
+            break;
     }
+    pPlayer->CLOSE_GOSSIP_MENU();
 
     return true;
 }
@@ -747,24 +666,137 @@ CreatureAI* GetAI_npc_brann_hos(Creature* pCreature)
     return new npc_brann_hosAI(pCreature);
 }
 
-CreatureAI* GetAI_mob_tribuna_controller(Creature* pCreature)
+enum
 {
-    return new mob_tribuna_controllerAI (pCreature);
+    SPELL_SUMMON_DARK_MATTER_TARGET     = 51003,
+    SPELL_DARK_MATTER                   = 51012,
+    SPELL_DARK_MATTER_H                 = 59868,
+    NPC_DARK_MATTER_TARGET              = 28237,
+
+    SPELL_SEARING_GAZE                  = 51136,
+    SPELL_SEARING_GAZE_H                = 59867,
+    // NPC_SEARING_GAZE_TARGET          = 28265,
+};
+
+/*######
+## npc_dark_matter
+######*/
+
+struct MANGOS_DLL_DECL npc_dark_matterAI : public ScriptedAI
+{
+    npc_dark_matterAI(Creature* pCreature) : ScriptedAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+
+    uint32 m_uiSummonTimer;
+
+    void Reset() override
+    {
+        m_uiSummonTimer = 0;
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+
+    void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
+    {
+        if (pSpell->Id == SPELL_DARK_MATTER_START)
+            m_uiSummonTimer = 5000;
+    }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        if (pSummoned->GetEntry() == NPC_DARK_MATTER_TARGET)
+            m_creature->GetMotionMaster()->MovePoint(1, pSummoned->GetPositionX(), pSummoned->GetPositionY(), pSummoned->GetPositionZ());
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    {
+        if (uiMoveType != POINT_MOTION_TYPE || !uiPointId)
+            return;
+
+        // Cast the Dark Matter spell and despawn for reset
+        if (DoCastSpellIfCan(m_creature,  m_bIsRegularMode ? SPELL_DARK_MATTER : SPELL_DARK_MATTER_H) == CAST_OK)
+        {
+            m_creature->SetRespawnDelay(3);
+            m_creature->ForcedDespawn(1000);
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
+    {
+        if (m_uiSummonTimer)
+        {
+            if (m_uiSummonTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_SUMMON_DARK_MATTER_TARGET) == CAST_OK)
+                    m_uiSummonTimer = 0;
+            }
+            else
+                m_uiSummonTimer -= uiDiff;
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_dark_matter(Creature* pCreature)
+{
+    return new npc_dark_matterAI(pCreature);
+}
+
+/*######
+## npc_searing_gaze
+######*/
+
+// TODO Move this 'script' to eventAI when combat can be proper prevented from core-side
+struct MANGOS_DLL_DECL npc_searing_gazeAI : public Scripted_NoMovementAI
+{
+    npc_searing_gazeAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
+        Reset();
+    }
+
+    bool m_bIsRegularMode;
+
+    void Reset() override
+    {
+        DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SEARING_GAZE : SPELL_SEARING_GAZE_H);
+        // despawn manually because of combat bug
+        m_creature->ForcedDespawn(30000);
+    }
+
+    void AttackStart(Unit* /*pWho*/) override { }
+    void MoveInLineOfSight(Unit* /*pWho*/) override { }
+    void UpdateAI(const uint32 /*uiDiff*/) override { }
+};
+
+CreatureAI* GetAI_npc_searing_gaze(Creature* pCreature)
+{
+    return new npc_searing_gazeAI(pCreature);
 }
 
 void AddSC_halls_of_stone()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_brann_hos";
-    newscript->GetAI = &GetAI_npc_brann_hos;
-    newscript->pGossipHello = &GossipHello_npc_brann_hos;
-    newscript->pGossipSelect = &GossipSelect_npc_brann_hos;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_brann_hos";
+    pNewScript->GetAI = &GetAI_npc_brann_hos;
+    pNewScript->pGossipHello = &GossipHello_npc_brann_hos;
+    pNewScript->pGossipSelect = &GossipSelect_npc_brann_hos;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_tribuna_controller";
-    newscript->GetAI = &GetAI_mob_tribuna_controller;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_dark_matter";
+    pNewScript->GetAI = &GetAI_npc_dark_matter;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_searing_gaze";
+    pNewScript->GetAI = &GetAI_npc_searing_gaze;
+    pNewScript->RegisterSelf();
 }

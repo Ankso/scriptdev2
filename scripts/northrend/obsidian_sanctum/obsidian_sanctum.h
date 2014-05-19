@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -12,11 +12,20 @@ enum
     TYPE_SARTHARION_EVENT       = 1,
     // internal used types for achievement
     TYPE_ALIVE_DRAGONS          = 2,
+    TYPE_VOLCANO_BLOW_FAILED    = 3,
+
+    MAX_TWILIGHT_DRAGONS        = 3,
+
+    TYPE_PORTAL_TENEBRON        = 0,
+    TYPE_PORTAL_SHADRON         = 1,
+    TYPE_PORTAL_VESPERON        = 2,
 
     NPC_SARTHARION              = 28860,
     NPC_TENEBRON                = 30452,
     NPC_SHADRON                 = 30451,
     NPC_VESPERON                = 30449,
+
+    NPC_FIRE_CYCLONE            = 30648,
 
     GO_TWILIGHT_PORTAL          = 193988,
 
@@ -36,24 +45,41 @@ class MANGOS_DLL_DECL instance_obsidian_sanctum : public ScriptedInstance
     public:
         instance_obsidian_sanctum(Map* pMap);
 
-        void Initialize();
+        void Initialize() override;
 
-        void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureCreate(Creature* pCreature) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/);
+        ObjectGuid SelectRandomFireCycloneGuid();
+
+        bool IsActivePortal()
+        {
+            for (uint8 i = 0; i < MAX_TWILIGHT_DRAGONS; ++i)
+            {
+                if (m_bPortalActive[i])
+                    return true;
+            }
+
+            return false;
+        }
+
+        void SetPortalStatus(uint8 uiType, bool bStatus) { m_bPortalActive[uiType] = bStatus; }
+        bool GetPortaStatus(uint8 uiType) { return m_bPortalActive[uiType]; }
+
+        bool CheckAchievementCriteriaMeet(uint32 uiCriteriaId, Player const* pSource, Unit const* pTarget, uint32 uiMiscValue1 /* = 0*/) const override;
+        bool CheckConditionCriteriaMeet(Player const* pPlayer, uint32 uiInstanceConditionId, WorldObject const* pConditionSource, uint32 conditionSourceType) const override;
 
     private:
         uint32 m_auiEncounter[MAX_ENCOUNTER];
-        uint64 m_uiSartharionGUID;
-        uint64 m_uiTenebronGUID;
-        uint64 m_uiShadronGUID;
-        uint64 m_uiVesperonGUID;
+        bool m_bPortalActive[MAX_TWILIGHT_DRAGONS];
 
         uint8 m_uiAliveDragons;
+
+        std::set<uint32> m_sVolcanoBlowFailPlayers;
+
+        GuidList m_lFireCycloneGuidList;
 };
 
 #endif

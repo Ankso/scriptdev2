@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,120 +16,108 @@
 
 /* ScriptData
 SDName: Boss_Netherspite
-SD%Complete: 100%
-SDComment: I think it works quite good. Maybe more testing!
+SD%Complete: 75
+SDComment: Nether portals partially implemented. Find spell ID for tail swipe added in patch 3.0.2
 SDCategory: Karazhan
 EndScriptData */
 
 #include "precompiled.h"
 #include "karazhan.h"
-#include "GameObject.h"
-#include "../../../game/TemporarySummon.h"
 
-#define SPELL_NETHERBURN            30522
-#define SPELL_VOID_ZONE             37063
-#define SPELL_NETHERBREATH          38523
-#define SPELL_EMPOWERMENT           38549
-#define SPELL_NETHER_INFUSION       38688
-//#define SPELL_NETHERSPITE_ROAR    38684
-
-#define SPELL_BANISH_VISUAL         39833
-
-//emotes
-#define EMOTE_PHASE_PORTAL          -1532089
-#define EMOTE_PHASE_BANISH          -1532090
-
-enum Portals
+enum
 {
-    PORTAL_SERENITY = 0,
-    PORTAL_DOMINANCE = 1,
-    PORTAL_PERSEVERANCE = 2
+    // netherspite spells
+    SPELL_NETHERBURN            = 30522,
+    SPELL_VOID_ZONE             = 37063,
+    SPELL_NETHERBREATH          = 38523,
+    SPELL_EMPOWERMENT           = 38549,
+    SPELL_NETHER_INFUSION       = 38688,                // hard enrage spell
+    SPELL_NETHERSPITE_ROAR      = 38684,                // on banish phase begin
+    SPELL_SHADOWFORM            = 38542,                // banish visual spell
+    SPELL_FACE_RANDOM_TARGET    = 38546,                // triggered by spell 38684 - currently not used
+    SPELL_PORTAL_ATTUNEMENT     = 30425,
+
+    // void zone spells
+    SPELL_CONSUMPTION           = 28865,
+
+    // ***** Netherspite portals spells ***** //
+    // beam buffs
+    SPELL_SERENITY_NS           = 30467,
+    SPELL_SERENITY_PLR          = 30422,
+    SPELL_DOMINANCE_NS          = 30468,
+    SPELL_DOMINANCE_PLR         = 30423,
+    SPELL_PERSEVERENCE_NS       = 30466,
+    SPELL_PERSEVERENCE_PLR      = 30421,
+
+    // beam debuffs (player with this aura cannot gain the same color buff)
+    SPELL_EXHAUSTION_SER        = 38638,
+    SPELL_EXHAUSTION_DOM        = 38639,
+    SPELL_EXHAUSTION_PER        = 38637,
+
+    // spells which hit players (used only for visual - as seen from spell description)
+    SPELL_BEAM_SER              = 30401,
+    SPELL_BEAM_DOM              = 30402,
+    SPELL_BEAM_PER              = 30400,
+
+    // spells which hit Netherspite
+    SPELL_BEAM_GREEN            = 30464,
+    SPELL_BEAM_BLUE             = 30463,
+    SPELL_BEAM_RED              = 30465,
+
+    // portal visual spells
+    SPELL_GREEN_PORTAL          = 30490,
+    SPELL_BLUE_PORTAL           = 30491,
+    SPELL_RED_PORTAL            = 30487,
+
+    // passive auras
+    SPELL_SERENITY_PASSIVE      = 30397,
+    SPELL_DOMINANCE_PASSIVE     = 30398,
+    // note: for Perseverence, there isn't any passive spell - currently we use script timer
+    SPELL_NETHER_BEAM           = 30469,                // spell triggered by the passive auras
+    // SPELL_CLEAR_NETHER_BEAM  = 37072,                // not clear how to use this
+
+    // emotes
+    EMOTE_PHASE_BEAM            = -1532089,
+    EMOTE_PHASE_BANISH          = -1532090,
+
+    // npcs
+    NPC_PORTAL_GREEN            = 17367,
+    NPC_PORTAL_BLUE             = 17368,
+    NPC_PORTAL_RED              = 17369,
+    NPC_VOID_ZONE               = 16697,
+
+    MAX_PORTALS                 = 3,
 };
-#define MAX_PORTAL 3
 
-static uint32 portalId[MAX_PORTAL]      = {17367, 17368, 17369};    // id's in creature_template
-
-static uint32 portalVisual[MAX_PORTAL]  = {30490, 30491, 30487};    // spells for visual portal effects
-static uint32 beamVisual[MAX_PORTAL]    = {30464, 30463, 30465};    // spell for beam visualization
-
-static uint32 Beam_Debuff[MAX_PORTAL]   = {38638, 38639, 38637};    // Exsaustion debuffs
-static uint32 beamBuff[MAX_PORTAL][2]   = {{30467, 30422},          // Buffs {Netherspite, Player}
-                                           {30468, 30423},
-                                           {30466, 30421}};
-
-const float PortalSpawnCoords[3][4] =
-{-11106.6f, -1601.8f, 280.0f, 3.96f,                // 1st spawn point
- -11195.4f, -1617.7f, 278.5f, 6.18f,                // 2nd spawn point
- -11142.4f, -1684.3f, 278.5f, 1.58f                 // 3rd spwan point
-};
-
-struct portalInfo
+struct SpawnLocation
 {
-    uint64 GUID;
-    bool active;
-    uint64 targetGUID;
+    float fX, fY, fZ, fO;
 };
 
-
-enum Phases
+// at first spawn portals got fixed coords, should be shuffled in subsequent beam phases
+static const SpawnLocation aPortalCoordinates[MAX_PORTALS] =
 {
-    NULL_PHASE = 0,
-    BEAM_PHASE = 1,
-    BANISH_PHASE = 2,
+    { -11195.14f, -1616.375f, 278.3217f, 6.230825f},
+    { -11108.13f, -1602.839f, 280.0323f, 3.717551f},
+    { -11139.78f, -1681.278f, 278.3217f, 1.396263f},
 };
 
-enum Events
+enum NetherspitePhases
 {
-    // events in all phases
-    EVENT_SWITCH_PHASE          = 1,
-    EVENT_ENRAGE                = 2,
-
-    //portal phase events
-    EVENT_EMPOWERMENT           = 3,
-    EVENT_PORTALS_SPAWN         = 4,
-    EVENT_PORTALS_START_BEAM    = 5,
-    EVENT_PORTALS_UPDATE_BEAM   = 6,
-    EVENT_VOID_ZONE             = 7,
-
-    //banish phase events
-    EVENT_NETHERBREATH          = 8,
-
-    // WORKAROUND:
-    EVENT_RECAST_BEAM_1         = 9,
-    EVENT_RECAST_BEAM_2         = 10,
-    EVENT_RECAST_BEAM_3         = 11
+    BEAM_PHASE   = 0,
+    BANISH_PHASE = 1,
 };
 
-
-class NearestUnitForBeam
+static const uint32 auiPortals[MAX_PORTALS] =
 {
-    public:
-        NearestUnitForBeam(WorldObject const* obj,  Unit const* oCaster, float range, Portals beam)
-            : i_obj(obj), i_origCaster(oCaster), i_range(range), i_beam(beam) {}
-        bool operator()(Unit* u)
-        {
-            if( u->isTargetableForAttack() && i_origCaster->IsHostileTo(u))
-            {
-                float arc = M_PI_F/(2+i_obj->GetDistance2d(u)); // open the angle a bit, if target is more close
-                if (i_obj->isInFront(u, i_range, arc) && u->isVisibleForOrDetect(i_origCaster, i_obj, false) && !u->HasAura(Beam_Debuff[i_beam]) )
-                {
-                    i_range = i_obj->GetDistance(u);            // use found unit range as new range limit for next check
-                    return true;
-                }
-            }
-            return false;
-        }
-        WorldObject const& GetFocusObject() const { return *i_obj; }
-    private:
-        WorldObject const* i_obj;
-        Unit const* i_origCaster;
-        float i_range;
-        Portals i_beam;
-
-        // prevent clone this object
-        NearestUnitForBeam(NearestUnitForBeam const&);
+    NPC_PORTAL_GREEN,
+    NPC_PORTAL_BLUE,
+    NPC_PORTAL_RED,
 };
 
+/*######
+## boss_netherspite
+######*/
 
 struct MANGOS_DLL_DECL boss_netherspiteAI : public ScriptedAI
 {
@@ -141,350 +129,181 @@ struct MANGOS_DLL_DECL boss_netherspiteAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
 
-    Phases activePhase;
-    typedef std::map<Events, uint32> timerMap;
-    timerMap timers;
-    portalInfo pPortals[MAX_PORTAL];
+    NetherspitePhases m_uiActivePhase;
 
-    void Reset()
+    uint32 m_uiEnrageTimer;
+    uint32 m_uiVoidZoneTimer;
+    uint32 m_uiPhaseSwitchTimer;
+    uint32 m_uiNetherbreathTimer;
+    uint32 m_uiEmpowermentTimer;
+
+    std::vector<uint32> m_vPortalEntryList;
+
+    void Reset() override
     {
-        if (m_pInstance)
-        {
-            //door opens
-            m_pInstance->SetData(TYPE_NETHERSPITE, NOT_STARTED);
-            //if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(DATA_GO_MASSIVE_DOOR)))
-            //    pDoor->SetGoState(GO_STATE_ACTIVE);
-        }
+        m_uiActivePhase       = BEAM_PHASE;
 
-        activePhase = NULL_PHASE;
-        timers.clear();
-        for (uint8 i=0;i<MAX_PORTAL;i++)
-        {
-            pPortals[i].GUID = 0;
-            pPortals[i].active = false;
-            pPortals[i].targetGUID = 0;
-        }
-        m_creature->RemoveAllAuras();
+        m_uiEmpowermentTimer  = 10000;
+        m_uiEnrageTimer       = 9 * MINUTE * IN_MILLISECONDS;
+        m_uiVoidZoneTimer     = 15000;
+        m_uiPhaseSwitchTimer  = MINUTE * IN_MILLISECONDS;
+
+        SetCombatMovement(true);
+
+        // initialize the portal list
+        m_vPortalEntryList.clear();
+        m_vPortalEntryList.resize(MAX_PORTALS);
+
+        for (uint8 i = 0; i < MAX_PORTALS; ++i)
+            m_vPortalEntryList[i] = auiPortals[i];
     }
 
-    void EnterEvadeMode()
-    {
-        DespawnPortals();
-        ScriptedAI::EnterEvadeMode();
-    }
-
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/) override
     {
         if (m_pInstance)
-        {
-            // set encounter in progres
             m_pInstance->SetData(TYPE_NETHERSPITE, IN_PROGRESS);
-            // close door
-            //if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(DATA_GO_MASSIVE_DOOR)))
-            //    pDoor->SetGoState(GO_STATE_READY);
-        }
-        NextPhase();
-        DoMeleeAttackIfReady();
+
+        DoSummonPortals();
+        DoCastSpellIfCan(m_creature, SPELL_NETHERBURN);
     }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* /*pKiller*/) override
     {
-        DespawnPortals();
         if (m_pInstance)
-        {
-            // encounter is done :-)
             m_pInstance->SetData(TYPE_NETHERSPITE, DONE);
-            // open door
-            // if (GameObject* pDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(DATA_GO_MASSIVE_DOOR)))
-            //    pDoor->SetGoState(GO_STATE_ACTIVE);
-        }
     }
 
-    void NextPhase()
+    void JustReachedHome() override
     {
-        switch(activePhase)
-        {
-            case NULL_PHASE:
-            {
-                timers[EVENT_ENRAGE]        = 9*60000;                  // 9min, from start of fight
-                // NO break!
-            }
-            case BANISH_PHASE:
-            {
-                // BEAM_PHASE
-                activePhase = BEAM_PHASE;
-                DoResetThreat();
-                SetCombatMovement(true);
-                DoStartMovement(m_creature->getVictim(), 0);            // we need this, if we switch from BANISH_PHASE
-                DoCast(m_creature,SPELL_NETHERBURN, true);              // Netherburn active in this phase
-                m_creature->RemoveAurasDueToSpell(SPELL_BANISH_VISUAL);
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_NETHERSPITE, FAIL);
+    }
 
-                // init timers for phase
-                timers[EVENT_PORTALS_SPAWN] = 4000;
-                timers[EVENT_VOID_ZONE]     = urand(10000,20000);
-                timers[EVENT_SWITCH_PHASE]  = 60000;
-                timers.erase(EVENT_NETHERBREATH);
-                break;
-            }
-            //enter banish phase
-            case BEAM_PHASE:
+    void SwitchPhases()
+    {
+        if (m_uiActivePhase == BEAM_PHASE)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_NETHERSPITE_ROAR) == CAST_OK)
             {
-                // BANISH_PHASE
-                activePhase = BANISH_PHASE;
-                m_creature->RemoveAurasDueToSpell(SPELL_NETHERBURN);    // no Netherburn in this phase
-                m_creature->RemoveAurasDueToSpell(SPELL_EMPOWERMENT);   // no Empowerment
-                DoCast(m_creature, SPELL_BANISH_VISUAL, true);
-                DoScriptText(EMOTE_PHASE_BANISH,m_creature);
-                DespawnPortals();
-                DoResetThreat();
+                DoCastSpellIfCan(m_creature, SPELL_SHADOWFORM, CAST_TRIGGERED);
+                m_creature->RemoveAurasDueToSpell(SPELL_EMPOWERMENT);
+
                 SetCombatMovement(false);
-                DoStartNoMovement(m_creature->getVictim());
+                m_creature->GetMotionMaster()->MoveIdle();
 
-                // init timers for phase
-                timers[EVENT_SWITCH_PHASE] = 30000;
-                timers[EVENT_NETHERBREATH] = 8000;
-                for (uint8 i = EVENT_EMPOWERMENT; i <= EVENT_VOID_ZONE; i++)
-                    timers.erase(Events(i));
-                break;
+                m_uiActivePhase = BANISH_PHASE;
+                DoScriptText(EMOTE_PHASE_BANISH, m_creature);
+
+                m_uiNetherbreathTimer = 2000;
+                m_uiPhaseSwitchTimer  = 30000;
             }
-            default:
+        }
+        else
+        {
+            m_creature->RemoveAurasDueToSpell(SPELL_SHADOWFORM);
+            SetCombatMovement(true);
+            DoStartMovement(m_creature->getVictim());
+
+            m_uiActivePhase = BEAM_PHASE;
+            DoScriptText(EMOTE_PHASE_BEAM, m_creature);
+
+            DoSummonPortals();
+            m_uiEmpowermentTimer  = 10000;
+            m_uiPhaseSwitchTimer  = MINUTE * IN_MILLISECONDS;
+        }
+
+        // reset threat every phase switch
+        DoResetThreat();
+    }
+
+    void DoSummonPortals()
+    {
+        for (uint8 i = 0; i < MAX_PORTALS; ++i)
+            m_creature->SummonCreature(m_vPortalEntryList[i], aPortalCoordinates[i].fX, aPortalCoordinates[i].fY, aPortalCoordinates[i].fZ, aPortalCoordinates[i].fO, TEMPSUMMON_TIMED_DESPAWN, 60000);
+
+        // randomize the portals after the first summon
+        std::random_shuffle(m_vPortalEntryList.begin(), m_vPortalEntryList.end());
+    }
+
+    void JustSummoned(Creature* pSummoned) override
+    {
+        switch (pSummoned->GetEntry())
+        {
+            case NPC_VOID_ZONE:
+                pSummoned->CastSpell(pSummoned, SPELL_CONSUMPTION, false);
+                break;
+            case NPC_PORTAL_RED:
+                pSummoned->CastSpell(pSummoned, SPELL_RED_PORTAL, false);
+                break;
+            case NPC_PORTAL_GREEN:
+                pSummoned->CastSpell(pSummoned, SPELL_GREEN_PORTAL, false);
+                break;
+            case NPC_PORTAL_BLUE:
+                pSummoned->CastSpell(pSummoned, SPELL_BLUE_PORTAL, false);
                 break;
         }
     }
 
-    bool handleEvent(Events ev)
+    void UpdateAI(const uint32 uiDiff) override
     {
-        switch(ev)
-        {
-            case EVENT_SWITCH_PHASE:
-                NextPhase();
-                return true;
-            case EVENT_ENRAGE:
-                DoCast(m_creature, SPELL_NETHER_INFUSION);
-                timers.erase(EVENT_ENRAGE);
-                return false;
-            case EVENT_EMPOWERMENT:
-                DoCast(m_creature, SPELL_EMPOWERMENT);
-                timers.erase(EVENT_EMPOWERMENT);
-                return false;
-            case EVENT_PORTALS_SPAWN:
-                SpawnPortals();
-                timers.erase(EVENT_PORTALS_SPAWN);
-                // first beam starts after 4s
-                timers[EVENT_PORTALS_START_BEAM] = 4000;
-                // "...a few seconds after beams come up..."
-                timers[EVENT_EMPOWERMENT] = urand(2000,6000);
-                return false;
-            case EVENT_PORTALS_START_BEAM:
-            {
-                // start a random beam
-                while(1)
-                {
-                    uint8 beam = urand(0,MAX_PORTAL-1);
-                    if (pPortals[beam].active)
-                        continue;
-                    pPortals[beam].active = true;
-                    break;
-                }
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+            return;
 
-                // check if all beams are active
-                bool allActive = true;
-                for (uint8 i=0; i<MAX_PORTAL; i++)
-                    if (!pPortals[i].active)
+        if (m_uiPhaseSwitchTimer <= uiDiff)
+            SwitchPhases();
+        else
+            m_uiPhaseSwitchTimer -= uiDiff;
+
+        if (m_uiEnrageTimer)
+        {
+            if (m_uiEnrageTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_NETHER_INFUSION) == CAST_OK)
+                    m_uiEnrageTimer = 0;
+            }
+            else
+                m_uiEnrageTimer -= uiDiff;
+        }
+
+        if (m_uiActivePhase == BEAM_PHASE)
+        {
+            if (m_uiVoidZoneTimer < uiDiff)
+            {
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    if (DoCastSpellIfCan(pTarget, SPELL_VOID_ZONE) == CAST_OK)
+                        m_uiVoidZoneTimer = 15000;
+                }
+            }
+            else
+                m_uiVoidZoneTimer -= uiDiff;
+
+            if (m_uiEmpowermentTimer)
+            {
+                if (m_uiEmpowermentTimer <= uiDiff)
+                {
+                    if (DoCastSpellIfCan(m_creature, SPELL_EMPOWERMENT) == CAST_OK)
                     {
-                        allActive = false;
-                        break;
+                        DoCastSpellIfCan(m_creature, SPELL_PORTAL_ATTUNEMENT, CAST_TRIGGERED);
+                        m_uiEmpowermentTimer = 0;
                     }
-
-               // delete timer, if all portals active
-               if (!allActive)
-                   timers[EVENT_PORTALS_START_BEAM] = urand(500, 2000);
-               else
-                    timers.erase(EVENT_PORTALS_START_BEAM);
-
-               if (timers.find(EVENT_PORTALS_UPDATE_BEAM) != timers.end())
-                   return false;
-               // no break here, if no beam update timer present
-            }
-            case EVENT_PORTALS_UPDATE_BEAM:
-            {
-                for (uint8 i=0; i<MAX_PORTAL; i++)
-                    if (pPortals[i].active)
-                        updateBeam(Portals(i));
-                timers[EVENT_PORTALS_UPDATE_BEAM] = 1000;
-                return false;
-            }
-            case EVENT_VOID_ZONE:
-                DoCast(m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0),SPELL_VOID_ZONE,true);
-                timers[EVENT_VOID_ZONE] = urand(10000,20000);
-                return false;
-            case EVENT_NETHERBREATH:
-                DoCast(m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0),SPELL_NETHERBREATH);
-                timers[EVENT_NETHERBREATH] = 5000;
-                return false;
-            case EVENT_RECAST_BEAM_1:
-            case EVENT_RECAST_BEAM_2:
-            case EVENT_RECAST_BEAM_3:
-            {
-                Unit* portal = m_creature->GetMap()->GetUnit(pPortals[ev-9].GUID);
-                if (!portal)
-                {
-                    // portal lost!?
-                    pPortals[ev-9].GUID         = 0;
-                    pPortals[ev-9].active       = false;
-                    pPortals[ev-9].targetGUID   = 0;
-                    return false;
                 }
-
-                Unit* target = m_creature->GetMap()->GetUnit(pPortals[ev-9].targetGUID);
-
-                if (!target)
-                {
-                    pPortals[ev-9].targetGUID   = m_creature->GetGUID();
-                    target = m_creature;
-                }
-
-                portal->CastSpell(target, beamVisual[ev-9], false);
-                timers.erase(ev);
-                return false;
+                else
+                    m_uiEmpowermentTimer -= uiDiff;
             }
-            default:
-                break;
+
+            DoMeleeAttackIfReady();
         }
-        return false;
-    }
-
-    void SpawnPortals()
-    {
-        DoScriptText(EMOTE_PHASE_PORTAL,m_creature);
-
-        // permutate spawnpoints
-        uint8 permutation[MAX_PORTAL] = {0,0,0};
-        for (uint8 i=0;i<(MAX_PORTAL);i++)
+        else
         {
-            // TODO: better algorithm!?
-            while(1)
+            if (m_uiNetherbreathTimer < uiDiff)
             {
-                uint32 rand = urand(1,MAX_PORTAL);
-                bool alreadyIn = false;
-                for (uint8 j=0; j<MAX_PORTAL;j++)
-                    if (permutation[j] == rand)
-                        alreadyIn = true;
-                if (!alreadyIn)
-                {
-                    permutation[i] = rand;
-                    break;
-                }
+                if (DoCastSpellIfCan(m_creature, SPELL_NETHERBREATH) == CAST_OK)
+                    m_uiNetherbreathTimer = urand(4000, 5000);
             }
+            else
+                m_uiNetherbreathTimer -= uiDiff;
         }
-        for (uint8 i=0;i<(MAX_PORTAL);i++)
-            permutation[i]--;
-
-        // spawn
-        for (uint8 i=0;i<MAX_PORTAL;i++)
-        {
-            Unit* portal = m_creature->SummonCreature(portalId[i], PortalSpawnCoords[permutation[i]][0], PortalSpawnCoords[permutation[i]][1], PortalSpawnCoords[permutation[i]][2], PortalSpawnCoords[permutation[i]][3] ,TEMPSUMMON_MANUAL_DESPAWN , 0);
-            if (portal)
-                pPortals[i].GUID = portal->GetGUID();
-            // we cannot add portal visuals to creature_template_addon, because one spell has no aura defined :-(
-            portal->CastSpell(portal, portalVisual[i], true, NULL, NULL, m_creature->GetGUID());
-            portal->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_UNK1);
-        }
-    }
-
-    void DespawnPortals()
-    {
-        for (uint8 i=0;i<(MAX_PORTAL);i++)
-        {
-            Unit* portal = m_creature->GetMap()->GetUnit(pPortals[i].GUID);
-            // portals are always TemporarySummons
-            if (portal)
-                ((TemporarySummon*)portal)->UnSummon();
-            pPortals[i].GUID = 0;
-            pPortals[i].active = false;
-            pPortals[i].targetGUID = 0;
-        }
-        timers.erase(EVENT_PORTALS_START_BEAM);
-        timers.erase(EVENT_PORTALS_UPDATE_BEAM);
-    }
-
-    void updateBeam(Portals beam)
-    {
-        Unit* portal = m_creature->GetMap()->GetUnit(pPortals[beam].GUID);
-        if (!portal)
-        {
-            // portal lost!?
-            pPortals[beam].GUID         = 0;
-            pPortals[beam].active       = false;
-            pPortals[beam].targetGUID   = 0;
-            return;
-        }
-        portal->SetInFront(m_creature);
-
-        Unit* target = NULL;
-        // add half objectsize as radius, to include also player standing "in" netherspite
-        float radius = portal->GetDistance2d(m_creature) + m_creature->GetObjectBoundingRadius()/2;
-        {
-            CellPair p(MaNGOS::ComputeCellPair(portal->GetPositionX(), portal->GetPositionY()));
-            Cell cell(p);
-            cell.SetNoCreate();
-
-            NearestUnitForBeam u_check(portal, m_creature, radius, beam);
-            MaNGOS::UnitLastSearcher<NearestUnitForBeam> checker(target, u_check);
-
-            TypeContainerVisitor<MaNGOS::UnitLastSearcher<NearestUnitForBeam>, GridTypeMapContainer > grid_object_checker(checker);
-            TypeContainerVisitor<MaNGOS::UnitLastSearcher<NearestUnitForBeam>, WorldTypeMapContainer > world_object_checker(checker);
-            cell.Visit(p, grid_object_checker, *portal->GetMap(), *portal, radius);
-            cell.Visit(p, world_object_checker, *portal->GetMap(), *portal, radius);
-        }
-
-        // take netherspite, if we did not find a target
-        if (!target)
-            target = m_creature;
-
-        // recast beam visual if tagret changed
-        if (target->GetGUID() != pPortals[beam].targetGUID)
-        {
-            portal->InterruptSpell(CURRENT_CHANNELED_SPELL);
-            // WORKAROUND: cast one tick later
-            timers[Events(EVENT_RECAST_BEAM_1 + beam)] = 1;
-            //portal->CastSpell(target, beamVisual[beam], false);
-        }
-
-        // add buff, needs to be casted by target!!
-        target->CastSpell(target, beamBuff[beam][(target != m_creature)], true, NULL, NULL, m_creature->GetGUID());
-
-        pPortals[beam].active       = true;
-        pPortals[beam].targetGUID   = target->GetGUID();
-    }
-
-    void UpdateAI(const uint32 diff)
-    {
-        // ignore aggrotable etc. if in BEAM_PAHSE and somebody is standing in the perseverance beam
-        if (activePhase == BEAM_PHASE && pPortals[PORTAL_PERSEVERANCE].targetGUID && pPortals[PORTAL_PERSEVERANCE].targetGUID != m_creature->GetGUID())
-        {
-            AttackStart(m_creature->GetMap()->GetUnit(pPortals[PORTAL_PERSEVERANCE].targetGUID));
-        }
-        else if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
-
-        std::list<Events> eventList;
-        // caclulate all timers
-        for (timerMap::iterator itr = timers.begin(); itr != timers.end(); itr++)
-        {
-            if ((*itr).second <= diff)
-                eventList.push_back((*itr).first);
-            else (*itr).second -= diff;
-        }
-        // execute events
-        for (std::list<Events>::iterator itr = eventList.begin(); itr != eventList.end(); itr++)
-        {
-            bool skipOtherEvents = handleEvent((*itr));
-            if (skipOtherEvents)
-                break;
-        }
-
-        DoMeleeAttackIfReady();
     }
 };
 
@@ -493,12 +312,122 @@ CreatureAI* GetAI_boss_netherspite(Creature* pCreature)
     return new boss_netherspiteAI(pCreature);
 }
 
+/*######
+## npc_netherspite_portal
+######*/
+
+struct MANGOS_DLL_DECL npc_netherspite_portalAI : public Scripted_NoMovementAI
+{
+    npc_netherspite_portalAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
+    {
+        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        Reset();
+    }
+
+    ScriptedInstance* m_pInstance;
+
+    uint32 m_uiPassiveSpellTimer;
+    uint32 m_uiOrientationTimer;
+
+    void Reset()
+    {
+        m_uiPassiveSpellTimer = 0;
+        m_uiOrientationTimer = 0;
+    }
+
+    void MoveInLineOfSight(Unit* pWho) { }
+    void AttackStart(Unit* pWho) { }
+
+    void ReceiveAIEvent(AIEventType eventType, Creature* /*pSender*/, Unit* pInvoker, uint32 /*uiMiscValue*/) override
+    {
+        if (eventType == AI_EVENT_CUSTOM_A)
+        {
+            if (pInvoker->GetEntry() != NPC_NETHERSPITE)
+                return;
+
+            // update orientation every second to focus on Netherspite
+            m_uiOrientationTimer = 1000;
+            m_creature->SetFacingToObject(pInvoker);
+
+            switch (m_creature->GetEntry())
+            {
+                case NPC_PORTAL_GREEN:
+                    if (!m_creature->HasAura(SPELL_SERENITY_PASSIVE))
+                        DoCastSpellIfCan(m_creature, SPELL_SERENITY_PASSIVE, CAST_TRIGGERED);
+                    break;
+                case NPC_PORTAL_BLUE:
+                    if (!m_creature->HasAura(SPELL_DOMINANCE_PASSIVE))
+                        DoCastSpellIfCan(m_creature, SPELL_DOMINANCE_PASSIVE, CAST_TRIGGERED);
+                    break;
+                case NPC_PORTAL_RED:
+                    // Red portal spell is missing - handled in script
+                    if (!m_uiPassiveSpellTimer)
+                        m_uiPassiveSpellTimer = 1000;
+                    break;
+            }
+        }
+    }
+
+    void UpdateAI(const uint32 uiDiff)
+    {
+        if (m_uiPassiveSpellTimer)
+        {
+            if (m_uiPassiveSpellTimer <= uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_NETHER_BEAM, CAST_TRIGGERED) == CAST_OK)
+                    m_uiPassiveSpellTimer = 1000;
+            }
+            else
+                m_uiPassiveSpellTimer -= uiDiff;
+        }
+
+        if (m_uiOrientationTimer)
+        {
+            if (m_uiOrientationTimer <= uiDiff)
+            {
+                if (m_pInstance)
+                {
+                    if (Creature* pNetherspite = m_pInstance->GetSingleCreatureFromStorage(NPC_NETHERSPITE))
+                        m_creature->SetFacingToObject(pNetherspite);
+                }
+                m_uiOrientationTimer = 1000;
+            }
+            else
+                m_uiOrientationTimer -= uiDiff;
+        }
+    }
+};
+
+CreatureAI* GetAI_npc_netherspite_portal(Creature* pCreature)
+{
+    return new npc_netherspite_portalAI(pCreature);
+}
+
+bool EffectScriptEffectCreature_spell_portal_attunement(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
+{
+    if (uiSpellId == SPELL_PORTAL_ATTUNEMENT && uiEffIndex == EFFECT_INDEX_0)
+    {
+        if (pCreatureTarget->GetEntry() == NPC_PORTAL_RED || pCreatureTarget->GetEntry() == NPC_PORTAL_GREEN || pCreatureTarget->GetEntry() == NPC_PORTAL_BLUE)
+            pCreatureTarget->AI()->SendAIEvent(AI_EVENT_CUSTOM_A, pCaster, pCreatureTarget);
+
+        return true;
+    }
+
+    return false;
+}
+
 void AddSC_boss_netherspite()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_netherspite";
-    newscript->GetAI = &GetAI_boss_netherspite;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_netherspite";
+    pNewScript->GetAI = &GetAI_boss_netherspite;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "npc_netherspite_portal";
+    pNewScript->GetAI = &GetAI_npc_netherspite_portal;
+    pNewScript->pEffectScriptEffectNPC = &EffectScriptEffectCreature_spell_portal_attunement;
+    pNewScript->RegisterSelf();
 }

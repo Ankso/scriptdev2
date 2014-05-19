@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,16 +17,14 @@
 /* ScriptData
 SDName: Tanaris
 SD%Complete: 80
-SDComment: Quest support: 648, 1560, 2954, 4005, 10277, 10279(Special flight path). Noggenfogger vendor
+SDComment: Quest support: 648, 1560, 2954, 4005, 10277.
 SDCategory: Tanaris
 EndScriptData */
 
 /* ContentData
 mob_aquementas
 npc_custodian_of_time
-npc_marin_noggenfogger
 npc_oox17tn
-npc_steward_of_time
 npc_stone_watcher_of_norgannon
 npc_tooga
 EndContentData */
@@ -39,89 +37,96 @@ EndContentData */
 ## mob_aquementas
 ######*/
 
-#define AGGRO_YELL_AQUE     -1000168
+enum
+{
+    AGGRO_YELL_AQUE         = -1000168,
 
-#define SPELL_AQUA_JET      13586
-#define SPELL_FROST_SHOCK   15089
+    SPELL_AQUA_JET          = 13586,
+    SPELL_FROST_SHOCK       = 15089,
+
+    ITEM_SILVER_TOTEM       = 11522,
+    ITEM_BOOK_AQUOR         = 11169,
+    ITEM_SILVERY_CLAWS      = 11172,
+    ITEM_IRONTREE_HEART     = 11173,
+
+    FACTION_FRIENDLY        = 35,
+    FACTION_ELEMENTAL       = 91,
+};
 
 struct MANGOS_DLL_DECL mob_aquementasAI : public ScriptedAI
 {
-    mob_aquementasAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
+    mob_aquementasAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint32 SendItem_Timer;
-    uint32 SwitchFaction_Timer;
-    bool isFriendly;
+    uint32 m_uiSwitchFactionTimer;
+    uint32 m_uiFrostShockTimer;
+    uint32 m_uiAquaJetTimer;
 
-    uint32 FrostShock_Timer;
-    uint32 AquaJet_Timer;
-
-    void Reset()
+    void Reset() override
     {
-        SendItem_Timer = 0;
-        SwitchFaction_Timer = 10000;
-        m_creature->setFaction(35);
-        isFriendly = true;
+        m_uiSwitchFactionTimer  = 10000;
+        m_uiAquaJetTimer        = 5000;
+        m_uiFrostShockTimer     = 1000;
 
-        AquaJet_Timer = 5000;
-        FrostShock_Timer = 1000;
+        m_creature->setFaction(FACTION_FRIENDLY);           // TODO: Either do this way, or might require a DB change
     }
 
-    void SendItem(Unit* receiver)
+    void SendItem(Player* pReceiver)
     {
-        if (((Player*)receiver)->HasItemCount(11169,1,false) &&
-            ((Player*)receiver)->HasItemCount(11172,11,false) &&
-            ((Player*)receiver)->HasItemCount(11173,1,false) &&
-            !((Player*)receiver)->HasItemCount(11522,1,true))
+        if (pReceiver->HasItemCount(ITEM_BOOK_AQUOR, 1) &&
+                pReceiver->HasItemCount(ITEM_SILVERY_CLAWS, 11) &&
+                pReceiver->HasItemCount(ITEM_IRONTREE_HEART, 1) &&
+                !pReceiver->HasItemCount(ITEM_SILVER_TOTEM, 1))
         {
-            if (Item* pItem = ((Player*)receiver)->StoreNewItemInInventorySlot(11522, 1))
-                ((Player*)receiver)->SendNewItem(pItem, 1, true, false);
+            if (Item* pItem = pReceiver->StoreNewItemInInventorySlot(ITEM_SILVER_TOTEM, 1))
+                pReceiver->SendNewItem(pItem, 1, true, false);
         }
     }
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* pWho) override
     {
-        DoScriptText(AGGRO_YELL_AQUE, m_creature, who);
+        DoScriptText(AGGRO_YELL_AQUE, m_creature, pWho);
+
+        Player* pInvokedPlayer = pWho->GetCharmerOrOwnerPlayerOrPlayerItself();
+        if (pInvokedPlayer)
+            SendItem(pInvokedPlayer);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
-        if (isFriendly)
+        if (m_uiSwitchFactionTimer)
         {
-            if (SwitchFaction_Timer < diff)
+            if (m_uiSwitchFactionTimer <= uiDiff)
             {
-                m_creature->setFaction(91);
-                isFriendly = false;
-            }else SwitchFaction_Timer -= diff;
+                m_creature->setFaction(FACTION_ELEMENTAL);
+                m_uiSwitchFactionTimer = 0;
+            }
+            else
+                m_uiSwitchFactionTimer -= uiDiff;
         }
 
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (!isFriendly)
+        if (m_uiFrostShockTimer < uiDiff)
         {
-            if (SendItem_Timer < diff)
-            {
-                if (m_creature->getVictim()->GetTypeId() == TYPEID_PLAYER)
-                    SendItem(m_creature->getVictim());
-                SendItem_Timer = 5000;
-            }else SendItem_Timer -= diff;
+            DoCastSpellIfCan(m_creature->getVictim(), SPELL_FROST_SHOCK);
+            m_uiFrostShockTimer = 15000;
         }
+        else
+            m_uiFrostShockTimer -= uiDiff;
 
-        if (FrostShock_Timer < diff)
+        if (m_uiAquaJetTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(),SPELL_FROST_SHOCK);
-            FrostShock_Timer = 15000;
-        }else FrostShock_Timer -= diff;
-
-        if (AquaJet_Timer < diff)
-        {
-            DoCastSpellIfCan(m_creature,SPELL_AQUA_JET);
-            AquaJet_Timer = 15000;
-        }else AquaJet_Timer -= diff;
+            DoCastSpellIfCan(m_creature, SPELL_AQUA_JET);
+            m_uiAquaJetTimer = 15000;
+        }
+        else
+            m_uiAquaJetTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
 };
+
 CreatureAI* GetAI_mob_aquementas(Creature* pCreature)
 {
     return new mob_aquementasAI(pCreature);
@@ -131,33 +136,41 @@ CreatureAI* GetAI_mob_aquementas(Creature* pCreature)
 ## npc_custodian_of_time
 ######*/
 
-#define WHISPER_CUSTODIAN_1     -1000217
-#define WHISPER_CUSTODIAN_2     -1000218
-#define WHISPER_CUSTODIAN_3     -1000219
-#define WHISPER_CUSTODIAN_4     -1000220
-#define WHISPER_CUSTODIAN_5     -1000221
-#define WHISPER_CUSTODIAN_6     -1000222
-#define WHISPER_CUSTODIAN_7     -1000223
-#define WHISPER_CUSTODIAN_8     -1000224
-#define WHISPER_CUSTODIAN_9     -1000225
-#define WHISPER_CUSTODIAN_10    -1000226
-#define WHISPER_CUSTODIAN_11    -1000227
-#define WHISPER_CUSTODIAN_12    -1000228
-#define WHISPER_CUSTODIAN_13    -1000229
-#define WHISPER_CUSTODIAN_14    -1000230
+enum
+{
+    WHISPER_CUSTODIAN_1         = -1000217,
+    WHISPER_CUSTODIAN_2         = -1000218,
+    WHISPER_CUSTODIAN_3         = -1000219,
+    WHISPER_CUSTODIAN_4         = -1000220,
+    WHISPER_CUSTODIAN_5         = -1000221,
+    WHISPER_CUSTODIAN_6         = -1000222,
+    WHISPER_CUSTODIAN_7         = -1000223,
+    WHISPER_CUSTODIAN_8         = -1000224,
+    WHISPER_CUSTODIAN_9         = -1000225,
+    WHISPER_CUSTODIAN_10        = -1000226,
+    WHISPER_CUSTODIAN_11        = -1000227,
+    WHISPER_CUSTODIAN_12        = -1000228,
+    WHISPER_CUSTODIAN_13        = -1000229,
+    WHISPER_CUSTODIAN_14        = -1000230,
+
+    SPELL_CUSTODIAN_OF_TIME     = 34877,
+    SPELL_QID_10277             = 34883,
+
+    QUEST_ID_CAVERNS_OF_TIME    = 10277,
+};
 
 struct MANGOS_DLL_DECL npc_custodian_of_timeAI : public npc_escortAI
 {
     npc_custodian_of_timeAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 uiPointId) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(i)
+        switch (uiPointId)
         {
             case 0: DoScriptText(WHISPER_CUSTODIAN_1, m_creature, pPlayer); break;
             case 1: DoScriptText(WHISPER_CUSTODIAN_2, m_creature, pPlayer); break;
@@ -178,61 +191,34 @@ struct MANGOS_DLL_DECL npc_custodian_of_timeAI : public npc_escortAI
             case 23: DoScriptText(WHISPER_CUSTODIAN_4, m_creature, pPlayer); break;
             case 24:
                 DoScriptText(WHISPER_CUSTODIAN_14, m_creature, pPlayer);
-                DoCastSpellIfCan(pPlayer, 34883);
-                //below here is temporary workaround, to be removed when spell works properly
-                pPlayer->AreaExploredOrEventHappens(10277);
+                DoCastSpellIfCan(pPlayer, SPELL_QID_10277);
                 break;
         }
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         if (HasEscortState(STATE_ESCORT_ESCORTING))
             return;
 
         if (pWho->GetTypeId() == TYPEID_PLAYER)
         {
-            if (pWho->HasAura(34877, EFFECT_INDEX_1) && ((Player*)pWho)->GetQuestStatus(10277) == QUEST_STATUS_INCOMPLETE)
+            if (pWho->HasAura(SPELL_CUSTODIAN_OF_TIME) && ((Player*)pWho)->GetQuestStatus(QUEST_ID_CAVERNS_OF_TIME) == QUEST_STATUS_INCOMPLETE)
             {
-                float Radius = 10.0;
+                float fRadius = 10.0f;
 
-                if (m_creature->IsWithinDistInMap(pWho, Radius))
+                if (m_creature->IsWithinDistInMap(pWho, fRadius))
                     Start(false, (Player*)pWho);
             }
         }
     }
 
-    void Reset() { }
+    void Reset() override { }
 };
 
 CreatureAI* GetAI_npc_custodian_of_time(Creature* pCreature)
 {
     return new npc_custodian_of_timeAI(pCreature);
-}
-
-/*######
-## npc_marin_noggenfogger
-######*/
-
-bool GossipHello_npc_marin_noggenfogger(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pCreature->isVendor() && pPlayer->GetQuestRewardStatus(2662))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_marin_noggenfogger(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_TRADE)
-        pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
-
-    return true;
 }
 
 /*######
@@ -259,7 +245,7 @@ struct MANGOS_DLL_DECL npc_oox17tnAI : public npc_escortAI
 {
     npc_oox17tnAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 i) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
@@ -268,14 +254,14 @@ struct MANGOS_DLL_DECL npc_oox17tnAI : public npc_escortAI
 
         switch (i)
         {
-            //1. Ambush: 3 scorpions
+                // 1. Ambush: 3 scorpions
             case 22:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
                 m_creature->SummonCreature(NPC_SCORPION, -8340.70f, -4448.17f, 9.17f, 3.10f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_SCORPION, -8343.18f, -4444.35f, 9.44f, 2.35f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 m_creature->SummonCreature(NPC_SCORPION, -8348.70f, -4457.80f, 9.58f, 2.02f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
                 break;
-            //2. Ambush: 2 Rogues & 1 Shadow Mage
+                // 2. Ambush: 2 Rogues & 1 Shadow Mage
             case 28:
                 DoScriptText(SAY_OOX_AMBUSH, m_creature);
 
@@ -283,7 +269,7 @@ struct MANGOS_DLL_DECL npc_oox17tnAI : public npc_escortAI
                 m_creature->SummonCreature(NPC_SHADOW_MAGE, -7486.41f, -4791.55f, 10.54f, 3.26f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000);
 
                 if (Creature* pCreature = m_creature->SummonCreature(NPC_SCOFFLAW, -7488.47f, -4800.77f, 9.77f, 2.50f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
-                    DoScriptText(SAY_OOX17_AMBUSH_REPLY,pCreature);
+                    DoScriptText(SAY_OOX17_AMBUSH_REPLY, pCreature);
 
                 break;
             case 34:
@@ -294,19 +280,19 @@ struct MANGOS_DLL_DECL npc_oox17tnAI : public npc_escortAI
         }
     }
 
-    void Reset() { }
+    void Reset() override { }
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* /*who*/) override
     {
-        //For an small probability he say something when it aggros
-        switch(urand(0, 9))
+        // For an small probability he say something when it aggros
+        switch (urand(0, 9))
         {
-           case 0: DoScriptText(SAY_OOX_AGGRO1, m_creature); break;
-           case 1: DoScriptText(SAY_OOX_AGGRO2, m_creature); break;
+            case 0: DoScriptText(SAY_OOX_AGGRO1, m_creature); break;
+            case 1: DoScriptText(SAY_OOX_AGGRO2, m_creature); break;
         }
     }
 
-    void JustSummoned(Creature* summoned)
+    void JustSummoned(Creature* summoned) override
     {
         summoned->AI()->AttackStart(m_creature);
     }
@@ -326,52 +312,14 @@ bool QuestAccept_npc_oox17tn(Player* pPlayer, Creature* pCreature, const Quest* 
         pCreature->SetStandState(UNIT_STAND_STATE_STAND);
 
         if (pPlayer->GetTeam() == ALLIANCE)
-            pCreature->setFaction(FACTION_ESCORT_A_PASSIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_A_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         if (pPlayer->GetTeam() == HORDE)
-            pCreature->setFaction(FACTION_ESCORT_H_PASSIVE);
+            pCreature->SetFactionTemporary(FACTION_ESCORT_H_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         if (npc_oox17tnAI* pEscortAI = dynamic_cast<npc_oox17tnAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
     }
-    return true;
-}
-
-/*######
-## npc_steward_of_time
-######*/
-
-#define GOSSIP_ITEM_FLIGHT  "Please take me to the master's lair."
-
-bool GossipHello_npc_steward_of_time(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->GetQuestStatus(10279) == QUEST_STATUS_INCOMPLETE || pPlayer->GetQuestRewardStatus(10279))
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_FLIGHT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        pPlayer->SEND_GOSSIP_MENU(9978, pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(9977, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool QuestAccept_npc_steward_of_time(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
-{
-    if (pQuest->GetQuestId() == 10279)                      //Quest: To The Master's Lair
-        pPlayer->CastSpell(pPlayer,34891,true);             //(Flight through Caverns)
-
-    return false;
-}
-
-bool GossipSelect_npc_steward_of_time(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
-        pPlayer->CastSpell(pPlayer,34891,true);             //(Flight through Caverns)
-
     return true;
 }
 
@@ -399,28 +347,28 @@ bool GossipHello_npc_stone_watcher_of_norgannon(Player* pPlayer, Creature* pCrea
     return true;
 }
 
-bool GossipSelect_npc_stone_watcher_of_norgannon(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_stone_watcher_of_norgannon(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    switch(uiAction)
+    switch (uiAction)
     {
         case GOSSIP_ACTION_INFO_DEF:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
             pPlayer->SEND_GOSSIP_MENU(1675, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
             pPlayer->SEND_GOSSIP_MENU(1676, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
             pPlayer->SEND_GOSSIP_MENU(1677, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+4);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
             pPlayer->SEND_GOSSIP_MENU(1678, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_6, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+5);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_6, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 5);
             pPlayer->SEND_GOSSIP_MENU(1679, pCreature->GetObjectGuid());
             break;
         case GOSSIP_ACTION_INFO_DEF+5:
@@ -452,7 +400,7 @@ enum
     POINT_ID_TO_WATER           = 1
 };
 
-const float m_afToWaterLoc[] = {-7032.664551f, -4906.199219f, -1.606446f};
+const float m_afToWaterLoc[] = { -7032.664551f, -4906.199219f, -1.606446f};
 
 struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
 {
@@ -464,7 +412,7 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
 
     Unit* pTorta;
 
-    void Reset()
+    void Reset() override
     {
         m_uiCheckSpeechTimer = 2500;
         m_uiPostEventTimer = 1000;
@@ -473,7 +421,7 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
         pTorta = NULL;
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         FollowerAI::MoveInLineOfSight(pWho);
 
@@ -493,7 +441,7 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
         }
     }
 
-    void MovementInform(uint32 uiMotionType, uint32 uiPointId)
+    void MovementInform(uint32 uiMotionType, uint32 uiPointId) override
     {
         FollowerAI::MovementInform(uiMotionType, uiPointId);
 
@@ -504,11 +452,11 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
             SetFollowComplete();
     }
 
-    void UpdateFollowerAI(const uint32 uiDiff)
+    void UpdateFollowerAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
-            //we are doing the post-event, or...
+            // we are doing the post-event, or...
             if (HasFollowState(STATE_FOLLOW_POSTEVENT))
             {
                 if (m_uiPostEventTimer < uiDiff)
@@ -517,12 +465,12 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
 
                     if (!pTorta || !pTorta->isAlive())
                     {
-                        //something happened, so just complete
+                        // something happened, so just complete
                         SetFollowComplete();
                         return;
                     }
 
-                    switch(m_uiPhasePostEvent)
+                    switch (m_uiPhasePostEvent)
                     {
                         case 1:
                             DoScriptText(SAY_TOOG_POST_1, m_creature);
@@ -557,7 +505,7 @@ struct MANGOS_DLL_DECL npc_toogaAI : public FollowerAI
                 {
                     m_uiCheckSpeechTimer = 5000;
 
-                    switch(urand(0, 50))
+                    switch (urand(0, 50))
                     {
                         case 10: DoScriptText(SAY_TOOG_THIRST, m_creature); break;
                         case 25: DoScriptText(SAY_TOOG_WORRIED, m_creature); break;
@@ -592,46 +540,33 @@ bool QuestAccept_npc_tooga(Player* pPlayer, Creature* pCreature, const Quest* pQ
 
 void AddSC_tanaris()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "mob_aquementas";
-    newscript->GetAI = &GetAI_mob_aquementas;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_aquementas";
+    pNewScript->GetAI = &GetAI_mob_aquementas;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_custodian_of_time";
-    newscript->GetAI = &GetAI_npc_custodian_of_time;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_custodian_of_time";
+    pNewScript->GetAI = &GetAI_npc_custodian_of_time;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_marin_noggenfogger";
-    newscript->pGossipHello =  &GossipHello_npc_marin_noggenfogger;
-    newscript->pGossipSelect = &GossipSelect_npc_marin_noggenfogger;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_oox17tn";
+    pNewScript->GetAI = &GetAI_npc_oox17tn;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_oox17tn;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_oox17tn";
-    newscript->GetAI = &GetAI_npc_oox17tn;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_oox17tn;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_stone_watcher_of_norgannon";
+    pNewScript->pGossipHello =  &GossipHello_npc_stone_watcher_of_norgannon;
+    pNewScript->pGossipSelect = &GossipSelect_npc_stone_watcher_of_norgannon;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_steward_of_time";
-    newscript->pGossipHello =  &GossipHello_npc_steward_of_time;
-    newscript->pGossipSelect = &GossipSelect_npc_steward_of_time;
-    newscript->pQuestAcceptNPC =  &QuestAccept_npc_steward_of_time;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_stone_watcher_of_norgannon";
-    newscript->pGossipHello =  &GossipHello_npc_stone_watcher_of_norgannon;
-    newscript->pGossipSelect = &GossipSelect_npc_stone_watcher_of_norgannon;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_tooga";
-    newscript->GetAI = &GetAI_npc_tooga;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_tooga;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_tooga";
+    pNewScript->GetAI = &GetAI_npc_tooga;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_tooga;
+    pNewScript->RegisterSelf();
 }

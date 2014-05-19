@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Aeonus
-SD%Complete: 80
-SDComment: Some spells not implemented
+SD%Complete: 90
+SDComment: Small adjustments; Timers
 SDCategory: Caverns of Time, The Dark Portal
 EndScriptData */
 
@@ -26,7 +26,6 @@ EndScriptData */
 
 enum
 {
-    SAY_ENTER               = -1269012,
     SAY_AGGRO               = -1269013,
     SAY_BANISH              = -1269014,
     SAY_SLAY1               = -1269015,
@@ -38,7 +37,7 @@ enum
     SPELL_TIME_STOP         = 31422,
     SPELL_ENRAGE            = 37605,
     SPELL_SAND_BREATH       = 31473,
-    H_SPELL_SAND_BREATH     = 39049
+    SPELL_SAND_BREATH_H     = 39049
 };
 
 struct MANGOS_DLL_DECL boss_aeonusAI : public ScriptedAI
@@ -53,77 +52,93 @@ struct MANGOS_DLL_DECL boss_aeonusAI : public ScriptedAI
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
 
-    uint32 SandBreath_Timer;
-    uint32 TimeStop_Timer;
-    uint32 Frenzy_Timer;
+    uint32 m_uiSandBreathTimer;
+    uint32 m_uiTimeStopTimer;
+    uint32 m_uiFrenzyTimer;
+    uint32 m_uiCleaveTimer;
 
-    void Reset()
+    void Reset() override
     {
-        SandBreath_Timer = urand(15000, 30000);
-        TimeStop_Timer = urand(10000, 15000);
-        Frenzy_Timer = urand(30000, 45000);
+        m_uiSandBreathTimer = urand(15000, 30000);
+        m_uiTimeStopTimer   = urand(10000, 15000);
+        m_uiFrenzyTimer     = urand(30000, 45000);
+        m_uiCleaveTimer     = urand(5000, 9000);
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void MoveInLineOfSight(Unit *who)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        //Despawn Time Keeper
-        if (who->GetTypeId() == TYPEID_UNIT && who->GetEntry() == NPC_TIME_KEEPER)
+        // Despawn Time Keeper
+        if (pWho->GetTypeId() == TYPEID_UNIT && pWho->GetEntry() == NPC_TIME_KEEPER)
         {
-            if (m_creature->IsWithinDistInMap(who,20.0f))
+            if (m_creature->IsWithinDistInMap(pWho, 20.0f))
             {
-                DoScriptText(SAY_BANISH, m_creature);
-                m_creature->DealDamage(who, who->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                if (DoCastSpellIfCan(pWho, SPELL_BANISH_HELPER) == CAST_OK)
+                    DoScriptText(SAY_BANISH, m_creature);
             }
         }
 
-        ScriptedAI::MoveInLineOfSight(who);
+        ScriptedAI::MoveInLineOfSight(pWho);
     }
 
-    void JustDied(Unit *victim)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
-
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_RIFT,DONE);
     }
 
-    void KilledUnit(Unit *victim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
-        //Return since we have no target
+        // Return since we have no target
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        //Sand Breath
-        if (SandBreath_Timer < diff)
+        // Sand Breath
+        if (m_uiSandBreathTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_SAND_BREATH : H_SPELL_SAND_BREATH);
-            SandBreath_Timer = urand(15000, 25000);
-        }else SandBreath_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_SAND_BREATH : SPELL_SAND_BREATH_H) == CAST_OK)
+                m_uiSandBreathTimer = urand(15000, 25000);
+        }
+        else
+            m_uiSandBreathTimer -= uiDiff;
 
-        //Time Stop
-        if (TimeStop_Timer < diff)
+        // Time Stop
+        if (m_uiTimeStopTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_TIME_STOP);
-            TimeStop_Timer = urand(20000, 35000);
-        }else TimeStop_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature, SPELL_TIME_STOP) == CAST_OK)
+                m_uiTimeStopTimer = urand(20000, 35000);
+        }
+        else
+            m_uiTimeStopTimer -= uiDiff;
 
-        //Frenzy
-        if (Frenzy_Timer < diff)
+        // Cleave
+        if (m_uiCleaveTimer < uiDiff)
         {
-            DoScriptText(EMOTE_GENERIC_FRENZY, m_creature);
-            DoCastSpellIfCan(m_creature, SPELL_ENRAGE);
-            Frenzy_Timer = urand(20000, 35000);
-        }else Frenzy_Timer -= diff;
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CLEAVE) == CAST_OK)
+                m_uiCleaveTimer = urand(7000, 12000);
+        }
+        else
+            m_uiCleaveTimer -= uiDiff;
+
+        // Frenzy
+        if (m_uiFrenzyTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
+            {
+                DoScriptText(EMOTE_GENERIC_FRENZY, m_creature);
+                m_uiFrenzyTimer = urand(20000, 35000);
+            }
+        }
+        else
+            m_uiFrenzyTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -136,9 +151,10 @@ CreatureAI* GetAI_boss_aeonus(Creature* pCreature)
 
 void AddSC_boss_aeonus()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_aeonus";
-    newscript->GetAI = &GetAI_boss_aeonus;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_aeonus";
+    pNewScript->GetAI = &GetAI_boss_aeonus;
+    pNewScript->RegisterSelf();
 }

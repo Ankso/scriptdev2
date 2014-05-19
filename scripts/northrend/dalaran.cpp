@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -23,31 +23,41 @@ EndScriptData */
 
 /* ContentData
 npc_dalaran_guardian_mage
-npc_zirdomi
 EndContentData */
 
 #include "precompiled.h"
 
 enum
 {
-    SPELL_TRESPASSER_H      = 54029,
-    SPELL_TRESPASSER_A      = 54028,
+    SPELL_TRESPASSER_H          = 54029,
+    SPELL_TRESPASSER_A          = 54028,
 
-    AREA_ID_SUNREAVER       = 4616,
-    AREA_ID_SILVER_ENCLAVE  = 4740
+    // Exception auras - used for quests 20439 and 24451
+    SPELL_COVENANT_DISGUISE_1   = 70971,
+    SPELL_COVENANT_DISGUISE_2   = 70972,
+    SPELL_SUNREAVER_DISGUISE_1  = 70973,
+    SPELL_SUNREAVER_DISGUISE_2  = 70974,
+
+    AREA_ID_SUNREAVER           = 4616,
+    AREA_ID_SILVER_ENCLAVE      = 4740
 };
 
 struct MANGOS_DLL_DECL npc_dalaran_guardian_mageAI : public ScriptedAI
 {
     npc_dalaran_guardian_mageAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         if (m_creature->GetDistanceZ(pWho) > CREATURE_Z_ATTACK_RANGE)
             return;
 
         if (pWho->isTargetableForAttack() && m_creature->IsHostileTo(pWho))
         {
+            // exception for quests 20439 and 24451
+            if (pWho->HasAura(SPELL_COVENANT_DISGUISE_1) || pWho->HasAura(SPELL_COVENANT_DISGUISE_2) ||
+                    pWho->HasAura(SPELL_SUNREAVER_DISGUISE_1) || pWho->HasAura(SPELL_SUNREAVER_DISGUISE_2))
+                return;
+
             if (m_creature->IsWithinDistInMap(pWho, m_creature->GetAttackDistance(pWho)) && m_creature->IsWithinLOSInMap(pWho))
             {
                 if (Player* pPlayer = pWho->GetCharmerOrOwnerPlayerOrPlayerItself())
@@ -63,11 +73,11 @@ struct MANGOS_DLL_DECL npc_dalaran_guardian_mageAI : public ScriptedAI
         }
     }
 
-    void AttackedBy(Unit* /*pAttacker*/) {}
+    void AttackedBy(Unit* /*pAttacker*/) override {}
 
-    void Reset() {}
+    void Reset() override {}
 
-    void UpdateAI(const uint32 /*uiDiff*/) {}
+    void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
 
 CreatureAI* GetAI_npc_dalaran_guardian_mage(Creature* pCreature)
@@ -75,51 +85,12 @@ CreatureAI* GetAI_npc_dalaran_guardian_mage(Creature* pCreature)
     return new npc_dalaran_guardian_mageAI(pCreature);
 }
 
-/*######
-## npc_zidormi
-######*/
-
-#define GOSSIP_ITEM_ZIDORMI1    "Take me to the Caverns of Time."
-
-enum
-{
-    SPELL_TELEPORT_COT          = 46343,
-    GOSSIP_TEXTID_ZIDORMI1      = 14066
-};
-
-bool GossipHello_npc_zidormi(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->getLevel() >= 65)
-    {
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_ZIDORMI1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-    }
-    else
-        pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_ZIDORMI1, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_zidormi(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-        pPlayer->CastSpell(pPlayer,SPELL_TELEPORT_COT,false);
-
-    return true;
-}
-
 void AddSC_dalaran()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_dalaran_guardian_mage";
-    newscript->GetAI = &GetAI_npc_dalaran_guardian_mage;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_zidormi";
-    newscript->pGossipHello = &GossipHello_npc_zidormi;
-    newscript->pGossipSelect = &GossipSelect_npc_zidormi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_dalaran_guardian_mage";
+    pNewScript->GetAI = &GetAI_npc_dalaran_guardian_mage;
+    pNewScript->RegisterSelf();
 }

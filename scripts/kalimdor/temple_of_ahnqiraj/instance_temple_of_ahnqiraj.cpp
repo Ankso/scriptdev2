@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,24 +17,30 @@
 /* ScriptData
 SDName: Instance_Temple_of_Ahnqiraj
 SD%Complete: 80
-SDComment:
+SDComment: C'thun whisperings spells NYI.
 SDCategory: Temple of Ahn'Qiraj
 EndScriptData */
 
 #include "precompiled.h"
 #include "temple_of_ahnqiraj.h"
 
+static const DialogueEntry aIntroDialogue[] =
+{
+    {EMOTE_EYE_INTRO,       NPC_MASTERS_EYE, 7000},
+    {SAY_EMPERORS_INTRO_1,  NPC_VEKLOR,      6000},
+    {SAY_EMPERORS_INTRO_2,  NPC_VEKNILASH,   8000},
+    {SAY_EMPERORS_INTRO_3,  NPC_VEKLOR,      3000},
+    {SAY_EMPERORS_INTRO_4,  NPC_VEKNILASH,   3000},
+    {SAY_EMPERORS_INTRO_5,  NPC_VEKLOR,      3000},
+    {SAY_EMPERORS_INTRO_6,  NPC_VEKNILASH,   0},
+    {0, 0, 0}
+};
+
 instance_temple_of_ahnqiraj::instance_temple_of_ahnqiraj(Map* pMap) : ScriptedInstance(pMap),
-    m_uiSkeramGUID(0),
-    m_uiVemGUID(0),
-    m_uiKriGUID(0),
-    m_uiVeklorGUID(0),
-    m_uiVeknilashGUID(0),
     m_uiBugTrioDeathCount(0),
-    m_uiCthunPhase(0),
-    m_uiSkeramGateGUID(0),
-    m_uiTwinsEnterDoorGUID(0),
-    m_uiTwinsExitDoorGUID(0)
+    m_uiCthunWhisperTimer(90000),
+    m_bIsEmperorsIntroDone(false),
+    m_dialogueHelper(aIntroDialogue)
 {
     Initialize();
 };
@@ -42,17 +48,48 @@ instance_temple_of_ahnqiraj::instance_temple_of_ahnqiraj(Map* pMap) : ScriptedIn
 void instance_temple_of_ahnqiraj::Initialize()
 {
     memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+
+    m_dialogueHelper.InitializeDialogueHelper(this);
 }
 
-void instance_temple_of_ahnqiraj::OnCreatureCreate (Creature* pCreature)
+bool instance_temple_of_ahnqiraj::IsEncounterInProgress() const
+{
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    {
+        if (m_auiEncounter[i] == IN_PROGRESS)
+            return true;
+    }
+
+    return false;
+}
+
+void instance_temple_of_ahnqiraj::DoHandleTempleAreaTrigger(uint32 uiTriggerId)
+{
+    if (uiTriggerId == AREATRIGGER_TWIN_EMPERORS && !m_bIsEmperorsIntroDone)
+    {
+        m_dialogueHelper.StartNextDialogueText(EMOTE_EYE_INTRO);
+        // Note: there may be more related to this; The emperors should kneel before the Eye and they stand up after it despawns
+        if (Creature* pEye = GetSingleCreatureFromStorage(NPC_MASTERS_EYE))
+            pEye->ForcedDespawn(1000);
+        m_bIsEmperorsIntroDone = true;
+    }
+}
+
+void instance_temple_of_ahnqiraj::OnCreatureCreate(Creature* pCreature)
 {
     switch (pCreature->GetEntry())
     {
-        case NPC_SKERAM:    m_uiSkeramGUID = pCreature->GetGUID(); break;
-        case NPC_VEM:       m_uiVemGUID = pCreature->GetGUID(); break;
-        case NPC_KRI:       m_uiKriGUID = pCreature->GetGUID(); break;
-        case NPC_VEKLOR:    m_uiVeklorGUID = pCreature->GetGUID(); break;
-        case NPC_VEKNILASH: m_uiVeknilashGUID = pCreature->GetGUID(); break;
+        case NPC_SKERAM:
+            // Don't store the summoned images guid
+            if (GetData(TYPE_SKERAM) == IN_PROGRESS)
+                break;
+        case NPC_VEKLOR:
+        case NPC_VEKNILASH:
+        case NPC_MASTERS_EYE:
+        case NPC_OURO_SPAWNER:
+        case NPC_CTHUN:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
     }
 }
 
@@ -61,37 +98,52 @@ void instance_temple_of_ahnqiraj::OnObjectCreate(GameObject* pGo)
     switch (pGo->GetEntry())
     {
         case GO_SKERAM_GATE:
-            m_uiSkeramGateGUID = pGo->GetGUID();
             if (m_auiEncounter[TYPE_SKERAM] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
         case GO_TWINS_ENTER_DOOR:
-            m_uiTwinsEnterDoorGUID = pGo->GetGUID();
             break;
         case GO_TWINS_EXIT_DOOR:
-            m_uiTwinsExitDoorGUID = pGo->GetGUID();
             if (m_auiEncounter[TYPE_TWINS] == DONE)
                 pGo->SetGoState(GO_STATE_ACTIVE);
             break;
-    }
-}
+        case GO_SANDWORM_BASE:
+            break;
 
-bool instance_temple_of_ahnqiraj::IsEncounterInProgress() const
-{
-    // not active in AQ40
-    return false;
+        default:
+            return;
+    }
+
+    m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
 }
 
 void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_SKERAM:
             m_auiEncounter[uiType] = uiData;
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiSkeramGateGUID);
+                DoUseDoorOrButton(GO_SKERAM_GATE);
             break;
-        case TYPE_VEM:
+        case TYPE_BUG_TRIO:
+            if (uiData == SPECIAL)
+            {
+                ++m_uiBugTrioDeathCount;
+                if (m_uiBugTrioDeathCount == 2)
+                    SetData(TYPE_BUG_TRIO, DONE);
+
+                // don't store any special data
+                break;
+            }
+            if (uiData == FAIL)
+                m_uiBugTrioDeathCount = 0;
+            m_auiEncounter[uiType] = uiData;
+            break;
+        case TYPE_SARTURA:
+        case TYPE_FANKRISS:
+        case TYPE_VISCIDUS:
+        case TYPE_HUHURAN:
             m_auiEncounter[uiType] = uiData;
             break;
         case TYPE_TWINS:
@@ -100,19 +152,29 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
                 return;
 
             m_auiEncounter[uiType] = uiData;
-            DoUseDoorOrButton(m_uiTwinsEnterDoorGUID);
+            DoUseDoorOrButton(GO_TWINS_ENTER_DOOR);
             if (uiData == DONE)
-                DoUseDoorOrButton(m_uiTwinsExitDoorGUID);
+                DoUseDoorOrButton(GO_TWINS_EXIT_DOOR);
             break;
-
-        // The following temporarily datas are not to be saved
-        case DATA_BUG_TRIO_DEATH:
-            ++m_uiBugTrioDeathCount;
-            return;
-
-        case TYPE_CTHUN_PHASE:
-            m_uiCthunPhase = uiData;
-            return;
+        case TYPE_OURO:
+            switch (uiData)
+            {
+                case FAIL:
+                    // Respawn the Ouro spawner on fail
+                    if (Creature* pSpawner = GetSingleCreatureFromStorage(NPC_OURO_SPAWNER))
+                        pSpawner->Respawn();
+                    // no break;
+                case DONE:
+                    // Despawn the sandworm base on Done or Fail
+                    if (GameObject* pBase = GetSingleGameObjectFromStorage(GO_SANDWORM_BASE))
+                        pBase->SetLootState(GO_JUST_DEACTIVATED);
+                    break;
+            }
+            m_auiEncounter[uiType] = uiData;
+            break;
+        case TYPE_CTHUN:
+            m_auiEncounter[uiType] = uiData;
+            break;
     }
 
     if (uiData == DONE)
@@ -120,7 +182,9 @@ void instance_temple_of_ahnqiraj::SetData(uint32 uiType, uint32 uiData)
         OUT_SAVE_INST_DATA;
 
         std::ostringstream saveStream;
-        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2];
+        saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " " << m_auiEncounter[3] << " "
+                   << m_auiEncounter[4] << " " << m_auiEncounter[5] << " " << m_auiEncounter[6] << " " << m_auiEncounter[7] << " "
+                   << m_auiEncounter[8] << " " << m_auiEncounter[9];
 
         m_strInstData = saveStream.str();
 
@@ -140,9 +204,11 @@ void instance_temple_of_ahnqiraj::Load(const char* chrIn)
     OUT_LOAD_INST_DATA(chrIn);
 
     std::istringstream loadStream(chrIn);
-    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2];
+    loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
+               >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6] >> m_auiEncounter[7]
+               >> m_auiEncounter[8] >> m_auiEncounter[9];
 
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;
@@ -151,38 +217,64 @@ void instance_temple_of_ahnqiraj::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_temple_of_ahnqiraj::GetData(uint32 uiType)
+uint32 instance_temple_of_ahnqiraj::GetData(uint32 uiType) const
 {
-    switch(uiType)
-    {
-        case TYPE_VEM:
-            return m_auiEncounter[0];
-        case DATA_BUG_TRIO_DEATH:
-            return m_uiBugTrioDeathCount;
-        case TYPE_CTHUN_PHASE:
-            return m_uiCthunPhase;
-        default:
-            return 0;
-    }
+    if (uiType < MAX_ENCOUNTER)
+        return m_auiEncounter[uiType];
+
+    return 0;
 }
 
-uint64 instance_temple_of_ahnqiraj::GetData64(uint32 uiData)
+void instance_temple_of_ahnqiraj::Update(uint32 uiDiff)
 {
-    switch(uiData)
+    m_dialogueHelper.DialogueUpdate(uiDiff);
+
+    if (GetData(TYPE_CTHUN) == IN_PROGRESS || GetData(TYPE_CTHUN) == DONE)
+        return;
+
+    if (m_uiCthunWhisperTimer < uiDiff)
     {
-        case NPC_SKERAM:    return m_uiSkeramGUID;
-        case NPC_VEM:       return m_uiVemGUID;
-        case NPC_KRI:       return m_uiKriGUID;
-        case NPC_VEKLOR:    return m_uiVeklorGUID;
-        case NPC_VEKNILASH: return m_uiVeknilashGUID;
-        default:
-            return 0;
+        if (Player* pPlayer = GetPlayerInMap())
+        {
+            if (Creature* pCthun = GetSingleCreatureFromStorage(NPC_CTHUN))
+            {
+                // ToDo: also cast the C'thun Whispering charm spell - requires additional research
+                switch (urand(0, 7))
+                {
+                    case 0: DoScriptText(SAY_CTHUN_WHISPER_1, pCthun, pPlayer); break;
+                    case 1: DoScriptText(SAY_CTHUN_WHISPER_2, pCthun, pPlayer); break;
+                    case 2: DoScriptText(SAY_CTHUN_WHISPER_3, pCthun, pPlayer); break;
+                    case 3: DoScriptText(SAY_CTHUN_WHISPER_4, pCthun, pPlayer); break;
+                    case 4: DoScriptText(SAY_CTHUN_WHISPER_5, pCthun, pPlayer); break;
+                    case 5: DoScriptText(SAY_CTHUN_WHISPER_6, pCthun, pPlayer); break;
+                    case 6: DoScriptText(SAY_CTHUN_WHISPER_7, pCthun, pPlayer); break;
+                    case 7: DoScriptText(SAY_CTHUN_WHISPER_8, pCthun, pPlayer); break;
+                }
+            }
+        }
+        m_uiCthunWhisperTimer = urand(1.5 * MINUTE * IN_MILLISECONDS, 5 * MINUTE * IN_MILLISECONDS);
     }
+    else
+        m_uiCthunWhisperTimer -= uiDiff;
 }
 
 InstanceData* GetInstanceData_instance_temple_of_ahnqiraj(Map* pMap)
 {
     return new instance_temple_of_ahnqiraj(pMap);
+}
+
+bool AreaTrigger_at_temple_ahnqiraj(Player* pPlayer, AreaTriggerEntry const* pAt)
+{
+    if (pAt->id == AREATRIGGER_TWIN_EMPERORS)
+    {
+        if (pPlayer->isGameMaster() || !pPlayer->isAlive())
+            return false;
+
+        if (instance_temple_of_ahnqiraj* pInstance = (instance_temple_of_ahnqiraj*)pPlayer->GetInstanceData())
+            pInstance->DoHandleTempleAreaTrigger(pAt->id);
+    }
+
+    return false;
 }
 
 void AddSC_instance_temple_of_ahnqiraj()
@@ -192,5 +284,10 @@ void AddSC_instance_temple_of_ahnqiraj()
     pNewScript = new Script;
     pNewScript->Name = "instance_temple_of_ahnqiraj";
     pNewScript->GetInstanceData = &GetInstanceData_instance_temple_of_ahnqiraj;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "at_temple_ahnqiraj";
+    pNewScript->pAreaTrigger = &AreaTrigger_at_temple_ahnqiraj;
     pNewScript->RegisterSelf();
 }

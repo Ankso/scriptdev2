@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -25,7 +25,6 @@ EndScriptData */
 #include "razorfen_kraul.h"
 
 instance_razorfen_kraul::instance_razorfen_kraul(Map* pMap) : ScriptedInstance(pMap),
-    m_uiAgathelosWardGUID(0),
     m_uiWardKeepersRemaining(0)
 {
     Initialize();
@@ -38,20 +37,19 @@ void instance_razorfen_kraul::Initialize()
 
 void instance_razorfen_kraul::OnObjectCreate(GameObject* pGo)
 {
-    switch(pGo->GetEntry())
+    switch (pGo->GetEntry())
     {
         case GO_AGATHELOS_WARD:
-            m_uiAgathelosWardGUID = pGo->GetGUID();
+            m_mGoEntryGuidStore[GO_AGATHELOS_WARD] = pGo->GetObjectGuid();
             if (m_auiEncounter[0] == DONE)
-                DoUseDoorOrButton(m_uiAgathelosWardGUID);
+                pGo->SetGoState(GO_STATE_ACTIVE);
             break;
     }
-
 }
 
 void instance_razorfen_kraul::OnCreatureCreate(Creature* pCreature)
 {
-    switch(pCreature->GetEntry())
+    switch (pCreature->GetEntry())
     {
         case NPC_WARD_KEEPER:
             ++m_uiWardKeepersRemaining;
@@ -61,14 +59,14 @@ void instance_razorfen_kraul::OnCreatureCreate(Creature* pCreature)
 
 void instance_razorfen_kraul::SetData(uint32 uiType, uint32 uiData)
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_AGATHELOS:
             --m_uiWardKeepersRemaining;
             if (!m_uiWardKeepersRemaining)
             {
                 m_auiEncounter[0] = uiData;
-                DoUseDoorOrButton(m_uiAgathelosWardGUID);
+                DoUseDoorOrButton(GO_AGATHELOS_WARD);
             }
             break;
     }
@@ -80,7 +78,7 @@ void instance_razorfen_kraul::SetData(uint32 uiType, uint32 uiData)
         std::ostringstream saveStream;
 
         saveStream << m_auiEncounter[0];
-        strInstData = saveStream.str();
+        m_strInstData = saveStream.str();
 
         SaveToDB();
         OUT_SAVE_INST_DATA_COMPLETE;
@@ -100,7 +98,7 @@ void instance_razorfen_kraul::Load(const char* chrIn)
     std::istringstream loadStream(chrIn);
     loadStream >> m_auiEncounter[0];
 
-    for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
+    for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
     {
         if (m_auiEncounter[i] == IN_PROGRESS)
             m_auiEncounter[i] = NOT_STARTED;
@@ -109,9 +107,9 @@ void instance_razorfen_kraul::Load(const char* chrIn)
     OUT_LOAD_INST_DATA_COMPLETE;
 }
 
-uint32 instance_razorfen_kraul::GetData(uint32 uiType)
+uint32 instance_razorfen_kraul::GetData(uint32 uiType) const
 {
-    switch(uiType)
+    switch (uiType)
     {
         case TYPE_AGATHELOS:
             return m_auiEncounter[0];
@@ -126,9 +124,10 @@ InstanceData* GetInstanceData_instance_razorfen_kraul(Map* pMap)
 
 void AddSC_instance_razorfen_kraul()
 {
-    Script* newscript;
-    newscript = new Script;
-    newscript->Name = "instance_razorfen_kraul";
-    newscript->GetInstanceData = &GetInstanceData_instance_razorfen_kraul;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "instance_razorfen_kraul";
+    pNewScript->GetInstanceData = &GetInstanceData_instance_razorfen_kraul;
+    pNewScript->RegisterSelf();
 }

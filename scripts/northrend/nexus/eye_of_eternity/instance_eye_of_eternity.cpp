@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -15,189 +15,122 @@
  */
 
 /* ScriptData
-SDName: Instance_Eye_of_Eternity
-SD%Complete: 90%
+SDName: instance_eye_of_eternity
+SD%Complete: 50
 SDComment:
-SDAuthor: Tassadar
-SDCategory: Nexus, Eye of Eternity
+SDCategory: Eye of Eternity
 EndScriptData */
 
 #include "precompiled.h"
 #include "eye_of_eternity.h"
 
-struct MANGOS_DLL_DECL instance_eye_of_eternity : public ScriptedInstance
+static const DialogueEntry aEpilogueDialogue[] =
 {
-    instance_eye_of_eternity(Map* pMap) : ScriptedInstance(pMap) {Initialize();}
-
-    std::string strInstData;
-    uint32 m_auiEncounter[MAX_ENCOUNTER];
-
-    uint64 m_uiMalygosGUID;
-    uint64 m_uiPlatformGUID;
-    uint64 m_uiExitPortalGUID;
-    uint64 m_uiFocusingIrisGUID;
-    uint64 m_uiGiftGUID;
-    uint64 m_uiHeartGUID;
-
-    void Initialize()
-    {
-        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
-
-        m_uiMalygosGUID = 0;
-        m_uiPlatformGUID = 0;
-        m_uiExitPortalGUID = 0;
-        m_uiFocusingIrisGUID = 0;
-        m_uiGiftGUID = 0;
-        m_uiHeartGUID = 0;
-    }
-
-    void OnCreatureCreate(Creature* pCreature)
-    {
-        switch(pCreature->GetEntry())
-        {
-            case NPC_MALYGOS:
-                m_uiMalygosGUID = pCreature->GetGUID();
-                pCreature->SetActiveObjectState(true);
-                break;
-        }
-    }
-    
-    void OnObjectCreate(GameObject* pGo)
-    {
-        switch(pGo->GetEntry())
-        {
-            case GO_PLATFORM:
-                m_uiPlatformGUID = pGo->GetGUID();
-                break;
-            case GO_EXIT_PORTAL:
-                m_uiExitPortalGUID = pGo->GetGUID();
-                break;
-            case GO_FOCUSING_IRIS:
-            case GO_FOCUSING_IRIS_H:
-                m_uiFocusingIrisGUID = pGo->GetGUID();
-                break;
-            case GO_ALEXSTRASZAS_GIFT:
-            case GO_ALEXSTRASZAS_GIFT_H:
-                m_uiGiftGUID = pGo->GetGUID();
-                break;
-            case GO_HEART_OF_MAGIC:
-            case GO_HEART_OF_MAGIC_H:
-                m_uiHeartGUID = pGo->GetGUID();
-                break;
-        }
-    }
-
-    bool IsEncounterInProgress() const
-    {
-        for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-            if (m_auiEncounter[i] == IN_PROGRESS)
-                return true;
-
-        return false;
-    }
-
-    void SetData(uint32 uiType, uint32 uiData)
-    {
-        switch(uiType)
-        {
-            case TYPE_MALYGOS:
-            {
-                if (uiData == NOT_STARTED)
-                {
-                    if (GameObject* pFocusingIris = instance->GetGameObject(m_uiFocusingIrisGUID))
-                    {
-                        pFocusingIris->SetGoState(GO_STATE_READY);
-                        pFocusingIris->SetPhaseMask(1, true);
-                    }
-                    if (GameObject* pExitPortal = instance->GetGameObject(m_uiExitPortalGUID))
-                        pExitPortal->SetPhaseMask(1, true);
-                    if (GameObject* pPlatform = instance->GetGameObject(m_uiPlatformGUID))
-                        pPlatform->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED);
-                }
-                if (uiData == IN_PROGRESS)
-                {
-                    if (GameObject* pFocusingIris = instance->GetGameObject(m_uiFocusingIrisGUID))
-                        pFocusingIris->SetPhaseMask(2, true);
-                    if (GameObject* pExitPortal = instance->GetGameObject(m_uiExitPortalGUID))
-                        pExitPortal->SetPhaseMask(2, true);
-                }
-                if (uiData == DONE)
-                {
-                    if (GameObject* pExitPortal = instance->GetGameObject(m_uiExitPortalGUID))
-                        pExitPortal->SetPhaseMask(1, true);
-                    DoRespawnGameObject(m_uiGiftGUID, HOUR*IN_MILLISECONDS);
-                    DoRespawnGameObject(m_uiHeartGUID, HOUR*IN_MILLISECONDS);
-                    //hack to make loot accessible
-                    if (GameObject* pPlatform = instance->GetGameObject(m_uiPlatformGUID))
-                    {
-                        pPlatform->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED);
-                        pPlatform->Respawn();
-                    }
-                }
-                m_auiEncounter[0] = uiData;
-                break;
-            }
-        }
-        OUT_SAVE_INST_DATA;
-        std::ostringstream saveStream;
-        saveStream << m_auiEncounter[0];
-
-        strInstData = saveStream.str();
-        SaveToDB();
-        OUT_SAVE_INST_DATA_COMPLETE;
-
-    }
-
-    const char* Save()
-    {
-        return strInstData.c_str();
-    }
-
-    void Load(const char* chrIn)
-    {
-        if (!chrIn)
-        {
-            OUT_LOAD_INST_DATA_FAIL;
-            return;
-        }
-
-        OUT_LOAD_INST_DATA(chrIn);
-
-        std::istringstream loadStream(chrIn);
-        loadStream >> m_auiEncounter[0];
-
-        for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-        {
-            if (m_auiEncounter[i] == IN_PROGRESS)
-                m_auiEncounter[i] = NOT_STARTED;
-        }
-
-        OUT_LOAD_INST_DATA_COMPLETE;
-    }
-
-    uint32 GetData(uint32 uiType)
-    {
-        switch(uiType)
-        {
-            case TYPE_MALYGOS:
-                return m_auiEncounter[0];
-        }
-        return 0;
-    }
-
-    uint64 GetData64(uint32 uiData)
-    {
-        switch(uiData)
-        {
-            case NPC_MALYGOS:
-                return m_uiMalygosGUID;
-            case GO_PLATFORM:
-                return m_uiPlatformGUID;
-        }
-        return 0;
-    }
-
+    {NPC_ALEXSTRASZA,               0,                  10000},
+    {SPELL_ALEXSTRASZAS_GIFT_BEAM,  0,                  3000},
+    {NPC_ALEXSTRASZAS_GIFT,         0,                  2000},
+    {SAY_OUTRO_1,                   NPC_ALEXSTRASZA,    6000},
+    {SAY_OUTRO_2,                   NPC_ALEXSTRASZA,    4000},
+    {SAY_OUTRO_3,                   NPC_ALEXSTRASZA,    23000},
+    {SAY_OUTRO_4,                   NPC_ALEXSTRASZA,    20000},
+    {GO_PLATFORM,                   0,                  0},
+    {0, 0, 0},
 };
+
+instance_eye_of_eternity::instance_eye_of_eternity(Map* pMap) : ScriptedInstance(pMap),
+    DialogueHelper(aEpilogueDialogue)
+{
+    Initialize();
+}
+
+void instance_eye_of_eternity::Initialize()
+{
+    m_uiEncounter = NOT_STARTED;
+    InitializeDialogueHelper(this);
+}
+
+bool instance_eye_of_eternity::IsEncounterInProgress() const
+{
+    return m_uiEncounter == IN_PROGRESS;
+}
+
+void instance_eye_of_eternity::OnCreatureCreate(Creature* pCreature)
+{
+    switch (pCreature->GetEntry())
+    {
+        case NPC_MALYGOS:
+        case NPC_ALEXSTRASZA:
+        case NPC_LARGE_TRIGGER:
+        case NPC_ALEXSTRASZAS_GIFT:
+            m_mNpcEntryGuidStore[pCreature->GetEntry()] = pCreature->GetObjectGuid();
+            break;
+    }
+}
+
+void instance_eye_of_eternity::OnObjectCreate(GameObject* pGo)
+{
+    switch (pGo->GetEntry())
+    {
+        case GO_EXIT_PORTAL:
+        case GO_PLATFORM:
+        case GO_FOCUSING_IRIS:
+        case GO_FOCUSING_IRIS_H:
+        case GO_HEART_OF_MAGIC:
+        case GO_HEART_OF_MAGIC_H:
+        case GO_ALEXSTRASZAS_GIFT:
+        case GO_ALEXSTRASZAS_GIFT_H:
+            m_mGoEntryGuidStore[pGo->GetEntry()] = pGo->GetObjectGuid();
+            break;
+    }
+}
+
+void instance_eye_of_eternity::SetData(uint32 uiType, uint32 uiData)
+{
+    if (uiType != TYPE_MALYGOS)
+        return;
+
+    m_uiEncounter = uiData;
+    if (uiData == IN_PROGRESS)
+    {
+        // ToDo: Despawn the exit portal
+
+        DoStartTimedAchievement(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, ACHIEV_START_MALYGOS_ID);
+    }
+    else if (uiData == FAIL)
+    {
+        // ToDo: respawn the focus iris and the portal
+
+        if (GameObject* pPlatform = GetSingleGameObjectFromStorage(GO_PLATFORM))
+            pPlatform->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11);
+    }
+    else if (uiData == DONE)
+        StartNextDialogueText(NPC_ALEXSTRASZA);
+
+    // Currently no reason to save anything
+}
+
+void instance_eye_of_eternity::JustDidDialogueStep(int32 iEntry)
+{
+    switch (iEntry)
+    {
+        case SPELL_ALEXSTRASZAS_GIFT_BEAM:
+            if (Creature* pAlextrasza = GetSingleCreatureFromStorage(NPC_ALEXSTRASZA))
+                pAlextrasza->CastSpell(pAlextrasza, SPELL_ALEXSTRASZAS_GIFT_BEAM, false);
+            break;
+        case NPC_ALEXSTRASZAS_GIFT:
+            if (Creature* pGift = GetSingleCreatureFromStorage(NPC_ALEXSTRASZAS_GIFT))
+                pGift->CastSpell(pGift, SPELL_ALEXSTRASZAS_GIFT_VISUAL, false);
+            DoRespawnGameObject(instance->IsRegularDifficulty() ? GO_ALEXSTRASZAS_GIFT : GO_ALEXSTRASZAS_GIFT_H, 30 * MINUTE);
+            break;
+        case GO_PLATFORM:
+            // ToDo: respawn the portal
+            if (GameObject* pPlatform = GetSingleGameObjectFromStorage(GO_PLATFORM))
+                pPlatform->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK_11);
+            // Spawn the Heart of Malygos
+            DoRespawnGameObject(instance->IsRegularDifficulty() ? GO_HEART_OF_MAGIC : GO_HEART_OF_MAGIC_H, 30 * MINUTE);
+            break;
+    }
+}
 
 InstanceData* GetInstanceData_instance_eye_of_eternity(Map* pMap)
 {
@@ -207,6 +140,7 @@ InstanceData* GetInstanceData_instance_eye_of_eternity(Map* pMap)
 void AddSC_instance_eye_of_eternity()
 {
     Script* pNewScript;
+
     pNewScript = new Script;
     pNewScript->Name = "instance_eye_of_eternity";
     pNewScript->GetInstanceData = &GetInstanceData_instance_eye_of_eternity;

@@ -1,73 +1,99 @@
-/* Copyright (C) 2010 by /dev/rsa for ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
 #ifndef DEF_RUBY_SANCTUM_H
 #define DEF_RUBY_SANCTUM_H
-#include "BSW_ai.h"
 
 enum
 {
-    MAX_ENCOUNTERS                 = 6,
+    MAX_ENCOUNTER                   = 4,
 
-    TYPE_EVENT                     = 0,
-    TYPE_RAGEFIRE                  = 1,
-    TYPE_BALTHARUS                 = 2,
-    TYPE_XERESTRASZA               = 3,
-    TYPE_ZARITHIAN                 = 4,
-    TYPE_HALION                    = 5,
+    TYPE_SAVIANA                    = 0,
+    TYPE_BALTHARUS                  = 1,
+    TYPE_ZARITHRIAN                 = 2,
+    TYPE_HALION                     = 3,
 
-    TYPE_COUNTER                   = 6, // for WorldUpdateState
-    TYPE_HALION_EVENT              = 7,
+    NPC_HALION_REAL                 = 39863,            // Halion - Physical Realm NPC
+    NPC_HALION_TWILIGHT             = 40142,            // Halion - Twilight Realm NPC
+    NPC_HALION_CONTROLLER           = 40146,
 
-    COUNTER_OFF                    = 255,
+    NPC_SHADOW_ORB_1                = 40083,            // shadow orbs for Halion encounter
+    NPC_SHADOW_ORB_2                = 40100,
+    NPC_SHADOW_ORB_3                = 40468,            // heroic only
+    NPC_SHADOW_ORB_4                = 40469,            // heroic only
 
-    TYPE_EVENT_TIMER               = 50,
-    TYPE_EVENT_NPC                 = 51,
+    NPC_SAVIANA                     = 39747,            // minibosses
+    NPC_BALTHARUS                   = 39751,
+    NPC_ZARITHRIAN                  = 39746,
 
-    NPC_HALION_REAL                = 39863, // Halion Physical Realm NPC
-    NPC_HALION_TWILIGHT            = 40142, // Halion Twilight Realm NPC
-    NPC_HALION_CONTROL             = 40146,
+    NPC_XERESTRASZA                 = 40429,            // friendly npc, used for some cinematic and quest
+    NPC_ZARITHRIAN_SPAWN_STALKER    = 39794,
 
-    NPC_BALTHARUS                  = 39751,
-    NPC_CLONE                      = 39899,
-    NPC_ZARITHIAN                  = 39746,
-    NPC_RAGEFIRE                   = 39747,
+    GO_TWILIGHT_PORTAL_ENTER_1      = 202794,           // Portals used in the Halion encounter
+    GO_TWILIGHT_PORTAL_ENTER_2      = 202795,
+    GO_TWILIGHT_PORTAL_LEAVE        = 202796,
 
-    NPC_XERESTRASZA                = 40429,
+    GO_FIRE_FIELD                   = 203005,           // Xerestrasza flame door
+    GO_FLAME_WALLS                  = 203006,           // Zarithrian flame walls
+    GO_FLAME_RING                   = 203007,           // Halion flame ring
+    GO_TWILIGHT_FLAME_RING          = 203624,           // Halion flame ring - twilight version
 
-    NPC_BALTHARUS_TARGET           = 39900,
-    NPC_ZARITHIAN_SPAWN_STALKER    = 39794,
+    GO_BURNING_TREE_1               = 203036,           // Trees which burn when Halion appears
+    GO_BURNING_TREE_2               = 203037,
+    GO_BURNING_TREE_3               = 203035,
+    GO_BURNING_TREE_4               = 203034,
 
-    // Orb rotation
-    NPC_SHADOW_PULSAR_N            = 40083, //spinning orb N spawn
-    NPC_SHADOW_PULSAR_S            = 40100, //spinning orb S spawn
-    NPC_ORB_CARRIER                = 40081,
-    NPC_ORB_ROTATION_FOCUS         = 40091,
+    // Spells used to summon Halion
+    SPELL_FIRE_PILLAR               = 76006,
+    SPELL_FIERY_EXPLOSION           = 76010,
+    SPELL_CLEAR_DEBUFFS             = 75396,            // cast by the controller on encounter reset
 
+    SAY_HALION_SPAWN                = -1724024,
 
-    GO_HALION_PORTAL_1             = 202794, //1327 ENTRY
-    GO_HALION_PORTAL_2             = 202795, //1327 ENTRY
-    GO_HALION_PORTAL_3             = 202796, //1327 EXIT
-
-    GO_FIRE_FIELD                  = 203005,
-    GO_FLAME_WALLS                 = 203006,
-    GO_FLAME_RING                  = 203007,
-
-    DATA_EVENT_TIMER               = 101,
-    DATA_EVENT                     = 102,
-
-    DATA_ORB_DIRECTION             = 110,
-    DATA_ORB_S                     = 111,
-    DATA_ORB_N                     = 112,
-
+    // world state to show corporeality in Halion encounter - phase 3
+    WORLD_STATE_CORP_PHYSICAL       = 5049,
+    WORLD_STATE_CORP_TWILIGHT       = 5050,
+    WORLD_STATE_CORPOREALITY        = 5051,
 };
 
-enum uiWorldStates
+class MANGOS_DLL_DECL instance_ruby_sanctum : public ScriptedInstance
 {
-    UPDATE_STATE_UI_COUNT_R          = 5049,
-    UPDATE_STATE_UI_COUNT_T          = 5050,
-    UPDATE_STATE_UI_SHOW             = 5051,
+    public:
+        instance_ruby_sanctum(Map* pMap);
+
+        void Initialize() override;
+        bool IsEncounterInProgress() const override;
+
+        void OnPlayerEnter(Player* pPlayer) override;
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
+
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
+
+        void Update(uint32 uiDiff) override;
+
+        void GetSpawnStalkersGuidList(GuidList& lList) { lList = m_lSpawnStalkersGuidList; }
+
+        const char* Save() const override { return strInstData.c_str(); }
+        void Load(const char* chrIn) override;
+
+        // Difficulty wrappers
+        bool IsHeroicDifficulty() { return instance->GetDifficulty() == RAID_DIFFICULTY_10MAN_HEROIC || instance->GetDifficulty() == RAID_DIFFICULTY_25MAN_HEROIC; }
+        bool Is25ManDifficulty() { return instance->GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL || instance->GetDifficulty() == RAID_DIFFICULTY_25MAN_HEROIC; }
+
+    protected:
+        void DoHandleZarithrianDoor();
+
+        std::string strInstData;
+        uint32 m_auiEncounter[MAX_ENCOUNTER];
+
+        uint32 m_uiHalionSummonTimer;
+        uint32 m_uiHalionSummonStage;
+        uint32 m_uiHalionResetTimer;
+
+        GuidList m_lSpawnStalkersGuidList;
 };
 
 #endif

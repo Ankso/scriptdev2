@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Boss_Gortok
 SD%Complete: 90%
-SDComment: TODO: spell for stasis orb activating mob visual (red lightning thing)
+SDComment: Timers; The subbosses and Gortok should be activated on aura remove
 SDCategory: Utgarde Pinnacle
 EndScriptData */
 
@@ -39,28 +39,12 @@ enum
     SPELL_WITHERING_ROAR    = 48256,
     SPELL_WITHERING_ROAR_H  = 59267,
 
-    SPELL_ARCING_SMASH      = 48260,
-
-    // orb
-    NPC_ORB                 = 26688, 
-    SPELL_ORB_VISUAL        = 48044,
-    SPELL_ORB_CHANNEL       = 48048, // this spell does not have a visual effect, there seems to be one spell with the visual effect missing
-
-    ORB_EVENT_NOT_SPAWNED   = 0,
-    ORB_EVENT_MOVING        = 1,
-    ORB_EVENT_CAST_STARTED  = 2,
-
+    SPELL_ARCING_SMASH      = 48260
 };
 
 /*######
 ## boss_gortok
 ######*/
-
-static const float orbWP[2][3] = 
-{
-    {248.5f,-451.1f,110.f},
-    {274.1f,-451.7f,110.f}
-};
 
 struct MANGOS_DLL_DECL boss_gortokAI : public ScriptedAI
 {
@@ -73,72 +57,32 @@ struct MANGOS_DLL_DECL boss_gortokAI : public ScriptedAI
 
     ScriptedInstance* m_pInstance;
     bool m_bIsRegularMode;
-    
-    uint32 m_uiCheckTimer;
-    uint64 m_uiCurrentMobGUID;
-    std::vector<uint32> mobList;
 
-    uint32 m_uiImpaleTimer;
     uint32 m_uiRoarTimer;
-    uint32 m_uiSmashTimer;
+    uint32 m_uiImpaleTimer;
+    uint32 m_uiArcingSmashTimer;
 
-    uint64 m_uiOrbGUID;
-    uint8 m_uiOrbEventProgress;
-    uint32 m_uiOrbTimer;
-
-    void Reset()
+    void Reset() override
     {
-        m_uiCheckTimer = 1000;
-        m_uiCurrentMobGUID = 0;
-        m_creature->setFaction(35);
-        mobList.clear();
-        mobList.push_back(NPC_WORGEN);
-        mobList.push_back(NPC_FURBOLG);
-        mobList.push_back(NPC_JORMUNGAR);
-        mobList.push_back(NPC_RHINO);
+        m_uiRoarTimer        = 10000;
+        m_uiImpaleTimer      = 15000;
+        m_uiArcingSmashTimer = urand(5000, 8000);
 
-        m_uiImpaleTimer = 3000;
-        m_uiRoarTimer = 500;
-        m_uiSmashTimer = 5000;
-
-        m_uiOrbGUID = 0;
-        m_uiOrbEventProgress = ORB_EVENT_NOT_SPAWNED;
-        m_uiOrbTimer = 0;
+        // This needs to be reset in case the event fails
+        m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
     }
 
-    void JustReachedHome()
-    {
-        mobList.clear();
-        mobList.push_back(NPC_WORGEN);
-        mobList.push_back(NPC_FURBOLG);
-        mobList.push_back(NPC_JORMUNGAR);
-        mobList.push_back(NPC_RHINO);
-
-        
-        for (std::vector<uint32>::iterator itr = mobList.begin();itr != mobList.end();++itr)
-        {
-            if (Creature* pCreature = GetClosestCreatureWithEntry(m_creature, *itr, 100.f))
-            {
-                pCreature->Respawn();
-                pCreature->setFaction(35);
-            }
-        }
-    
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_GORTOK, FAIL);
-    }
-
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -146,135 +90,43 @@ struct MANGOS_DLL_DECL boss_gortokAI : public ScriptedAI
             m_pInstance->SetData(TYPE_GORTOK, DONE);
     }
 
-    void SummonedMovementInform(Creature* pSummoned, uint32 uiMotionType, uint32 uiPointId)
+    void JustReachedHome() override
     {
-        // If Nefarian has reached combat area, let him attack
-        if (pSummoned->GetEntry() == NPC_ORB && uiMotionType == POINT_MOTION_TYPE)
-            if (uiPointId == 1)
-            {
-                pSummoned->GetMotionMaster()->MovePoint(2, orbWP[1][0], orbWP[1][1], orbWP[1][2]);
-            } 
-            else if (uiPointId == 2)
-            {
-                if (Creature* pTarget = m_creature->GetMap()->GetCreature(m_uiCurrentMobGUID))
-                {
-                    // waypoint 3 is not needed if visual spell target works
-                    pSummoned->GetMotionMaster()->MovePoint(3,pTarget->GetPositionX(),pTarget->GetPositionY(),pTarget->GetPositionZ()+5.f);
-                }
-            }
-            else if (uiPointId == 3)
-            {
-                if (Creature* pTarget = m_creature->GetMap()->GetCreature(m_uiCurrentMobGUID))
-                    {
-                        //pSummoned->CastSpell(pTarget, SPELL_ORB_CHANNEL, true); // spell has no effect? visual spell needed
-                        m_uiOrbEventProgress = ORB_EVENT_CAST_STARTED;
-                        pSummoned->ForcedDespawn();
-                    }
-            }
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_GORTOK, FAIL);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-        {
-            if (!m_creature->HasAura(SPELL_FREEZE_ANIM))
-                m_creature->CastSpell(m_creature, SPELL_FREEZE_ANIM,true);
-
-            if (m_uiOrbEventProgress == ORB_EVENT_CAST_STARTED)
-            {
-                if (m_uiOrbTimer < uiDiff)
-                {
-                    if (Creature* pOrb = m_creature->GetMap()->GetCreature(m_uiOrbGUID))
-                        pOrb->ForcedDespawn();
-                                
-                        m_uiOrbEventProgress = ORB_EVENT_NOT_SPAWNED;
-
-                        if (Creature* pMob = m_creature->GetMap()->GetCreature(m_uiCurrentMobGUID))
-                        {
-                            pMob->setFaction(14);
-                            pMob->SetInCombatWithZone();
-                        }
-                }
-                else
-                    m_uiOrbTimer -= uiDiff;
-                return;
-            }
-
-            if (m_uiCheckTimer < uiDiff)
-            {
-                if (m_pInstance && m_pInstance->GetData(TYPE_GORTOK) == IN_PROGRESS && !m_uiCurrentMobGUID)
-                {
-                    if (m_uiOrbEventProgress == ORB_EVENT_NOT_SPAWNED && ((!mobList.empty() && !m_bIsRegularMode) || (mobList.size() > 2 && m_bIsRegularMode)))
-                    {
-
-                        std::vector<uint32>::iterator itr = mobList.begin();
-                        std::advance(itr,rand()%mobList.size());
-
-                        if (Creature* pCreature = GetClosestCreatureWithEntry(m_creature,*itr,100.f))
-                        {
-                            m_uiCurrentMobGUID = pCreature->GetGUID();
-                            if (GameObject* pGo = GetClosestGameObjectWithEntry(m_creature, GO_STASIS_GENERATOR, 120.f))
-                                if (Creature* pOrb = m_creature->SummonCreature(NPC_ORB, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ()+5, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
-                                {
-                                    pOrb->CastSpell(pOrb, SPELL_ORB_VISUAL, true);
-                                    pOrb->AddSplineFlag(SPLINEFLAG_FLYING);
-                                    pOrb->GetMotionMaster()->MovePoint(1, orbWP[0][0], orbWP[0][1], orbWP[0][2]);
-                                    m_uiOrbEventProgress = ORB_EVENT_MOVING;
-                                }
-                            //m_uiOrbEventProgress = ORB_EVENT_CAST_STARTED; // remove this line when mob npc exists in db
-                        }
-                        mobList.erase(itr);
-                        m_uiCheckTimer = 1000;
-                    }
-                    else // all mobs dead, boss starts fight
-                    {
-                        if (m_pInstance)
-                            m_pInstance->SetData(TYPE_GORTOK, SPECIAL);
-
-                        m_creature->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
-                        m_creature->setFaction(14);
-                        m_creature->SetInCombatWithZone();
-                    }
-                }
-                else if (m_uiCurrentMobGUID)
-                {
-                    if (Creature* pMob = m_creature->GetMap()->GetCreature(m_uiCurrentMobGUID))
-                        if (!pMob->isAlive())
-                        {
-                            m_uiCurrentMobGUID = 0;
-                            m_uiCheckTimer = 5000;
-                        }
-                }
-            }
-            else
-                m_uiCheckTimer -= uiDiff;
-
             return;
+
+        if (m_uiRoarTimer < uiDiff)
+        {
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WITHERING_ROAR : SPELL_WITHERING_ROAR_H) == CAST_OK)
+                m_uiRoarTimer = 10000;
         }
+        else
+            m_uiRoarTimer -= uiDiff;
 
         if (m_uiImpaleTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_IMPALE : SPELL_IMPALE_H);
-            m_uiImpaleTimer = urand(4500,6000);
+            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_IMPALE : SPELL_IMPALE_H) == CAST_OK)
+                    m_uiImpaleTimer = urand(8000, 15000);
+            }
         }
         else
             m_uiImpaleTimer -= uiDiff;
 
-        if (m_uiSmashTimer < uiDiff)
+        if (m_uiArcingSmashTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCING_SMASH);
-            m_uiSmashTimer = urand(3500,7000);
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_ARCING_SMASH) == CAST_OK)
+                m_uiArcingSmashTimer = urand(5000, 13000);
         }
         else
-            m_uiSmashTimer -= uiDiff;
-
-        if (m_uiRoarTimer < uiDiff)
-        {
-            DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_WITHERING_ROAR : SPELL_WITHERING_ROAR_H);
-            m_uiRoarTimer = urand(25000,40000);
-        }
-        else
-            m_uiRoarTimer -= uiDiff;
+            m_uiArcingSmashTimer -= uiDiff;
 
         DoMeleeAttackIfReady();
     }
@@ -285,28 +137,80 @@ CreatureAI* GetAI_boss_gortok(Creature* pCreature)
     return new boss_gortokAI(pCreature);
 }
 
-bool GOHello_go_stasis_generator(Player* pPlayer, GameObject* pGo)
+bool EffectDummyCreature_spell_awaken_gortok(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-    if (ScriptedInstance* m_pInstance = (ScriptedInstance*)pGo->GetInstanceData())
+    // always check spellid and effectindex
+    if (uiSpellId == SPELL_AWAKEN_GORTOK && uiEffIndex == EFFECT_INDEX_0)
     {
-        if (m_pInstance->GetData(TYPE_GORTOK) == NOT_STARTED || m_pInstance->GetData(TYPE_GORTOK) == FAIL)
-            m_pInstance->SetData(TYPE_GORTOK, IN_PROGRESS);
+        pCreatureTarget->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        pCreatureTarget->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
+
+        // Start attacking the players
+        if (instance_pinnacle* pInstance = (instance_pinnacle*)pCreatureTarget->GetInstanceData())
+        {
+            if (Unit* pStarter = pCreatureTarget->GetMap()->GetUnit(pInstance->GetGortokEventStarter()))
+                pCreatureTarget->AI()->AttackStart(pStarter);
+        }
+
+        // always return true when we are handling this spell and effect
+        return true;
     }
 
+    return false;
+}
+
+bool EffectAuraDummy_spell_aura_dummy_awaken_subboss(const Aura* pAura, bool bApply)
+{
+    // Note: this should be handled on aura remove, but this can't be done because there are some core issues with areaeffect spells
+    if (pAura->GetId() == SPELL_AWAKEN_SUBBOSS && pAura->GetEffIndex() == EFFECT_INDEX_0 && bApply)
+    {
+        if (Creature* pTarget = (Creature*)pAura->GetTarget())
+        {
+            pTarget->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            pTarget->RemoveAurasDueToSpell(SPELL_FREEZE_ANIM);
+
+            // Start attacking the players
+            if (instance_pinnacle* pInstance = (instance_pinnacle*)pTarget->GetInstanceData())
+            {
+                if (Unit* pStarter = pTarget->GetMap()->GetUnit(pInstance->GetGortokEventStarter()))
+                    pTarget->AI()->AttackStart(pStarter);
+            }
+        }
+    }
     return true;
+}
+
+bool ProcessEventId_event_spell_gortok_event(uint32 /*uiEventId*/, Object* pSource, Object* /*pTarget*/, bool /*bIsStart*/)
+{
+    if (instance_pinnacle* pInstance = (instance_pinnacle*)((Creature*)pSource)->GetInstanceData())
+    {
+        if (pInstance->GetData(TYPE_GORTOK) == IN_PROGRESS || pInstance->GetData(TYPE_GORTOK) == DONE)
+            return false;
+
+        pInstance->SetData(TYPE_GORTOK, IN_PROGRESS);
+        pInstance->SetGortokEventStarter(pSource->GetObjectGuid());
+        return true;
+    }
+    return false;
 }
 
 void AddSC_boss_gortok()
 {
-    Script *pNewScript;
+    Script* pNewScript;
 
     pNewScript = new Script;
     pNewScript->Name = "boss_gortok";
     pNewScript->GetAI = &GetAI_boss_gortok;
+    pNewScript->pEffectDummyNPC = &EffectDummyCreature_spell_awaken_gortok;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
-    pNewScript->Name = "go_stasis_generator";
-    pNewScript->pGOUse = &GOHello_go_stasis_generator;
+    pNewScript->Name = "npc_gortok_subboss";
+    pNewScript->pEffectAuraDummy = &EffectAuraDummy_spell_aura_dummy_awaken_subboss;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "event_spell_gortok_event";
+    pNewScript->pProcessEventId = &ProcessEventId_event_spell_gortok_event;
     pNewScript->RegisterSelf();
 }

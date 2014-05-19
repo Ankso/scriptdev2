@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -81,13 +81,13 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
     uint32 m_uiAegisTimer;
     uint32 m_uiSpeechTimer;
 
-    uint64 m_uiRagnarosGUID;
+    ObjectGuid m_ragnarosGuid;
     bool m_bHasEncounterFinished;
     uint8 m_uiAddsKilled;
     uint8 m_uiSpeech;
-    GUIDList m_luiMajordomoAddsGUIDs;
+    GuidList m_luiMajordomoAddsGUIDs;
 
-    void Reset()
+    void Reset() override
     {
         m_uiMagicReflectionTimer  = 30000;                  // Damage reflection first so we alternate
         m_uiDamageReflectionTimer = 15000;
@@ -96,12 +96,11 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         m_uiAegisTimer = 5000;
         m_uiSpeechTimer = 1000;
 
-        m_uiRagnarosGUID = 0;
         m_uiAddsKilled = 0;
         m_uiSpeech = 0;
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         if (urand(0, 4))
             return;
@@ -109,7 +108,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         DoScriptText(SAY_SLAY, m_creature);
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* pWho) override
     {
         if (pWho->GetTypeId() == TYPEID_UNIT && pWho->GetEntry() == NPC_RAGNAROS)
             return;
@@ -120,28 +119,24 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
             m_pInstance->SetData(TYPE_MAJORDOMO, IN_PROGRESS);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
-        if (!m_bHasEncounterFinished)                        // Normal reached home, FAIL
+        if (!m_bHasEncounterFinished)                       // Normal reached home, FAIL
         {
             if (m_pInstance)
-            {
                 m_pInstance->SetData(TYPE_MAJORDOMO, FAIL);
-                m_pInstance->DoHandleAdds(m_luiMajordomoAddsGUIDs);
-            }
         }
-        else                                                 // Finished the encounter, DONE
+        else                                                // Finished the encounter, DONE
         {
             // Exit combat
-            m_creature->RemoveAllAuras();
+            m_creature->RemoveAllAurasOnEvade();
             m_creature->DeleteThreatList();
             m_creature->CombatStop(true);
-            m_creature->LoadCreatureAddon();
             m_creature->SetLootRecipient(NULL);
 
             // Set friendly
             m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-            m_creature->setFaction(FACTION_MAJORDOMO_FRIENDLY);
+            m_creature->SetFactionTemporary(FACTION_MAJORDOMO_FRIENDLY, TEMPFACTION_RESTORE_RESPAWN);
 
             // Reset orientation
             m_creature->SetFacingTo(m_aMajordomoLocations[0].m_fO);
@@ -159,7 +154,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
         // Prevent possible exploits with double summoning
-        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_uiRagnarosGUID))
+        if (m_creature->GetMap()->GetCreature(m_ragnarosGuid))
             return;
 
         DoScriptText(SAY_SUMMON_0, m_creature, pPlayer);
@@ -168,7 +163,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         m_uiSpeech = 10;
     }
 
-    void JustRespawned()
+    void JustRespawned() override
     {
         // Encounter finished, need special treatment
         if (m_bHasEncounterFinished)
@@ -183,27 +178,27 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_FLAMEWAKER_HEALER || pSummoned->GetEntry() == NPC_FLAMEWAKER_ELITE)
         {
-            m_luiMajordomoAddsGUIDs.push_back(pSummoned->GetGUID());
-            pSummoned->SetRespawnDelay(2*HOUR);
+            m_luiMajordomoAddsGUIDs.push_back(pSummoned->GetObjectGuid());
+            pSummoned->SetRespawnDelay(2 * HOUR);
         }
         else if (pSummoned->GetEntry() == NPC_RAGNAROS)
         {
-            m_uiRagnarosGUID = pSummoned->GetGUID();
+            m_ragnarosGuid = pSummoned->GetObjectGuid();
             pSummoned->CastSpell(pSummoned, SPELL_RAGNA_EMERGE, false);
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* pKiller) override
     {
         if (pKiller->GetTypeId() == TYPEID_UNIT && pKiller->GetEntry() == NPC_RAGNAROS)
             DoScriptText(SAY_ARRIVAL4_MAJ, m_creature);
     }
 
-    void CorpseRemoved(uint32 &uiRespawnDelay)
+    void CorpseRemoved(uint32& uiRespawnDelay) override
     {
         uiRespawnDelay = urand(2 * HOUR, 3 * HOUR);
 
@@ -215,7 +210,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         }
     }
 
-    void SummonedCreatureJustDied(Creature* pSummoned)
+    void SummonedCreatureJustDied(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_FLAMEWAKER_HEALER || pSummoned->GetEntry() == NPC_FLAMEWAKER_ELITE)
         {
@@ -237,7 +232,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
     // Unsummon Majordomo adds
     void UnsummonMajordomoAdds()
     {
-        for (GUIDList::const_iterator itr = m_luiMajordomoAddsGUIDs.begin(); itr != m_luiMajordomoAddsGUIDs.end(); ++itr)
+        for (GuidList::const_iterator itr = m_luiMajordomoAddsGUIDs.begin(); itr != m_luiMajordomoAddsGUIDs.end(); ++itr)
         {
             if (Creature* pAdd = m_creature->GetMap()->GetCreature(*itr))
                 if (pAdd->IsTemporarySummon())
@@ -247,7 +242,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         m_luiMajordomoAddsGUIDs.clear();
     }
 
-    void DamageTaken(Unit* pDealer, uint32& uiDamage)
+    void DamageTaken(Unit* /*pDealer*/, uint32& uiDamage) override
     {
         if (uiDamage > m_creature->GetHealth())
         {
@@ -256,7 +251,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         // Handling of his combat-end speech and Ragnaros summoning
         if (m_uiSpeech)
@@ -265,7 +260,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
             {
                 switch (m_uiSpeech)
                 {
-                    // Majordomo retreat event
+                        // Majordomo retreat event
                     case 1:
                         DoScriptText(SAY_DEFEAT_1, m_creature);
                         m_uiSpeechTimer = 7500;
@@ -294,7 +289,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
                         m_uiSpeech = 0;
                         break;
 
-                    // Ragnaros Summon Event
+                        // Ragnaros Summon Event
                     case 10:
                         DoScriptText(SAY_SUMMON_1, m_creature);
                         ++m_uiSpeech;
@@ -309,7 +304,7 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
                         break;
                     case 12:
                         // Reset orientation
-                        if (GameObject* pLavaSteam = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_LAVA_STEAM)))
+                        if (GameObject* pLavaSteam = m_pInstance->GetSingleGameObjectFromStorage(GO_LAVA_STEAM))
                             m_creature->SetFacingToObject(pLavaSteam);
                         m_uiSpeechTimer = 4500;
                         ++m_uiSpeech;
@@ -322,13 +317,13 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
                     case 14:
                         // Summon Ragnaros
                         if (m_pInstance)
-                            if (GameObject* pGo = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(GO_LAVA_STEAM)))
-                                m_creature->SummonCreature(NPC_RAGNAROS, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ(), fmod(m_creature->GetOrientation() + M_PI, 2*M_PI), TEMPSUMMON_TIMED_OR_DEAD_DESPAWN, 2*HOUR*IN_MILLISECONDS);
+                            if (GameObject* pGo = m_pInstance->GetSingleGameObjectFromStorage(GO_LAVA_STEAM))
+                                m_creature->SummonCreature(NPC_RAGNAROS, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ(), fmod(m_creature->GetOrientation() + M_PI, 2 * M_PI), TEMPSUMMON_TIMED_OOC_OR_DEAD_DESPAWN, 2 * HOUR * IN_MILLISECONDS);
                         ++m_uiSpeech;
                         m_uiSpeechTimer = 8700;
                         break;
                     case 15:
-                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_uiRagnarosGUID))
+                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_ragnarosGuid))
                             DoScriptText(SAY_ARRIVAL1_RAG, pRagnaros);
                         ++m_uiSpeech;
                         m_uiSpeechTimer = 11700;
@@ -339,13 +334,13 @@ struct MANGOS_DLL_DECL boss_majordomoAI : public ScriptedAI
                         m_uiSpeechTimer = 8700;
                         break;
                     case 17:
-                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_uiRagnarosGUID))
+                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_ragnarosGuid))
                             DoScriptText(SAY_ARRIVAL3_RAG, pRagnaros);
                         ++m_uiSpeech;
                         m_uiSpeechTimer = 16500;
                         break;
                     case 18:
-                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_uiRagnarosGUID))
+                        if (Creature* pRagnaros = m_creature->GetMap()->GetCreature(m_ragnarosGuid))
                             pRagnaros->CastSpell(m_creature, SPELL_ELEMENTAL_FIRE, false);
                         // Rest of summoning speech is handled by Ragnaros, as Majordomo will be dead
                         m_uiSpeech = 0;
@@ -429,14 +424,14 @@ bool GossipHello_boss_majordomo(Player* pPlayer, Creature* pCreature)
     {
         if (pInstance->GetData(TYPE_RAGNAROS) == NOT_STARTED || pInstance->GetData(TYPE_RAGNAROS) == FAIL)
         {
-            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SUMMON_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+            pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_SUMMON_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
             pPlayer->SEND_GOSSIP_MENU(TEXT_ID_SUMMON_1, pCreature->GetObjectGuid());
         }
     }
     return true;
 }
 
-bool GossipSelect_boss_majordomo(Player* pPlayer, Creature* pCreature, uint32 sender, uint32 uiAction)
+bool GossipSelect_boss_majordomo(Player* pPlayer, Creature* pCreature, uint32 /*sender*/, uint32 uiAction)
 {
     switch (uiAction)
     {
@@ -458,7 +453,7 @@ bool GossipSelect_boss_majordomo(Player* pPlayer, Creature* pCreature, uint32 se
     return true;
 }
 
-bool EffectDummyCreature_spell_boss_majordomo(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
+bool EffectDummyCreature_spell_boss_majordomo(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
     if (uiSpellId != SPELL_TELEPORT_SELF || uiEffIndex != EFFECT_INDEX_0)
         return false;

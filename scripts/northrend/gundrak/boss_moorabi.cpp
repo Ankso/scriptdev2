@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -48,9 +48,6 @@ enum
     SPELL_DETERMINED_GORE_H = 59444,
     SPELL_QUAKE             = 55101,
     SPELL_NUMBING_ROAR      = 55100,
-
-	// Achievment
-	ACHIEV_LESS_RABI         = 2040,
 };
 
 /*######
@@ -69,7 +66,6 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
     instance_gundrak* m_pInstance;
     bool m_bIsRegularMode;
 
-
     uint32 m_uiStabTimer;                                   // used for stab and gore
     uint32 m_uiQuakeTimer;                                  // used for quake and ground tremor
     uint32 m_uiRoarTimer;                                   // both roars on it
@@ -78,7 +74,7 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
 
     bool m_bMammothPhase;
 
-    void Reset()
+    void Reset() override
     {
         m_bMammothPhase = false;
 
@@ -89,7 +85,7 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
         m_uiPreviousTimer       = 10000;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
         DoCastSpellIfCan(m_creature, SPELL_MOJO_FRENZY);
@@ -98,9 +94,9 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
             m_pInstance->SetData(TYPE_MOORABI, IN_PROGRESS);
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_SLAY_1, m_creature); break;
             case 1: DoScriptText(SAY_SLAY_2, m_creature); break;
@@ -108,33 +104,15 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
         if (m_pInstance)
             m_pInstance->SetData(TYPE_MOORABI, DONE);
-
-        if (!m_bIsRegularMode)
-        {
-            if(!m_creature->HasAura(SPELL_TRANSFORMATION, EFFECT_INDEX_0))
-            {
-                AchievementEntry const *AchievLessRabi = GetAchievementStore()->LookupEntry(ACHIEV_LESS_RABI);
-                if (AchievLessRabi)
-                {
-                    Map* pMap = m_creature->GetMap();
-                    if (pMap && pMap->IsDungeon())
-                    {
-                        Map::PlayerList const &players = pMap->GetPlayers();
-                        for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-                            itr->getSource()->CompletedAchievement(AchievLessRabi);
-                    }
-                }
-            }
-        }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -143,6 +121,10 @@ struct MANGOS_DLL_DECL boss_moorabiAI : public ScriptedAI
         {
             DoScriptText(EMOTE_TRANSFORMED, m_creature);
             m_bMammothPhase = true;
+
+            // Set the achievement to failed
+            if (m_pInstance)
+                m_pInstance->SetLessRabiAchievementCriteria(false);
         }
 
         if (m_uiRoarTimer < uiDiff)
@@ -200,10 +182,10 @@ CreatureAI* GetAI_boss_moorabi(Creature* pCreature)
 
 void AddSC_boss_moorabi()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_moorabi";
-    newscript->GetAI = &GetAI_boss_moorabi;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_moorabi";
+    pNewScript->GetAI = &GetAI_boss_moorabi;
+    pNewScript->RegisterSelf();
 }

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,7 +17,7 @@
 /* ScriptData
 SDName: Azuremyst_Isle
 SD%Complete: 75
-SDComment: Quest support: 9283, 9528, 9537, 9554(special flight path, proper model for mount missing). Injured Draenei cosmetic only
+SDComment: Quest support: 9283, 9528, 9537, Injured Draenei cosmetic only
 SDCategory: Azuremyst Isle
 EndScriptData */
 
@@ -26,7 +26,6 @@ npc_draenei_survivor
 npc_engineer_spark_overgrind
 npc_injured_draenei
 npc_magwin
-npc_susurrus
 EndContentData */
 
 #include "precompiled.h"
@@ -64,7 +63,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
 
     bool m_bCanSayHelp;
 
-    void Reset()
+    void Reset() override
     {
         m_casterGuid.Clear();
 
@@ -82,13 +81,13 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
         m_creature->SetStandState(UNIT_STAND_STATE_SLEEP);
     }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
         if (m_bCanSayHelp && pWho->GetTypeId() == TYPEID_PLAYER && m_creature->IsFriendlyTo(pWho) &&
-            m_creature->IsWithinDistInMap(pWho, 25.0f))
+                m_creature->IsWithinDistInMap(pWho, 25.0f))
         {
-            //Random switch between 4 texts
-            switch(urand(0, 3))
+            // Random switch between 4 texts
+            switch (urand(0, 3))
             {
                 case 0: DoScriptText(SAY_HELP1, m_creature, pWho); break;
                 case 1: DoScriptText(SAY_HELP2, m_creature, pWho); break;
@@ -101,9 +100,9 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
         }
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
-        if (pSpell->SpellFamilyFlags2 & 0x080000000)
+        if (pSpell->IsFitToFamilyMask(UI64LIT(0x0000000000000000), 0x080000000))
         {
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
             m_creature->SetStandState(UNIT_STAND_STATE_STAND);
@@ -116,7 +115,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiSayThanksTimer)
         {
@@ -129,7 +128,7 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
                     if (pPlayer->GetTypeId() != TYPEID_PLAYER)
                         return;
 
-                    switch(urand(0, 3))
+                    switch (urand(0, 3))
                     {
                         case 0: DoScriptText(SAY_HEAL1, m_creature, pPlayer); break;
                         case 1: DoScriptText(SAY_HEAL2, m_creature, pPlayer); break;
@@ -145,7 +144,8 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
 
                 m_uiRunAwayTimer = 10000;
                 m_uiSayThanksTimer = 0;
-            }else m_uiSayThanksTimer -= uiDiff;
+            }
+            else m_uiSayThanksTimer -= uiDiff;
 
             return;
         }
@@ -164,7 +164,8 @@ struct MANGOS_DLL_DECL npc_draenei_survivorAI : public ScriptedAI
         {
             m_bCanSayHelp = true;
             m_uiSayHelpTimer = 20000;
-        }else m_uiSayHelpTimer -= uiDiff;
+        }
+        else m_uiSayHelpTimer -= uiDiff;
     }
 };
 
@@ -196,7 +197,6 @@ struct MANGOS_DLL_DECL npc_engineer_spark_overgrindAI : public ScriptedAI
 {
     npc_engineer_spark_overgrindAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_uiNormFaction = pCreature->getFaction();
         m_uiNpcFlags = pCreature->GetUInt32Value(UNIT_NPC_FLAGS);
         Reset();
 
@@ -205,16 +205,14 @@ struct MANGOS_DLL_DECL npc_engineer_spark_overgrindAI : public ScriptedAI
     }
 
     uint32 m_uiNpcFlags;
-    uint32 m_uiNormFaction;
 
     uint32 m_uiDynamiteTimer;
     uint32 m_uiEmoteTimer;
 
     bool m_bIsTreeEvent;
 
-    void Reset()
+    void Reset() override
     {
-        m_creature->setFaction(m_uiNormFaction);
         m_creature->SetUInt32Value(UNIT_NPC_FLAGS, m_uiNpcFlags);
 
         m_uiDynamiteTimer = 8000;
@@ -223,12 +221,12 @@ struct MANGOS_DLL_DECL npc_engineer_spark_overgrindAI : public ScriptedAI
         m_bIsTreeEvent = false;
     }
 
-    void Aggro(Unit *who)
+    void Aggro(Unit* who) override
     {
         DoScriptText(SAY_ATTACK, m_creature, who);
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 diff) override
     {
         if (!m_creature->isInCombat() && !m_bIsTreeEvent)
         {
@@ -242,7 +240,7 @@ struct MANGOS_DLL_DECL npc_engineer_spark_overgrindAI : public ScriptedAI
         }
         else if (m_bIsTreeEvent)
         {
-            //nothing here yet
+            // nothing here yet
             return;
         }
 
@@ -274,12 +272,12 @@ bool GossipHello_npc_engineer_spark_overgrind(Player* pPlayer, Creature* pCreatu
     return true;
 }
 
-bool GossipSelect_npc_engineer_spark_overgrind(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_engineer_spark_overgrind(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
     if (uiAction == GOSSIP_ACTION_INFO_DEF)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->setFaction(FACTION_HOSTILE);
+        pCreature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_COMBAT_STOP | TEMPFACTION_RESTORE_RESPAWN);
         pCreature->AI()->AttackStart(pPlayer);
     }
     return true;
@@ -293,28 +291,22 @@ struct MANGOS_DLL_DECL npc_injured_draeneiAI : public ScriptedAI
 {
     npc_injured_draeneiAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset();}
 
-    void Reset()
+    void Reset() override
     {
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
         m_creature->SetHealth(int(m_creature->GetMaxHealth()*.15));
-        switch(urand(0, 1))
+        switch (urand(0, 1))
         {
             case 0: m_creature->SetStandState(UNIT_STAND_STATE_SIT); break;
             case 1: m_creature->SetStandState(UNIT_STAND_STATE_SLEEP); break;
         }
     }
 
-    void MoveInLineOfSight(Unit *who)
-    {
-        return;                                             //ignore everyone around them (won't aggro anything)
-    }
+    void MoveInLineOfSight(Unit* /*pWho*/) override {}          // ignore everyone around them (won't aggro anything)
 
-    void UpdateAI(const uint32 diff)
-    {
-        return;
-    }
-
+    void UpdateAI(const uint32 /*uiDiff*/) override {}
 };
+
 CreatureAI* GetAI_npc_injured_draenei(Creature* pCreature)
 {
     return new npc_injured_draeneiAI(pCreature);
@@ -324,27 +316,30 @@ CreatureAI* GetAI_npc_injured_draenei(Creature* pCreature)
 ## npc_magwin
 ######*/
 
-#define SAY_START               -1000111
-#define SAY_AGGRO               -1000112
-#define SAY_PROGRESS            -1000113
-#define SAY_END1                -1000114
-#define SAY_END2                -1000115
-#define EMOTE_HUG               -1000116
+enum
+{
+    SAY_START               = -1000111,
+    SAY_AGGRO               = -1000112,
+    SAY_PROGRESS            = -1000113,
+    SAY_END1                = -1000114,
+    SAY_END2                = -1000115,
+    EMOTE_HUG               = -1000116,
 
-#define QUEST_A_CRY_FOR_HELP    9528
+    QUEST_A_CRY_FOR_HELP    = 9528
+};
 
 struct MANGOS_DLL_DECL npc_magwinAI : public npc_escortAI
 {
-    npc_magwinAI(Creature* pCreature) : npc_escortAI(pCreature) {Reset();}
+    npc_magwinAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
 
-    void WaypointReached(uint32 i)
+    void WaypointReached(uint32 uiPointId) override
     {
         Player* pPlayer = GetPlayerForEscort();
 
         if (!pPlayer)
             return;
 
-        switch(i)
+        switch (uiPointId)
         {
             case 0:
                 DoScriptText(SAY_START, m_creature, pPlayer);
@@ -363,19 +358,19 @@ struct MANGOS_DLL_DECL npc_magwinAI : public npc_escortAI
         }
     }
 
-    void Aggro(Unit* who)
+    void Aggro(Unit* pWho) override
     {
-        DoScriptText(SAY_AGGRO, m_creature, who);
+        DoScriptText(SAY_AGGRO, m_creature, pWho);
     }
 
-    void Reset() { }
+    void Reset() override { }
 };
 
 bool QuestAccept_npc_magwin(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_A_CRY_FOR_HELP)
     {
-        pCreature->setFaction(10);
+        pCreature->SetFactionTemporary(FACTION_ESCORT_A_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
 
         if (npc_magwinAI* pEscortAI = dynamic_cast<npc_magwinAI*>(pCreature->AI()))
             pEscortAI->Start(false, pPlayer, pQuest);
@@ -388,77 +383,30 @@ CreatureAI* GetAI_npc_magwinAI(Creature* pCreature)
     return new npc_magwinAI(pCreature);
 }
 
-/*######
-## npc_susurrus
-######*/
-
-enum
-{
-    ITEM_WHORL_OF_AIR       = 23843,
-    SPELL_BUFFETING_WINDS   = 32474,
-    TAXI_PATH_ID            = 506
-};
-
-#define GOSSIP_ITEM_READY   "I am ready."
-
-bool GossipHello_npc_susurrus(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    if (pPlayer->HasItemCount(ITEM_WHORL_OF_AIR,1,true))
-        pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_READY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-
-    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_susurrus(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF)
-    {
-        //spellId is correct, however it gives flight a somewhat funny effect
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pPlayer->CastSpell(pPlayer,SPELL_BUFFETING_WINDS,true);
-    }
-    return true;
-}
-
-/*######
-##
-######*/
-
 void AddSC_azuremyst_isle()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_draenei_survivor";
-    newscript->GetAI = &GetAI_npc_draenei_survivor;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_draenei_survivor";
+    pNewScript->GetAI = &GetAI_npc_draenei_survivor;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_engineer_spark_overgrind";
-    newscript->GetAI = &GetAI_npc_engineer_spark_overgrind;
-    newscript->pGossipHello =  &GossipHello_npc_engineer_spark_overgrind;
-    newscript->pGossipSelect = &GossipSelect_npc_engineer_spark_overgrind;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_engineer_spark_overgrind";
+    pNewScript->GetAI = &GetAI_npc_engineer_spark_overgrind;
+    pNewScript->pGossipHello =  &GossipHello_npc_engineer_spark_overgrind;
+    pNewScript->pGossipSelect = &GossipSelect_npc_engineer_spark_overgrind;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_injured_draenei";
-    newscript->GetAI = &GetAI_npc_injured_draenei;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_injured_draenei";
+    pNewScript->GetAI = &GetAI_npc_injured_draenei;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "npc_magwin";
-    newscript->GetAI = &GetAI_npc_magwinAI;
-    newscript->pQuestAcceptNPC = &QuestAccept_npc_magwin;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "npc_susurrus";
-    newscript->pGossipHello =  &GossipHello_npc_susurrus;
-    newscript->pGossipSelect = &GossipSelect_npc_susurrus;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_magwin";
+    pNewScript->GetAI = &GetAI_npc_magwinAI;
+    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_magwin;
+    pNewScript->RegisterSelf();
 }

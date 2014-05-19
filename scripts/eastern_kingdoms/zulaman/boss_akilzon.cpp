@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,8 @@
 
 /* ScriptData
 SDName: Boss_Akilzon
-SD%Complete: 50
-SDComment: TODO: Correct timers, correct details, remove hack for eagles
+SD%Complete: 80
+SDComment: Timers; Some details may need adjustments.
 SDCategory: Zul'Aman
 EndScriptData */
 
@@ -38,23 +38,17 @@ enum
     EMOTE_STORM             = -1568033,
 
     SPELL_STATIC_DISRUPTION = 43622,
-    SPELL_STATIC_VISUAL     = 45265,
-
     SPELL_CALL_LIGHTNING    = 43661,
     SPELL_GUST_OF_WIND      = 43621,
-
     SPELL_ELECTRICAL_STORM  = 43648,
     SPELL_STORMCLOUD_VISUAL = 45213,
-
     SPELL_BERSERK           = 45078,
+
+    // spell used by eagles
+    SPELL_EAGLE_SWOOP       = 44732,
 
     NPC_SOARING_EAGLE       = 24858,
     MAX_EAGLE_COUNT         = 6,
-
-    //SE_LOC_X_MAX            = 400,
-    //SE_LOC_X_MIN            = 335,
-    //SE_LOC_Y_MAX            = 1435,
-    //SE_LOC_Y_MIN            = 1370
 };
 
 struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
@@ -73,20 +67,18 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
     uint32 m_uiStormTimer;
     uint32 m_uiSummonEagleTimer;
     uint32 m_uiBerserkTimer;
-    bool m_bIsBerserk;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiStaticDisruptTimer = urand(7000, 14000);
-        m_uiCallLightTimer = urand(15000, 25000);
-        m_uiGustOfWindTimer = urand(20000, 30000);
-        m_uiStormTimer = 50000;
-        m_uiSummonEagleTimer = 65000;
-        m_uiBerserkTimer = MINUTE*8*IN_MILLISECONDS;
-        m_bIsBerserk = false;
+        m_uiStaticDisruptTimer  = urand(7000, 14000);
+        m_uiCallLightTimer      = urand(15000, 25000);
+        m_uiGustOfWindTimer     = urand(20000, 30000);
+        m_uiStormTimer          = 50000;
+        m_uiSummonEagleTimer    = 65000;
+        m_uiBerserkTimer        = 10 * MINUTE * IN_MILLISECONDS;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
@@ -94,12 +86,12 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
             m_pInstance->SetData(TYPE_AKILZON, IN_PROGRESS);
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
         DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -109,83 +101,102 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
         m_pInstance->SetData(TYPE_AKILZON, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
             m_pInstance->SetData(TYPE_AKILZON, FAIL);
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
         if (pSummoned->GetEntry() == NPC_SOARING_EAGLE)
+        {
+            pSummoned->SetLevitate(true);
             pSummoned->SetInCombatWithZone();
+        }
     }
 
     void DoSummonEagles()
     {
-        for(uint32 i = 0; i < MAX_EAGLE_COUNT; ++i)
+        for (uint32 i = 0; i < MAX_EAGLE_COUNT; ++i)
         {
             float fX, fY, fZ;
-            m_creature->GetRandomPoint(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ()+15.0f, 30.0f, fX, fY, fZ);
-
-            m_creature->SummonCreature(NPC_SOARING_EAGLE, fX, fY, fZ, m_creature->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000);
+            m_creature->GetRandomPoint(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ() + 15.0f, 30.0f, fX, fY, fZ);
+            m_creature->SummonCreature(NPC_SOARING_EAGLE, fX, fY, fZ, m_creature->GetOrientation(), TEMPSUMMON_DEAD_DESPAWN, 0);
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
         if (m_uiCallLightTimer < uiDiff)
         {
-            m_creature->CastSpell(m_creature->getVictim(), SPELL_CALL_LIGHTNING, false);
-            m_uiCallLightTimer = urand(15000, 25000);
-        }else m_uiCallLightTimer -= uiDiff;
+            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_CALL_LIGHTNING) == CAST_OK)
+                m_uiCallLightTimer = urand(15000, 25000);
+        }
+        else
+            m_uiCallLightTimer -= uiDiff;
 
         if (m_uiStaticDisruptTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                m_creature->CastSpell(pTarget, SPELL_STATIC_DISRUPTION, false);
-
-            m_uiStaticDisruptTimer = urand(7000, 14000);
-        }else m_uiStaticDisruptTimer -= uiDiff;
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_STATIC_DISRUPTION) == CAST_OK)
+                    m_uiStaticDisruptTimer = urand(7000, 14000);
+            }
+        }
+        else
+            m_uiStaticDisruptTimer -= uiDiff;
 
         if (m_uiStormTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
             {
-                if (m_creature->IsNonMeleeSpellCasted(false))
-                    m_creature->InterruptNonMeleeSpells(false);
-
-                DoScriptText(EMOTE_STORM, m_creature);
-                m_creature->CastSpell(pTarget, SPELL_ELECTRICAL_STORM, false);
+                if (DoCastSpellIfCan(pTarget, SPELL_ELECTRICAL_STORM) == CAST_OK)
+                {
+                    DoScriptText(EMOTE_STORM, m_creature);
+                    m_uiStormTimer = 55000;
+                }
             }
-
-            m_uiStormTimer = 60000;
-        }else m_uiStormTimer -= uiDiff;
+        }
+        else
+            m_uiStormTimer -= uiDiff;
 
         if (m_uiGustOfWindTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 1))
-                m_creature->CastSpell(pTarget, SPELL_GUST_OF_WIND, false);
-
-            m_uiGustOfWindTimer = urand(20000, 30000);
-        }else m_uiGustOfWindTimer -= uiDiff;
+            {
+                if (DoCastSpellIfCan(pTarget, SPELL_GUST_OF_WIND) == CAST_OK)
+                    m_uiGustOfWindTimer = urand(20000, 30000);
+            }
+        }
+        else
+            m_uiGustOfWindTimer -= uiDiff;
 
         if (m_uiSummonEagleTimer < uiDiff)
         {
-            DoScriptText(urand(0,1) ? SAY_SUMMON : SAY_SUMMON_ALT, m_creature);
+            DoScriptText(urand(0, 1) ? SAY_SUMMON : SAY_SUMMON_ALT, m_creature);
             DoSummonEagles();
             m_uiSummonEagleTimer = 60000;
-        }else m_uiSummonEagleTimer -= uiDiff;
+        }
+        else
+            m_uiSummonEagleTimer -= uiDiff;
 
-        if (!m_bIsBerserk && m_uiBerserkTimer < uiDiff)
+        if (m_uiBerserkTimer)
         {
-            DoScriptText(SAY_ENRAGE, m_creature);
-            m_creature->CastSpell(m_creature, SPELL_BERSERK, true);
-            m_bIsBerserk = true;
-        }else m_uiBerserkTimer -= uiDiff;
+            if (m_uiBerserkTimer < uiDiff)
+            {
+                if (DoCastSpellIfCan(m_creature, SPELL_BERSERK) == CAST_OK)
+                {
+                    DoScriptText(SAY_ENRAGE, m_creature);
+                    m_uiBerserkTimer = 0;
+                }
+            }
+            else
+                m_uiBerserkTimer -= uiDiff;
+        }
 
         DoMeleeAttackIfReady();
     }
@@ -195,12 +206,6 @@ CreatureAI* GetAI_boss_akilzon(Creature* pCreature)
 {
     return new boss_akilzonAI(pCreature);
 }
-
-enum
-{
-    SPELL_EAGLE_SWOOP       = 44732,
-    POINT_ID_RANDOM         = 1
-};
 
 struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
 {
@@ -215,18 +220,15 @@ struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
     uint32 m_uiEagleSwoopTimer;
     uint32 m_uiReturnTimer;
     bool m_bCanMoveToRandom;
-    bool m_bCanCast;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiEagleSwoopTimer = urand(2000, 6000);
-        m_uiReturnTimer = 800;
-        m_bCanMoveToRandom = false;
-        m_bCanCast = true;
-
+        m_uiEagleSwoopTimer = 0;
+        m_uiReturnTimer     = 800;
+        m_bCanMoveToRandom  = false;
     }
 
-    void AttackStart(Unit* pWho)
+    void AttackStart(Unit* pWho) override
     {
         if (!pWho)
             return;
@@ -239,12 +241,12 @@ struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
         }
     }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId)
+    void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
-        if (uiType != POINT_MOTION_TYPE)
+        if (uiType != POINT_MOTION_TYPE || !uiPointId)
             return;
 
-        m_bCanCast = true;
+        m_uiEagleSwoopTimer = urand(2000, 6000);
     }
 
     void DoMoveToRandom()
@@ -252,49 +254,48 @@ struct MANGOS_DLL_DECL mob_soaring_eagleAI : public ScriptedAI
         if (!m_pInstance)
             return;
 
-        if (Creature* pAzkil = m_pInstance->instance->GetCreature(m_pInstance->GetData64(NPC_AKILZON)))
+        if (Creature* pAzkil = m_pInstance->GetSingleCreatureFromStorage(NPC_AKILZON))
         {
             float fX, fY, fZ;
-            pAzkil->GetRandomPoint(pAzkil->GetPositionX(), pAzkil->GetPositionY(), pAzkil->GetPositionZ()+15.0f, 30.0f, fX, fY, fZ);
+            pAzkil->GetRandomPoint(pAzkil->GetPositionX(), pAzkil->GetPositionY(), pAzkil->GetPositionZ() + 15.0f, 30.0f, fX, fY, fZ);
 
-            if (m_creature->HasSplineFlag(SPLINEFLAG_WALKMODE))
-                m_creature->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
-            m_creature->GetMotionMaster()->MovePoint(POINT_ID_RANDOM, fX, fY, fZ);
-
-            m_bCanMoveToRandom = false;
+            m_creature->SetWalk(false);
+            m_creature->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        if (m_bCanMoveToRandom)
+        if (m_uiReturnTimer)
         {
-            if (m_uiReturnTimer < uiDiff)
+            if (m_uiReturnTimer <= uiDiff)
             {
                 DoMoveToRandom();
-                m_uiReturnTimer = 800;
-            }else m_uiReturnTimer -= uiDiff;
+                m_uiReturnTimer = 0;
+            }
+            else
+                m_uiReturnTimer -= uiDiff;
         }
 
-        if (!m_bCanCast)
-            return;
-
-        if (m_uiEagleSwoopTimer < uiDiff)
+        if (m_uiEagleSwoopTimer)
         {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM,0))
+            if (m_uiEagleSwoopTimer <= uiDiff)
             {
-                DoCastSpellIfCan(pTarget,SPELL_EAGLE_SWOOP);
-
-                m_bCanMoveToRandom = true;
-                m_bCanCast = false;
+                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                {
+                    if (DoCastSpellIfCan(pTarget, SPELL_EAGLE_SWOOP) == CAST_OK)
+                    {
+                        m_uiEagleSwoopTimer = 0;
+                        m_uiReturnTimer     = 1000;
+                    }
+                }
             }
-
-            m_uiEagleSwoopTimer = urand(4000, 6000);
-        }else m_uiEagleSwoopTimer -= uiDiff;
+            else
+                m_uiEagleSwoopTimer -= uiDiff;
+        }
     }
 };
 
@@ -305,15 +306,15 @@ CreatureAI* GetAI_mob_soaring_eagle(Creature* pCreature)
 
 void AddSC_boss_akilzon()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_akilzon";
-    newscript->GetAI = &GetAI_boss_akilzon;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_akilzon";
+    pNewScript->GetAI = &GetAI_boss_akilzon;
+    pNewScript->RegisterSelf();
 
-    newscript = new Script;
-    newscript->Name = "mob_soaring_eagle";
-    newscript->GetAI = &GetAI_mob_soaring_eagle;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "mob_soaring_eagle";
+    pNewScript->GetAI = &GetAI_mob_soaring_eagle;
+    pNewScript->RegisterSelf();
 }

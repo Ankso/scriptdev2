@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -27,9 +27,8 @@ EndScriptData */
 
 enum
 {
-    SAY_AGGRO                   = -1469007,
     SAY_XHEALTH                 = -1469008,             // at 5% hp
-    SAY_SHADOWFLAME             = -1469009,
+    SAY_AGGRO                   = -1469009,
     SAY_RAISE_SKELETONS         = -1469010,
     SAY_SLAY                    = -1469011,
     SAY_DEATH                   = -1469012,
@@ -51,7 +50,7 @@ enum
     SPELL_VEIL_OF_SHADOW        = 22687,                // old spell id 7068 -> wrong
     SPELL_CLEAVE                = 20691,
     SPELL_TAIL_LASH             = 23364,
-    SPELL_BONE_CONTRUST         = 23363,                //23362, 23361   Missing from DBC!
+    // SPELL_BONE_CONTRUST       = 23363,                // 23362, 23361   Missing from DBC!
 
     SPELL_MAGE                  = 23410,                // wild magic
     SPELL_WARRIOR               = 23397,                // beserk
@@ -83,19 +82,19 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
     bool m_bPhase3;
     bool m_bHasEndYell;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiShadowFlameTimer    = 12000;                            // These times are probably wrong
+        m_uiShadowFlameTimer    = 12000;                    // These times are probably wrong
         m_uiBellowingRoarTimer  = 30000;
         m_uiVeilOfShadowTimer   = 15000;
         m_uiCleaveTimer         = 7000;
         m_uiTailLashTimer       = 10000;
-        m_uiClassCallTimer      = 35000;                            // 35-40 seconds
+        m_uiClassCallTimer      = 35000;                    // 35-40 seconds
         m_bPhase3               = false;
         m_bHasEndYell           = false;
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* pVictim) override
     {
         if (urand(0, 4))
             return;
@@ -103,7 +102,7 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
         DoScriptText(SAY_SLAY, m_creature, pVictim);
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -111,7 +110,7 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
             m_pInstance->SetData(TYPE_NEFARIAN, DONE);
     }
 
-    void JustReachedHome()
+    void JustReachedHome() override
     {
         if (m_pInstance)
         {
@@ -130,21 +129,21 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
         }
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
         // Remove flying in case Nefarian aggroes before his combat point was reached
-        if (m_creature->HasSplineFlag(SPLINEFLAG_FLYING))
+        if (m_creature->IsLevitating())
         {
             m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, 0);
-            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
+            m_creature->SetLevitate(false);
         }
 
         DoCastSpellIfCan(m_creature, SPELL_SHADOWFLAME_INITIAL);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
@@ -153,11 +152,7 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
         if (m_uiShadowFlameTimer < uiDiff)
         {
             if (DoCastSpellIfCan(m_creature, SPELL_SHADOWFLAME) == CAST_OK)
-            {
-                // ToDo: check if he yells at every cast
-                DoScriptText(SAY_SHADOWFLAME, m_creature);
                 m_uiShadowFlameTimer = 12000;
-            }
         }
         else
             m_uiShadowFlameTimer -= uiDiff;
@@ -201,11 +196,11 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
         // ClassCall_Timer
         if (m_uiClassCallTimer < uiDiff)
         {
-            //Cast a random class call
-            //On official it is based on what classes are currently on the hostil list
-            //but we can't do that yet so just randomly call one
+            // Cast a random class call
+            // On official it is based on what classes are currently on the hostil list
+            // but we can't do that yet so just randomly call one
 
-            switch(urand(0, 8))
+            switch (urand(0, 8))
             {
                 case 0:
                     DoScriptText(SAY_MAGE, m_creature);
@@ -253,7 +248,8 @@ struct MANGOS_DLL_DECL boss_nefarianAI : public ScriptedAI
         // Phase3 begins when we are below X health
         if (!m_bPhase3 && m_creature->GetHealthPercent() < 20.0f)
         {
-            // todo revive all dead dragos as 14605
+            if (m_pInstance)
+                m_pInstance->SetData(TYPE_NEFARIAN, SPECIAL);
             m_bPhase3 = true;
             DoScriptText(SAY_RAISE_SKELETONS, m_creature);
         }

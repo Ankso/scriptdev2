@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -47,66 +47,37 @@ enum
     SPELL_SUMMON_VIPER        = 55060,
     SPELL_SUMMON_CONSTRICTOR  = 54969,
 
+    // Constrictor spells
     SPELL_GRIP_OF_SLADRAN     = 55093,
     SPELL_GRIP_OF_SLADRAN_H   = 61474,
+
+    // Snake Wrap spells - mechanics unk
+    SPELL_SNAKE_WRAP          = 55099,
+    SPELL_SNAKE_WRAP_H        = 61475,
+    SPELL_SNAKE_WRAP_SUMMON   = 55126,
+    SPELL_SNAKE_WRAP_SUMMON_H = 61476,
+    SPELL_SNAKE_WRAP_EFFECT   = 55128,
+    SPELL_SNAKE_WRAP_SNAKES   = 55127,              // kills all snakes
 
     NPC_SLADRAN_CONSTRICTOR   = 29713,
     NPC_SLADRAN_VIPER         = 29680,
     NPC_SNAKE_WRAP            = 29742,
-    NPC_SLADRAN_SUMMON_TARGET = 29682
 };
-
-/*######
-## mob_sladran_summon_target
-######*/
-struct MANGOS_DLL_DECL mob_sladran_summon_targetAI : public ScriptedAI
-{
-    mob_sladran_summon_targetAI(Creature* pCreature) : ScriptedAI(pCreature)
-    {
-        m_pInstance = (instance_gundrak*)pCreature->GetInstanceData();
-        Reset();
-    }
-
-    instance_gundrak* m_pInstance;
-
-    void Reset() {}
-    void MoveInLineOfSight(Unit* pWho) {}
-    void AttackStart(Unit* pWho) {}
-
-    void JustSummoned(Creature* pSummoned)
-    {
-        if (!m_pInstance)
-            return;
-
-        if (Creature* pSladran = m_creature->GetMap()->GetCreature(m_pInstance->GetData64(NPC_SLADRAN)))
-        {
-            float fPosX, fPosY, fPosZ;
-            pSladran->GetPosition(fPosX, fPosY, fPosZ);
-            pSummoned->GetMotionMaster()->MovePoint(0, fPosX, fPosY, fPosZ);
-        }
-    }
-
-    void UpdateAI(const uint32 diff) {}
-};
-
-CreatureAI* GetAI_mob_sladran_summon_target(Creature* pCreature)
-{
-    return new mob_sladran_summon_targetAI(pCreature);
-}
 
 /*######
 ## boss_sladran
 ######*/
+
 struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
 {
     boss_sladranAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_gundrak*)pCreature->GetInstanceData();
         m_bIsRegularMode = pCreature->GetMap()->IsRegularDifficulty();
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    instance_gundrak* m_pInstance;
     bool m_bIsRegularMode;
 
     uint32 m_uiSummonTimer;
@@ -114,7 +85,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
     uint32 m_uiPowerfulBiteTimer;
     uint32 m_uiVenomBoltTimer;
 
-    void Reset()
+    void Reset() override
     {
         m_uiSummonTimer       = m_bIsRegularMode ? 5000 : 3000;
         m_uiPoisonNovaTimer   = 22000;
@@ -122,7 +93,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
         m_uiVenomBoltTimer    = 15000;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit* /*pWho*/) override
     {
         DoScriptText(SAY_AGGRO, m_creature);
 
@@ -130,9 +101,9 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
             m_pInstance->SetData(TYPE_SLADRAN, IN_PROGRESS);
     }
 
-    void KilledUnit(Unit* pVictim)
+    void KilledUnit(Unit* /*pVictim*/) override
     {
-        switch(urand(0, 2))
+        switch (urand(0, 2))
         {
             case 0: DoScriptText(SAY_SLAY_1, m_creature); break;
             case 1: DoScriptText(SAY_SLAY_2, m_creature); break;
@@ -140,7 +111,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
         }
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         DoScriptText(SAY_DEATH, m_creature);
 
@@ -148,37 +119,43 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
             m_pInstance->SetData(TYPE_SLADRAN, DONE);
     }
 
-    Creature* SelectRandomCreatureOfEntryInRange(uint32 uiEntry, float fRange)
+    void JustReachedHome() override
     {
-        std::list<Creature* > lCreatureList;
-        GetCreatureListWithEntryInGrid(lCreatureList, m_creature, uiEntry, fRange);
-
-        if (lCreatureList.empty())
-            return NULL;
-
-        std::list<Creature* >::iterator iter = lCreatureList.begin();
-        advance(iter, urand(0, lCreatureList.size()-1));
-
-        return *iter;
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_SLADRAN, FAIL);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void JustSummoned(Creature* pSummoned) override
+    {
+        if (pSummoned->GetEntry() != NPC_SLADRAN_CONSTRICTOR && pSummoned->GetEntry() != NPC_SLADRAN_VIPER)
+            return;
+
+        pSummoned->SetWalk(false);
+        pSummoned->GetMotionMaster()->MovePoint(0, m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), false);
+    }
+
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
         if (m_uiPoisonNovaTimer < uiDiff)
         {
-            DoScriptText(EMOTE_NOVA, m_creature);
-            DoCastSpellIfCan(m_creature->getVictim(),m_bIsRegularMode ? SPELL_POISON_NOVA : SPELL_POISON_NOVA_H);
-            m_uiPoisonNovaTimer = 22000;
+            if (DoCastSpellIfCan(m_creature, m_bIsRegularMode ? SPELL_POISON_NOVA : SPELL_POISON_NOVA_H) == CAST_OK)
+            {
+                DoScriptText(EMOTE_NOVA, m_creature);
+                m_uiPoisonNovaTimer = 22000;
+            }
         }
         else
             m_uiPoisonNovaTimer -= uiDiff;
 
         if (m_uiSummonTimer < uiDiff)
         {
-            if (Creature* pSummonTarget = SelectRandomCreatureOfEntryInRange(NPC_SLADRAN_SUMMON_TARGET, 75.0f))
+            if (!m_pInstance)
+                return;
+
+            if (Creature* pSummonTarget = m_creature->GetMap()->GetCreature(m_pInstance->SelectRandomSladranTargetGuid()))
             {
                 if (urand(0, 3))
                 {
@@ -186,7 +163,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
                     if (!urand(0, 4))
                         DoScriptText(SAY_SUMMON_CONSTRICTOR, m_creature);
 
-                    pSummonTarget->CastSpell(pSummonTarget, SPELL_SUMMON_CONSTRICTOR, false);
+                    pSummonTarget->CastSpell(pSummonTarget, SPELL_SUMMON_CONSTRICTOR, false, NULL, NULL, m_creature->GetObjectGuid());
                 }
                 else
                 {
@@ -194,7 +171,7 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
                     if (!urand(0, 4))
                         DoScriptText(SAY_SUMMON_SNAKE, m_creature);
 
-                    pSummonTarget->CastSpell(pSummonTarget, SPELL_SUMMON_VIPER, false);
+                    pSummonTarget->CastSpell(pSummonTarget, SPELL_SUMMON_VIPER, false, NULL, NULL, m_creature->GetObjectGuid());
                 }
             }
 
@@ -205,8 +182,8 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
 
         if (m_uiPowerfulBiteTimer < uiDiff)
         {
-            DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_POWERFUL_BITE : SPELL_POWERFUL_BITE_H);
-            m_uiPowerfulBiteTimer = 10000;
+            if (DoCastSpellIfCan(m_creature->getVictim(), m_bIsRegularMode ? SPELL_POWERFUL_BITE : SPELL_POWERFUL_BITE_H) == CAST_OK)
+                m_uiPowerfulBiteTimer = 10000;
         }
         else
             m_uiPowerfulBiteTimer -= uiDiff;
@@ -214,9 +191,10 @@ struct MANGOS_DLL_DECL boss_sladranAI : public ScriptedAI
         if (m_uiVenomBoltTimer < uiDiff)
         {
             if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
-                DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_VENOM_BOLT : SPELL_VENOM_BOLT_H);
-
-            m_uiVenomBoltTimer = 15000;
+            {
+                if (DoCastSpellIfCan(pTarget, m_bIsRegularMode ? SPELL_VENOM_BOLT : SPELL_VENOM_BOLT_H) == CAST_OK)
+                    m_uiVenomBoltTimer = 15000;
+            }
         }
         else
             m_uiVenomBoltTimer -= uiDiff;
@@ -232,15 +210,10 @@ CreatureAI* GetAI_boss_sladran(Creature* pCreature)
 
 void AddSC_boss_sladran()
 {
-    Script* newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "boss_sladran";
-    newscript->GetAI = &GetAI_boss_sladran;
-    newscript->RegisterSelf();
-
-    newscript = new Script;
-    newscript->Name = "mob_sladran_summon_target";
-    newscript->GetAI = &GetAI_mob_sladran_summon_target;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "boss_sladran";
+    pNewScript->GetAI = &GetAI_boss_sladran;
+    pNewScript->RegisterSelf();
 }

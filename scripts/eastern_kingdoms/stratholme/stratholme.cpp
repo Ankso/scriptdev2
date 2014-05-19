@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -22,8 +22,9 @@ SDCategory: Stratholme
 EndScriptData */
 
 /* ContentData
+go_service_gate
 go_gauntlet_gate
-mob_freed_soul
+go_stratholme_postbox
 mob_restless_soul
 mobs_spectral_ghostly_citizen
 EndContentData */
@@ -35,7 +36,7 @@ EndContentData */
 ## go_service_gate
 ######*/
 
-bool GOUse_go_service_gate(Player* pPlayer, GameObject* pGo)
+bool GOUse_go_service_gate(Player* /*pPlayer*/, GameObject* pGo)
 {
     ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
 
@@ -64,9 +65,9 @@ bool GOUse_go_gauntlet_gate(Player* pPlayer, GameObject* pGo)
     if (pInstance->GetData(TYPE_BARON_RUN) != NOT_STARTED)
         return false;
 
-    if (Group *pGroup = pPlayer->GetGroup())
+    if (Group* pGroup = pPlayer->GetGroup())
     {
-        for(GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+        for (GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
         {
             Player* pGroupie = itr->getSource();
             if (!pGroupie)
@@ -87,37 +88,37 @@ bool GOUse_go_gauntlet_gate(Player* pPlayer, GameObject* pGo)
 }
 
 /*######
-## mob_freed_soul
+## go_stratholme_postbox
 ######*/
 
-// Possibly more of these quotes around.
-enum
+bool GOUse_go_stratholme_postbox(Player* pPlayer, GameObject* pGo)
 {
-    SAY_ZAPPED0     = -1329000,
-    SAY_ZAPPED1     = -1329001,
-    SAY_ZAPPED2     = -1329002,
-    SAY_ZAPPED3     = -1329003,
-};
+    ScriptedInstance* pInstance = (ScriptedInstance*)pGo->GetInstanceData();
 
-struct MANGOS_DLL_DECL mob_freed_soulAI : public ScriptedAI
-{
-    mob_freed_soulAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+    if (!pInstance)
+        return false;
 
-    void Reset()
+    if (pInstance->GetData(TYPE_POSTMASTER) == DONE)
+        return false;
+
+    // When the data is Special, spawn the postmaster
+    if (pInstance->GetData(TYPE_POSTMASTER) == SPECIAL)
     {
-        switch(urand(0, 3))
-        {
-            case 0: DoScriptText(SAY_ZAPPED0, m_creature); break;
-            case 1: DoScriptText(SAY_ZAPPED1, m_creature); break;
-            case 2: DoScriptText(SAY_ZAPPED2, m_creature); break;
-            case 3: DoScriptText(SAY_ZAPPED3, m_creature); break;
-        }
+        pPlayer->CastSpell(pPlayer, SPELL_SUMMON_POSTMASTER, true);
+        pInstance->SetData(TYPE_POSTMASTER, DONE);
     }
-};
+    else
+        pInstance->SetData(TYPE_POSTMASTER, IN_PROGRESS);
 
-CreatureAI* GetAI_mob_freed_soul(Creature* pCreature)
-{
-    return new mob_freed_soulAI(pCreature);
+    // Summon 3 postmen for each postbox
+    float fX, fY, fZ;
+    for (uint8 i = 0; i < 3; ++i)
+    {
+        pPlayer->GetRandomPoint(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ(), 3.0f, fX, fY, fZ);
+        pPlayer->SummonCreature(NPC_UNDEAD_POSTMAN, fX, fY, fZ, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 0);
+    }
+
+    return false;
 }
 
 /*######
@@ -126,6 +127,12 @@ CreatureAI* GetAI_mob_freed_soul(Creature* pCreature)
 
 enum
 {
+    // Possibly more of these quotes around.
+    SAY_ZAPPED0     = -1329000,
+    SAY_ZAPPED1     = -1329001,
+    SAY_ZAPPED2     = -1329002,
+    SAY_ZAPPED3     = -1329003,
+
     QUEST_RESTLESS_SOUL     = 5282,
 
     SPELL_EGAN_BLASTER      = 17368,
@@ -135,51 +142,63 @@ enum
     NPC_FREED_SOUL         = 11136,
 };
 
+// TODO - likely entirely not needed workaround
 struct MANGOS_DLL_DECL mob_restless_soulAI : public ScriptedAI
 {
     mob_restless_soulAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
-    uint64 m_uiTaggerGUID;
+    ObjectGuid m_taggerGuid;
     uint32 m_uiDieTimer;
     bool m_bIsTagged;
 
-    void Reset()
+    void Reset() override
     {
-        m_uiTaggerGUID = 0;
+        m_taggerGuid.Clear();
         m_uiDieTimer = 5000;
         m_bIsTagged = false;
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* pCaster, const SpellEntry* pSpell) override
     {
         if (pCaster->GetTypeId() == TYPEID_PLAYER)
         {
             if (!m_bIsTagged && pSpell->Id == SPELL_EGAN_BLASTER && ((Player*)pCaster)->GetQuestStatus(QUEST_RESTLESS_SOUL) == QUEST_STATUS_INCOMPLETE)
             {
                 m_bIsTagged = true;
-                m_uiTaggerGUID = pCaster->GetGUID();
+                m_taggerGuid = pCaster->GetObjectGuid();
             }
         }
     }
 
-    void JustSummoned(Creature* pSummoned)
+    void JustSummoned(Creature* pSummoned) override
     {
-        pSummoned->CastSpell(pSummoned, SPELL_SOUL_FREED, false);
+        if (pSummoned->GetEntry() == NPC_FREED_SOUL)
+        {
+            pSummoned->CastSpell(pSummoned, SPELL_SOUL_FREED, false);
+
+            switch (urand(0, 3))
+            {
+                case 0: DoScriptText(SAY_ZAPPED0, pSummoned); break;
+                case 1: DoScriptText(SAY_ZAPPED1, pSummoned); break;
+                case 2: DoScriptText(SAY_ZAPPED2, pSummoned); break;
+                case 3: DoScriptText(SAY_ZAPPED3, pSummoned); break;
+            }
+        }
     }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* /*Killer*/) override
     {
         if (m_bIsTagged)
             m_creature->SummonCreature(NPC_FREED_SOUL, 0.0f, 0.0f, 0.0f, 0.0f, TEMPSUMMON_TIMED_DESPAWN, 300000);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsTagged)
         {
             if (m_uiDieTimer < uiDiff)
             {
-                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_uiTaggerGUID))
+                if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_taggerGuid))
                     pPlayer->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
             }
             else
@@ -210,23 +229,23 @@ struct MANGOS_DLL_DECL mobs_spectral_ghostly_citizenAI : public ScriptedAI
     uint32 m_uiDieTimer;
     bool m_bIsTagged;
 
-    void Reset()
+    void Reset() override
     {
         m_uiDieTimer = 5000;
         m_bIsTagged = false;
     }
 
-    void SpellHit(Unit* pCaster, const SpellEntry* pSpell)
+    void SpellHit(Unit* /*pCaster*/, const SpellEntry* pSpell) override
     {
         if (!m_bIsTagged && pSpell->Id == SPELL_EGAN_BLASTER)
             m_bIsTagged = true;
     }
 
-    void JustDied(Unit* Killer)
+    void JustDied(Unit* /*Killer*/) override
     {
         if (m_bIsTagged)
         {
-            for(uint32 i = 0; i < 4; ++i)
+            for (uint32 i = 0; i < 4; ++i)
             {
                 float x, y, z;
                 m_creature->GetRandomPoint(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 20.0f, x, y, z);
@@ -239,7 +258,7 @@ struct MANGOS_DLL_DECL mobs_spectral_ghostly_citizenAI : public ScriptedAI
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bIsTagged)
         {
@@ -257,9 +276,9 @@ struct MANGOS_DLL_DECL mobs_spectral_ghostly_citizenAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 
-    void ReceiveEmote(Player* pPlayer, uint32 uiEmote)
+    void ReceiveEmote(Player* pPlayer, uint32 uiEmote) override
     {
-        switch(uiEmote)
+        switch (uiEmote)
         {
             case TEXTEMOTE_DANCE:
                 EnterEvadeMode();
@@ -303,8 +322,8 @@ void AddSC_stratholme()
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
-    pNewScript->Name = "mob_freed_soul";
-    pNewScript->GetAI = &GetAI_mob_freed_soul;
+    pNewScript->Name = "go_stratholme_postbox";
+    pNewScript->pGOUse = &GOUse_go_stratholme_postbox;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -26,6 +26,7 @@ npc_kalecgos
 EndContentData */
 
 #include "precompiled.h"
+#include "magisters_terrace.h"
 
 /*######
 ## npc_kalecgos
@@ -35,17 +36,12 @@ enum
 {
     SPELL_TRANSFORM_TO_KAEL     = 44670,
     SPELL_ORB_KILL_CREDIT       = 46307,
-    NPC_KAEL                    = 24848,                    //human form entry
-    POINT_ID_LAND               = 1
+    NPC_KALECGOS                = 24848,                    // human form entry
+
+    MAP_ID_MAGISTER             = 585,
 };
 
-const float afKaelLandPoint[] = {225.045f, -276.236f, -5.434f};
-
-#define GOSSIP_ITEM_KAEL_1      "Who are you?"
-#define GOSSIP_ITEM_KAEL_2      "What can we do to assist you?"
-#define GOSSIP_ITEM_KAEL_3      "What brings you to the Sunwell?"
-#define GOSSIP_ITEM_KAEL_4      "You're not alone here?"
-#define GOSSIP_ITEM_KAEL_5      "What would Kil'jaeden want with a mortal woman?"
+static const float afKaelLandPoint[4] = {200.36f, -270.77f, -8.73f, 0.01f};
 
 // This is friendly keal that appear after used Orb.
 // If we assume DB handle summon, summon appear somewhere outside the platform where Orb is
@@ -55,64 +51,48 @@ struct MANGOS_DLL_DECL npc_kalecgosAI : public ScriptedAI
 
     uint32 m_uiTransformTimer;
 
-    void Reset()
+    void Reset() override
     {
+        // Check the map id because the same creature entry is involved in other scripted event in other instance
+        if (m_creature->GetMapId() != MAP_ID_MAGISTER)
+            return;
+
         m_uiTransformTimer = 0;
 
-        // we must assume he appear as dragon somewhere outside the platform of orb, and then move directly to here
-        if (m_creature->GetEntry() != NPC_KAEL)
-            m_creature->GetMotionMaster()->MovePoint(POINT_ID_LAND, afKaelLandPoint[0], afKaelLandPoint[1], afKaelLandPoint[2]);
+        // Move the dragon to landing point
+        m_creature->GetMotionMaster()->MovePoint(1, afKaelLandPoint[0], afKaelLandPoint[1], afKaelLandPoint[2]);
     }
 
-    void MovementInform(uint32 uiType, uint32 uiPointId)
+    void MovementInform(uint32 uiType, uint32 uiPointId) override
     {
         if (uiType != POINT_MOTION_TYPE)
             return;
 
-        if (uiPointId == POINT_ID_LAND)
-            m_uiTransformTimer = MINUTE*IN_MILLISECONDS;
-    }
-
-    // some targeting issues with the spell, so use this workaround as temporary solution
-    void DoWorkaroundForQuestCredit()
-    {
-        Map* pMap = m_creature->GetMap();
-
-        if (!pMap || !pMap->IsRegularDifficulty())
-            return;
-
-        Map::PlayerList const &lList = pMap->GetPlayers();
-
-        if (lList.isEmpty())
-            return;
-
-        SpellEntry const* pSpell = GetSpellStore()->LookupEntry(SPELL_ORB_KILL_CREDIT);
-
-        for(Map::PlayerList::const_iterator i = lList.begin(); i != lList.end(); ++i)
+        if (uiPointId)
         {
-            if (Player* pPlayer = i->getSource())
-            {
-                if (pSpell && pSpell->EffectMiscValue[0])
-                    pPlayer->KilledMonsterCredit(uint32(pSpell->EffectMiscValue[0]));
-            }
+            m_creature->SetLevitate(false);
+            m_creature->SetFacingTo(afKaelLandPoint[3]);
+            m_uiTransformTimer = MINUTE * IN_MILLISECONDS;
         }
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_uiTransformTimer)
         {
-            if (m_uiTransformTimer < uiDiff)
+            if (m_uiTransformTimer <= uiDiff)
             {
-                m_creature->CastSpell(m_creature,SPELL_ORB_KILL_CREDIT,false);
-                DoWorkaroundForQuestCredit();
-
                 // Transform and update entry, now ready for quest/read gossip
-                m_creature->CastSpell(m_creature,SPELL_TRANSFORM_TO_KAEL,false);
-                m_creature->UpdateEntry(NPC_KAEL);
+                if (DoCastSpellIfCan(m_creature, SPELL_TRANSFORM_TO_KAEL) == CAST_OK)
+                {
+                    DoCastSpellIfCan(m_creature, SPELL_ORB_KILL_CREDIT, CAST_TRIGGERED);
+                    m_creature->UpdateEntry(NPC_KALECGOS);
 
-                m_uiTransformTimer = 0;
-            }else m_uiTransformTimer -= uiDiff;
+                    m_uiTransformTimer = 0;
+                }
+            }
+            else
+                m_uiTransformTimer -= uiDiff;
         }
     }
 };
@@ -122,53 +102,31 @@ CreatureAI* GetAI_npc_kalecgos(Creature* pCreature)
     return new npc_kalecgosAI(pCreature);
 }
 
-bool GossipHello_npc_kalecgos(Player* pPlayer, Creature* pCreature)
+bool ProcessEventId_event_go_scrying_orb(uint32 /*uiEventId*/, Object* pSource, Object* /*pTarget*/, bool bIsStart)
 {
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-    pPlayer->SEND_GOSSIP_MENU(12498, pCreature->GetObjectGuid());
-
-    return true;
-}
-
-bool GossipSelect_npc_kalecgos(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    switch(uiAction)
+    if (bIsStart && pSource->GetTypeId() == TYPEID_PLAYER)
     {
-        case GOSSIP_ACTION_INFO_DEF:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-            pPlayer->SEND_GOSSIP_MENU(12500, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+1:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
-            pPlayer->SEND_GOSSIP_MENU(12502, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-            pPlayer->SEND_GOSSIP_MENU(12606, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+3:
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_KAEL_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 4);
-            pPlayer->SEND_GOSSIP_MENU(12607, pCreature->GetObjectGuid());
-            break;
-        case GOSSIP_ACTION_INFO_DEF+4:
-            pPlayer->SEND_GOSSIP_MENU(12608, pCreature->GetObjectGuid());
-            break;
+        if (instance_magisters_terrace* pInstance = (instance_magisters_terrace*)((Player*)pSource)->GetInstanceData())
+        {
+            // Check if the Dragon is already spawned and don't allow it to spawn it multiple times
+            if (pInstance->GetSingleCreatureFromStorage(NPC_KALECGOS_DRAGON, true))
+                return true;
+        }
     }
-
-    return true;
+    return false;
 }
 
 void AddSC_magisters_terrace()
 {
-    Script *newscript;
+    Script* pNewScript;
 
-    newscript = new Script;
-    newscript->Name = "npc_kalecgos";
-    newscript->GetAI = &GetAI_npc_kalecgos;
-    newscript->pGossipHello = &GossipHello_npc_kalecgos;
-    newscript->pGossipSelect = &GossipSelect_npc_kalecgos;
-    newscript->RegisterSelf();
+    pNewScript = new Script;
+    pNewScript->Name = "npc_kalecgos";
+    pNewScript->GetAI = &GetAI_npc_kalecgos;
+    pNewScript->RegisterSelf();
+
+    pNewScript = new Script;
+    pNewScript->Name = "event_go_scrying_orb";
+    pNewScript->pProcessEventId = &ProcessEventId_event_go_scrying_orb;
+    pNewScript->RegisterSelf();
 }

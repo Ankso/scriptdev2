@@ -1,4 +1,4 @@
-/* Copyright (C) 2010 /dev/rsa for ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -15,308 +15,208 @@
  */
 
 /* ScriptData
-SDName: boss_ragefire
-SD%Complete: 90%
-SDComment: by notagain && /dev/rsa
-SDCategory: ruby_sanctum
+SDName: boss_saviana
+SD%Complete: 100
+SDComment:
+SDCategory: Ruby Sanctum
 EndScriptData */
 
 #include "precompiled.h"
 #include "ruby_sanctum.h"
 
-enum BossSpells
+enum
 {
-    SPELL_ENRAGE                     = 78722, //soft enrage + fire nova
-    SPELL_FLAME_BREATH               = 74404,
-    SPELL_BEACON                     = 74453, //mark for conflag, in enter to fly phase, 2 in 10, 5 in 25
-    SPELL_CONFLAGATION               = 74452, // after fly up
-    SPELL_CONFLAGATION_1             = 74455, // Triggered?
-    SPELL_CONFLAGATION_2             = 74456, // Aura
+    SAY_AGGRO                   = -1724015,
+    SAY_SLAY_1                  = -1724016,
+    SAY_SLAY_2                  = -1724017,
+    SAY_SPECIAL                 = -1724018,
+    SOUND_DEATH                 = 17531,                    // On death it has only a screaming sound
+    EMOTE_ENRAGE                = -1000003,
 
-    MAX_BEACON_TARGETS               = 5,
+    SPELL_ENRAGE                = 78722,
+    SPELL_FLAME_BREATH          = 74403,
+    SPELL_CONFLAGRATION         = 74452,                    // dummy targeting spell - effect handled in core
+
+    PHASE_GROUND                = 1,
+    PHASE_AIR                   = 2,
+    PHASE_TRANSITION            = 3,
+
+    POINT_AIR                   = 1,
+    POINT_GROUND                = 2
 };
 
-static Locations SpawnLoc[]=
-{
-    {3151.3898f, 636.8519f, 78.7396f},    // 0 Saviana start point
-    {3149.635f, 668.9644f, 90.507f},    // 1 Saviana fly phase, o=4,69
-};
+static const float aAirPositions[3] = {3155.51f, 683.844f, 90.50f};
 
-struct MANGOS_DLL_DECL boss_ragefireAI : public BSWScriptedAI
+struct MANGOS_DLL_DECL boss_savianaAI : public ScriptedAI
 {
-    boss_ragefireAI(Creature* pCreature) : BSWScriptedAI(pCreature)
+    boss_savianaAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        m_pInstance = (instance_ruby_sanctum*)pCreature->GetInstanceData();
         Reset();
     }
 
-    ScriptedInstance *pInstance;
-    uint8 nextPoint;
-    Unit* marked[MAX_BEACON_TARGETS];
-    bool MovementStarted;
-    bool conflagated;
+    instance_ruby_sanctum* m_pInstance;
 
-    void Reset()
+    uint8 m_uiPhase;
+    uint32 m_uiPhaseSwitchTimer;
+    uint32 m_uiFlameBreathTimer;
+    uint32 m_uiEnrageTimer;
+
+    void Reset() override
     {
-        if(!pInstance)
+        m_uiPhase                   = PHASE_GROUND;
+        m_uiPhaseSwitchTimer        = 28000;
+        m_uiEnrageTimer             = urand(10000, 15000);
+        m_uiFlameBreathTimer        = 10000;
+    }
+
+    void Aggro(Unit* /*pWho*/) override
+    {
+        DoScriptText(SAY_AGGRO, m_creature);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_SAVIANA, IN_PROGRESS);
+    }
+
+    void KilledUnit(Unit* pVictim) override
+    {
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
             return;
-        m_creature->SetRespawnDelay(7*DAY);
-        if (m_creature->isAlive()) pInstance->SetData(TYPE_RAGEFIRE, NOT_STARTED);
-        resetTimers();
-        setStage(0);
-        nextPoint = 0;
-        conflagated = false;
-        for (uint8 i = 0; i < MAX_BEACON_TARGETS; ++i)
-            marked[i] = NULL;
+
+        if (urand(0, 1))
+            DoScriptText(urand(0, 1) ? SAY_SLAY_1 : SAY_SLAY_2, m_creature);
     }
 
-    void MovementInform(uint32 type, uint32 id)
+    void JustDied(Unit* /*pKiller*/) override
     {
-        if (!pInstance) return;
+        DoPlaySoundToSet(m_creature, SOUND_DEATH);
 
-        if (type != POINT_MOTION_TYPE || !MovementStarted) return;
-
-        if (id == nextPoint) {
-                m_creature->GetMotionMaster()->MovementExpired();
-                MovementStarted = false;
-                }
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_SAVIANA, DONE);
     }
 
-    void SetFly(bool command = false)
+    void JustReachedHome() override
     {
-        if (command)
+        SetCombatMovement(true);
+        m_creature->SetLevitate(false);
+        m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, 0);
+
+        if (m_pInstance)
+            m_pInstance->SetData(TYPE_SAVIANA, FAIL);
+    }
+
+    void MovementInform(uint32 uiMoveType, uint32 uiPointId) override
+    {
+        if (uiMoveType != POINT_MOTION_TYPE)
+            return;
+
+        switch (uiPointId)
         {
-            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 50331648);
-            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 50331648);
-            m_creature->HandleEmoteCommand(EMOTE_ONESHOT_FLY_SIT_GROUND_UP);
-            m_creature->AddSplineFlag(SPLINEFLAG_FLYING);
-        }
-        else
-        {
-            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_0, 0);
-            m_creature->SetUInt32Value(UNIT_FIELD_BYTES_1, 0);
-            m_creature->RemoveSplineFlag(SPLINEFLAG_FLYING);
-        }
-    }
-
-    void StartMovement(uint32 id)
-    {
-        nextPoint = id;
-        m_creature->GetMotionMaster()->Clear();
-        m_creature->GetMotionMaster()->MovePoint(id, SpawnLoc[id].x, SpawnLoc[id].y, SpawnLoc[id].z);
-        MovementStarted = true;
-    }
-
-    void KilledUnit(Unit* pVictim)
-    {
-    switch (urand(0,1)) {
-        case 0:
-               DoScriptText(-1666401,m_creature,pVictim);
-               break;
-        case 1:
-               DoScriptText(-1666402,m_creature,pVictim);
-               break;
-        };
-    }
-
-    void JustReachedHome()
-    {
-        if (pInstance)
-            pInstance->SetData(TYPE_RAGEFIRE, FAIL);
-    }
-
-    void Aggro(Unit *who) 
-    {
-        if(!pInstance) return;
-
-        pInstance->SetData(TYPE_RAGEFIRE, IN_PROGRESS);
-        m_creature->SetInCombatWithZone();
-        DoScriptText(-1666400,m_creature);
-    }
-
-    void JustDied(Unit *killer)
-    {
-        if(!pInstance) return;
-
-        pInstance->SetData(TYPE_RAGEFIRE, DONE);
-        DoScriptText(-1666403,m_creature);
-    }
-
-    void doBeacon(bool command = false)
-    {
-        if (command)
-        {
-             for(uint8 i = 0; i < getSpellData(SPELL_BEACON); ++i)
-             {
-                if (Unit* pTarget = doSelectRandomPlayer(SPELL_BEACON, false, 100.0f))
+            case POINT_AIR:
+                if (DoCastSpellIfCan(m_creature, SPELL_CONFLAGRATION) == CAST_OK)
                 {
-                    if (doCast(SPELL_BEACON, pTarget) == CAST_OK)
-                        marked[i] = pTarget;
-                    else marked[i] = NULL;
+                    DoScriptText(SAY_SPECIAL, m_creature);
+                    m_uiPhaseSwitchTimer = 6000;
+                    m_uiPhase = PHASE_AIR;
                 }
-             }
-             conflagated = true;
-        }
-        else
-        {
-             m_creature->InterruptNonMeleeSpells(true);
-             for(uint8 i = 0; i < getSpellData(SPELL_BEACON); ++i)
-             {
-                if (marked[i])
-                    doCast(SPELL_CONFLAGATION_2, marked[i]);
-                marked[i] = NULL;
-             }
-             doCast(SPELL_CONFLAGATION_1);
-             conflagated = false;
+
+                break;
+            case POINT_GROUND:
+                m_uiPhase = PHASE_GROUND;
+                m_uiPhaseSwitchTimer = 38000;
+
+                SetCombatMovement(true);
+                m_creature->SetLevitate(false);
+                m_creature->SetByteFlag(UNIT_FIELD_BYTES_1, 3, 0);
+
+                if (m_creature->getVictim())
+                    m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
+
+                break;
         }
     }
 
-    void UpdateAI(const uint32 diff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
-        switch (getStage())
+        switch (m_uiPhase)
         {
-            case 0: //GROUND
-                 timedCast(SPELL_FLAME_BREATH, diff);
-                 timedCast(SPELL_ENRAGE, diff);
-                 if ( m_creature->GetHealthPercent() <= 80.0f) setStage(1);
-                 break;
+            case PHASE_GROUND:
 
-            case 1: //Air phase start
-                 SetCombatMovement(false);
-                 m_creature->InterruptNonMeleeSpells(true);
-                 SetFly(true);
-                 doBeacon(true);
-                 StartMovement(1);
-                 setStage(2);
-                 break;
+                if (m_uiFlameBreathTimer < uiDiff)
+                {
+                    if (DoCastSpellIfCan(m_creature, SPELL_FLAME_BREATH) == CAST_OK)
+                        m_uiFlameBreathTimer = urand(20000, 25000);
+                }
+                else
+                    m_uiFlameBreathTimer -= uiDiff;
 
-            case 2: // Wait for movement
-                 if (MovementStarted) return;
-                 doCast(SPELL_CONFLAGATION);
-                 DoScriptText(-1666404,m_creature);
-                 setStage(3);
-                 break;
+                if (m_uiEnrageTimer < uiDiff)
+                {
+                    if (DoCastSpellIfCan(m_creature, SPELL_ENRAGE) == CAST_OK)
+                    {
+                        DoScriptText(EMOTE_ENRAGE, m_creature);
+                        m_uiEnrageTimer = urand(20000, 25000);
+                    }
+                }
+                else
+                    m_uiEnrageTimer -= uiDiff;
 
-            case 3: // Wait for cast finish
-                 if (!m_creature->IsNonMeleeSpellCasted(false))
-                 {
-                     doBeacon(false);
-                     setStage(4);
-                 };
-                 break;
+                if (m_uiPhaseSwitchTimer < uiDiff)
+                {
+                    m_uiPhaseSwitchTimer = 0;
+                    m_uiPhase = PHASE_TRANSITION;
 
-            case 4: // Air phase
-                 timedCast(SPELL_FLAME_BREATH, diff);
-                 if (timedQuery(SPELL_BEACON, diff))
-                     {
-                         doBeacon(true);
-                         doCast(SPELL_CONFLAGATION);
-                     };
-                 if (conflagated && timedQuery(SPELL_CONFLAGATION_1, diff))
-                     {
-                         doBeacon(false);
-                     };
-                 if ( m_creature->GetHealthPercent() <= 60.0f) setStage(5);
-                 break;
+                    SetCombatMovement(false);
+                    m_creature->SetByteValue(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_UNK_2);
+                    m_creature->SetLevitate(true);
 
-            case 5: //Air phase end
-                 StartMovement(0);
-                 setStage(6);
-                 break;
+                    m_creature->GetMotionMaster()->Clear();
+                    m_creature->GetMotionMaster()->MovePoint(POINT_AIR, aAirPositions[0], aAirPositions[1], aAirPositions[2]);
+                }
+                else
+                    m_uiPhaseSwitchTimer -= uiDiff;
 
-            case 6: // Wait for movement
-                 if (MovementStarted) return;
-                 SetFly(false);
-                 SetCombatMovement(true);
-                 m_creature->GetMotionMaster()->Clear();
-                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
-                 setStage(7);
-                 break;
+                DoMeleeAttackIfReady();
 
-            case 7: //GROUND
-                 timedCast(SPELL_FLAME_BREATH, diff);
-                 timedCast(SPELL_ENRAGE, diff);
-                 if ( m_creature->GetHealthPercent() <= 40.0f) setStage(8);
-                 break;
+                break;
+            case PHASE_AIR:
+                if (m_uiPhaseSwitchTimer)
+                {
+                    if (m_uiPhaseSwitchTimer <= uiDiff)
+                    {
+                        m_uiPhase = PHASE_TRANSITION;
+                        m_uiPhaseSwitchTimer = 0;
 
-            case 8: //Air phase start
-                 SetCombatMovement(false);
-                 m_creature->InterruptNonMeleeSpells(true);
-                 SetFly(true);
-                 doBeacon(true);
-                 StartMovement(1);
-                 setStage(9);
-                 break;
-
-            case 9: // Wait for movement
-                 if (MovementStarted) return;
-                 doCast(SPELL_CONFLAGATION);
-                 DoScriptText(-1666404,m_creature);
-                 setStage(10);
-                 break;
-
-            case 10: // Wait for cast finish
-                 if (!m_creature->IsNonMeleeSpellCasted(false))
-                 {
-                     doBeacon(false);
-                     setStage(11);
-                 };
-                 break;
-
-            case 11: // Air phase
-                 timedCast(SPELL_FLAME_BREATH, diff);
-                 if (timedQuery(SPELL_BEACON, diff))
-                     {
-                         doBeacon(true);
-                         doCast(SPELL_CONFLAGATION);
-                     };
-                 if (conflagated && timedQuery(SPELL_CONFLAGATION_1, diff))
-                     {
-                         doBeacon(false);
-                     };
-                 if ( m_creature->GetHealthPercent() <= 20.0f) setStage(12);
-                 break;
-
-            case 12: //Air phase end
-                 StartMovement(0);
-                 setStage(13);
-                 break;
-
-            case 13: // Wait for movement
-                 if (MovementStarted) return;
-                 SetFly(false);
-                 SetCombatMovement(true);
-                 m_creature->GetMotionMaster()->Clear();
-                 m_creature->GetMotionMaster()->MoveChase(m_creature->getVictim());
-                 setStage(14);
-                 break;
-
-            case 14: //GROUND
-                 timedCast(SPELL_FLAME_BREATH, diff);
-                 timedCast(SPELL_ENRAGE, diff*2);
-                 break;
-
-            default:
+                        float fX, fY, fZ;
+                        m_creature->GetRespawnCoord(fX, fY, fZ);
+                        m_creature->GetMotionMaster()->Clear();
+                        m_creature->GetMotionMaster()->MovePoint(POINT_GROUND, fX, fY, fZ);
+                    }
+                    else
+                        m_uiPhaseSwitchTimer -= uiDiff;
+                }
+                break;
+            case PHASE_TRANSITION:
+                // nothing here
                 break;
         }
-
-        DoMeleeAttackIfReady();
     }
 };
 
-CreatureAI* GetAI_boss_ragefire(Creature* pCreature)
+CreatureAI* GetAI_boss_saviana(Creature* pCreature)
 {
-    return new boss_ragefireAI(pCreature);
+    return new boss_savianaAI(pCreature);
 }
 
-void AddSC_boss_ragefire()
+void AddSC_boss_saviana()
 {
-    Script *newscript;
-    newscript = new Script;
-    newscript->Name = "boss_ragefire";
-    newscript->GetAI = &GetAI_boss_ragefire;
-    newscript->RegisterSelf();
+    Script* pNewScript;
+
+    pNewScript = new Script;
+    pNewScript->Name = "boss_saviana";
+    pNewScript->GetAI = &GetAI_boss_saviana;
+    pNewScript->RegisterSelf();
 }

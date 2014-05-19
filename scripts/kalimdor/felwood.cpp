@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -17,13 +17,12 @@
 /* ScriptData
 SDName: Felwood
 SD%Complete: 95
-SDComment: Quest support: related to 4101/4102 (To obtain Cenarion Beacon), 4506, 7603, 7603 (Summon Pollo Grande)
+SDComment: Quest support: 4506, 7603, 7603 (Summon Pollo Grande)
 SDCategory: Felwood
 EndScriptData */
 
 /* ContentData
 npc_kitten
-npcs_riverbreeze_and_silversky
 npc_niby_the_almighty
 npc_kroshius
 EndContentData */
@@ -62,7 +61,7 @@ struct MANGOS_DLL_DECL npc_kittenAI : public FollowerAI
 
             pCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
-            //find a decent way to move to center of moonwell
+            // find a decent way to move to center of moonwell
         }
 
         m_uiMoonwellCooldown = 7500;
@@ -71,11 +70,11 @@ struct MANGOS_DLL_DECL npc_kittenAI : public FollowerAI
 
     uint32 m_uiMoonwellCooldown;
 
-    void Reset() { }
+    void Reset() override { }
 
-    void MoveInLineOfSight(Unit* pWho)
+    void MoveInLineOfSight(Unit* pWho) override
     {
-        //should not have npcflag by default, so set when expected
+        // should not have npcflag by default, so set when expected
         if (!m_creature->getVictim() && !m_creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP) && HasFollowState(STATE_FOLLOW_INPROGRESS) && pWho->GetEntry() == NPC_WINNA)
         {
             if (m_creature->IsWithinDistInMap(pWho, INTERACTION_DISTANCE))
@@ -83,7 +82,7 @@ struct MANGOS_DLL_DECL npc_kittenAI : public FollowerAI
         }
     }
 
-    void UpdateFollowerAI(const uint32 uiDiff)
+    void UpdateFollowerAI(const uint32 uiDiff) override
     {
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
         {
@@ -110,9 +109,9 @@ CreatureAI* GetAI_npc_kitten(Creature* pCreature)
     return new npc_kittenAI(pCreature);
 }
 
-bool EffectDummyCreature_npc_kitten(Unit* pCaster, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget)
+bool EffectDummyCreature_npc_kitten(Unit* /*pCaster*/, uint32 uiSpellId, SpellEffectIndex uiEffIndex, Creature* pCreatureTarget, ObjectGuid /*originalCasterGuid*/)
 {
-    //always check spellid and effectindex
+    // always check spellid and effectindex
     if (uiSpellId == SPELL_CORRUPT_SABER_VISUAL && uiEffIndex == EFFECT_INDEX_0)
     {
         // Not nice way, however using UpdateEntry will not be correct.
@@ -121,13 +120,13 @@ bool EffectDummyCreature_npc_kitten(Unit* pCaster, uint32 uiSpellId, SpellEffect
             pCreatureTarget->SetEntry(pTemp->Entry);
             pCreatureTarget->SetDisplayId(Creature::ChooseDisplayId(pTemp));
             pCreatureTarget->SetName(pTemp->Name);
-            pCreatureTarget->SetFloatValue(OBJECT_FIELD_SCALE_X, pTemp->scale);
+            pCreatureTarget->SetFloatValue(OBJECT_FIELD_SCALE_X, pTemp->Scale);
         }
 
         if (Unit* pOwner = pCreatureTarget->GetOwner())
             DoScriptText(EMOTE_SAB_FOLLOW, pCreatureTarget, pOwner);
 
-        //always return true when we are handling this spell and effect
+        // always return true when we are handling this spell and effect
         return true;
     }
     return false;
@@ -138,16 +137,16 @@ bool GossipHello_npc_corrupt_saber(Player* pPlayer, Creature* pCreature)
     if (pPlayer->GetQuestStatus(QUEST_CORRUPT_SABER) == QUEST_STATUS_INCOMPLETE)
     {
         if (GetClosestCreatureWithEntry(pCreature, NPC_WINNA, INTERACTION_DISTANCE))
-            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_RELEASE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
+            pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_RELEASE, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     }
 
     pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
     return true;
 }
 
-bool GossipSelect_npc_corrupt_saber(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_corrupt_saber(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 1)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
 
@@ -157,65 +156,6 @@ bool GossipSelect_npc_corrupt_saber(Player* pPlayer, Creature* pCreature, uint32
         pPlayer->AreaExploredOrEventHappens(QUEST_CORRUPT_SABER);
     }
 
-    return true;
-}
-
-/*######
-## npcs_riverbreeze_and_silversky
-######*/
-
-enum
-{
-    QUEST_CLEANSING_FELWOOD_A = 4101,
-    QUEST_CLEANSING_FELWOOD_H = 4102,
-
-    NPC_ARATHANDIS_SILVERSKY  = 9528,
-    NPC_MAYBESS_RIVERBREEZE   = 9529,
-
-    SPELL_CENARION_BEACON     = 15120
-};
-
-#define GOSSIP_ITEM_BEACON  "Please make me a Cenarion Beacon"
-
-bool GossipHello_npcs_riverbreeze_and_silversky(Player* pPlayer, Creature* pCreature)
-{
-    if (pCreature->isQuestGiver())
-        pPlayer->PrepareQuestMenu(pCreature->GetObjectGuid());
-
-    switch (pCreature->GetEntry())
-    {
-        case NPC_ARATHANDIS_SILVERSKY:
-            if (pPlayer->GetQuestRewardStatus(QUEST_CLEANSING_FELWOOD_A))
-            {
-                pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_BEACON, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-                pPlayer->SEND_GOSSIP_MENU(2848, pCreature->GetObjectGuid());
-            }else if (pPlayer->GetTeam() == HORDE)
-                pPlayer->SEND_GOSSIP_MENU(2845, pCreature->GetObjectGuid());
-            else
-                pPlayer->SEND_GOSSIP_MENU(2844, pCreature->GetObjectGuid());
-            break;
-        case NPC_MAYBESS_RIVERBREEZE:
-            if (pPlayer->GetQuestRewardStatus(QUEST_CLEANSING_FELWOOD_H))
-            {
-                pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_BEACON, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-                pPlayer->SEND_GOSSIP_MENU(2849, pCreature->GetObjectGuid());
-            }else if (pPlayer->GetTeam() == ALLIANCE)
-                pPlayer->SEND_GOSSIP_MENU(2843, pCreature->GetObjectGuid());
-            else
-                pPlayer->SEND_GOSSIP_MENU(2842, pCreature->GetObjectGuid());
-            break;
-    }
-
-    return true;
-}
-
-bool GossipSelect_npcs_riverbreeze_and_silversky(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-        pCreature->CastSpell(pPlayer, SPELL_CENARION_BEACON, false);
-    }
     return true;
 }
 
@@ -240,14 +180,14 @@ enum
 
 struct MANGOS_DLL_DECL npc_niby_the_almightyAI : public ScriptedAI
 {
-    npc_niby_the_almightyAI(Creature* pCreature) : ScriptedAI(pCreature){ Reset(); }
+    npc_niby_the_almightyAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
 
     uint32 m_uiSummonTimer;
     uint8  m_uiSpeech;
 
     bool m_bEventStarted;
 
-    void Reset()
+    void Reset() override
     {
         m_uiSummonTimer = 500;
         m_uiSpeech = 0;
@@ -262,7 +202,7 @@ struct MANGOS_DLL_DECL npc_niby_the_almightyAI : public ScriptedAI
         m_creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_QUESTGIVER);
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (m_bEventStarted)
         {
@@ -294,7 +234,7 @@ struct MANGOS_DLL_DECL npc_niby_the_almightyAI : public ScriptedAI
                         }
                         else
                         {
-                            //Skip Speech 5
+                            // Skip Speech 5
                             m_uiSummonTimer = 40000;
                             ++m_uiSpeech;
                         }
@@ -322,7 +262,7 @@ CreatureAI* GetAI_npc_niby_the_almighty(Creature* pCreature)
     return new npc_niby_the_almightyAI(pCreature);
 }
 
-bool QuestRewarded_npc_niby_the_almighty(Player* pPlayer, Creature* pCreature, Quest const* pQuest)
+bool QuestRewarded_npc_niby_the_almighty(Player* /*pPlayer*/, Creature* pCreature, Quest const* pQuest)
 {
     if (pQuest->GetQuestId() == QUEST_KROSHIUS)
     {
@@ -361,19 +301,13 @@ struct MANGOS_DLL_DECL npc_kroshiusAI : public ScriptedAI
 
     uint8 m_uiPhase;
 
-    void Reset()
+    void Reset() override
     {
         m_uiKnockBackTimer = urand(5000, 8000);
         m_playerGuid.Clear();
 
         if (!m_uiPhase)
-        {
-            m_creature->setFaction(m_creature->GetCreatureInfo()->faction_A);
-            // TODO: Workaround? till better solution
-            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-            m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
             m_creature->SetStandState(UNIT_STAND_STATE_DEAD);
-        }
     }
 
     void DoRevive(Player* pSource)
@@ -388,12 +322,12 @@ struct MANGOS_DLL_DECL npc_kroshiusAI : public ScriptedAI
         // TODO: A visual Flame Circle around the mob still missing
     }
 
-    void JustDied(Unit* pKiller)
+    void JustDied(Unit* /*pKiller*/) override
     {
         m_uiPhase = 0;
     }
 
-    void UpdateAI(const uint32 uiDiff)
+    void UpdateAI(const uint32 uiDiff) override
     {
         if (!m_uiPhase)
             return;
@@ -404,7 +338,7 @@ struct MANGOS_DLL_DECL npc_kroshiusAI : public ScriptedAI
             {
                 switch (m_uiPhase)
                 {
-                    case 1:                                         // Revived
+                    case 1:                                 // Revived
                         m_creature->SetStandState(UNIT_STAND_STATE_STAND);
                         m_uiPhaseTimer = 1000;
                         break;
@@ -412,11 +346,8 @@ struct MANGOS_DLL_DECL npc_kroshiusAI : public ScriptedAI
                         DoScriptText(SAY_KROSHIUS_REVIVE, m_creature);
                         m_uiPhaseTimer = 3500;
                         break;
-                    case 3:                                         // Attack
-                        m_creature->setFaction(FACTION_HOSTILE);
-                        // TODO workaround will better idea
-                        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
-                        m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+                    case 3:                                 // Attack
+                        m_creature->SetFactionTemporary(FACTION_HOSTILE, TEMPFACTION_RESTORE_COMBAT_STOP | TEMPFACTION_RESTORE_RESPAWN |  TEMPFACTION_TOGGLE_OOC_NOT_ATTACK | TEMPFACTION_TOGGLE_PASSIVE);
                         if (Player* pPlayer = m_creature->GetMap()->GetPlayer(m_playerGuid))
                         {
                             if (m_creature->IsWithinDistInMap(pPlayer, 30.0f))
@@ -452,7 +383,7 @@ CreatureAI* GetAI_npc_kroshius(Creature* pCreature)
     return new npc_kroshiusAI(pCreature);
 }
 
-bool ProcessEventId_npc_kroshius(uint32 uiEventId, Object* pSource, Object* pTarget, bool bIsStart)
+bool ProcessEventId_npc_kroshius(uint32 uiEventId, Object* pSource, Object* /*pTarget*/, bool /*bIsStart*/)
 {
     if (uiEventId == EVENT_KROSHIUS_REVIVE)
     {
@@ -484,12 +415,6 @@ void AddSC_felwood()
     pNewScript->Name = "npc_corrupt_saber";
     pNewScript->pGossipHello = &GossipHello_npc_corrupt_saber;
     pNewScript->pGossipSelect = &GossipSelect_npc_corrupt_saber;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npcs_riverbreeze_and_silversky";
-    pNewScript->pGossipHello = &GossipHello_npcs_riverbreeze_and_silversky;
-    pNewScript->pGossipSelect = &GossipSelect_npcs_riverbreeze_and_silversky;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

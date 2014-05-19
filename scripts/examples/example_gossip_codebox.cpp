@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -41,8 +41,8 @@ enum
 // This function is called when the player opens the gossip menubool
 bool GossipHello_example_gossip_codebox(Player* pPlayer, Creature* pCreature)
 {
-    pPlayer->ADD_GOSSIP_ITEM_EXTENDED(0, GOSSIP_ITEM_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1, "", 0, true);
-    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+    pPlayer->ADD_GOSSIP_ITEM_EXTENDED(0, GOSSIP_ITEM_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1, "", 0, true);
+    pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
 
     pPlayer->PlayerTalkClass->SendGossipMenu(907, pCreature->GetObjectGuid());
 
@@ -50,9 +50,9 @@ bool GossipHello_example_gossip_codebox(Player* pPlayer, Creature* pCreature)
 }
 
 // This function is called when the player clicks an option on the gossip menubool
-bool GossipSelect_example_gossip_codebox(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_example_gossip_codebox(Player* pPlayer, Creature* pCreature, uint32 /*uiSender*/, uint32 uiAction)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+2)
+    if (uiAction == GOSSIP_ACTION_INFO_DEF + 2)
     {
         DoScriptText(SAY_NOT_INTERESTED, pCreature);
         pPlayer->CLOSE_GOSSIP_MENU();
@@ -67,20 +67,20 @@ bool GossipSelectWithCode_example_gossip_codebox(Player* pPlayer, Creature* pCre
     {
         switch (uiAction)
         {
-        case GOSSIP_ACTION_INFO_DEF+1:
-            if (std::strcmp(sCode, pPlayer->GetName()) != 0)
-            {
-                DoScriptText(SAY_WRONG, pCreature);
-                pCreature->CastSpell(pPlayer, SPELL_POLYMORPH, true);
-            }
-            else
-            {
-                DoScriptText(SAY_CORRECT, pCreature);
-                pCreature->CastSpell(pPlayer, SPELL_MARK_OF_THE_WILD, true);
-            }
-            pPlayer->CLOSE_GOSSIP_MENU();
+            case GOSSIP_ACTION_INFO_DEF+1:
+                if (std::strcmp(sCode, pPlayer->GetName()) != 0)
+                {
+                    DoScriptText(SAY_WRONG, pCreature);
+                    pCreature->CastSpell(pPlayer, SPELL_POLYMORPH, true);
+                }
+                else
+                {
+                    DoScriptText(SAY_CORRECT, pCreature);
+                    pCreature->CastSpell(pPlayer, SPELL_MARK_OF_THE_WILD, true);
+                }
+                pPlayer->CLOSE_GOSSIP_MENU();
 
-            return true;
+                return true;
         }
     }
 

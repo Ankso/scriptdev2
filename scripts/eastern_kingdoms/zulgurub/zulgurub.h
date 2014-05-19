@@ -1,4 +1,4 @@
-/* Copyright (C) 2006 - 2011 ScriptDev2 <http://www.scriptdev2.com/>
+/* This file is part of the ScriptDev2 Project. See AUTHORS file for Copyright information
  * This program is free software licensed under GPL version 2
  * Please see the included DOCS/LICENSE.TXT for more information */
 
@@ -24,6 +24,13 @@ enum
     NPC_THEKAL              = 14509,
     NPC_JINDO               = 11380,
     NPC_HAKKAR              = 14834,
+    NPC_PANTHER_TRIGGER     = 15091,
+    NPC_BLOODLORD_MANDOKIR  = 11382,
+    NPC_MARLI               = 14510,
+
+    GO_SPIDER_EGG           = 179985,
+    GO_GONG_OF_BETHEKK      = 180526,
+    GO_FORCEFIELD           = 180497,
 
     SAY_MINION_DESTROY      = -1309022,
     SAY_HAKKAR_PROTECT      = -1309023,
@@ -34,25 +41,29 @@ enum
     AREATRIGGER_ALTAR       = 3960,
 };
 
+static const float aMandokirDownstairsPos[3] = { -12196.30f, -1948.37f, 130.31f};
+
 class MANGOS_DLL_DECL instance_zulgurub : public ScriptedInstance
 {
     public:
         instance_zulgurub(Map* pMap);
         ~instance_zulgurub() {}
 
-        void Initialize();
-        // IsEncounterInProgress() const { return false; }  // not active in Zul'Gurub
+        void Initialize() override;
+        // IsEncounterInProgress() const override { return false; }  // not active in Zul'Gurub
 
-        void OnCreatureCreate(Creature* pCreature);
+        void OnCreatureCreate(Creature* pCreature) override;
+        void OnObjectCreate(GameObject* pGo) override;
 
-        void SetData(uint32 uiType, uint32 uiData);
-        uint32 GetData(uint32 uiType);
-        uint64 GetData64(uint32 uiData);
+        void SetData(uint32 uiType, uint32 uiData) override;
+        uint32 GetData(uint32 uiType) const override;
 
-        const char* Save() { return m_strInstData.c_str(); }
-        void Load(const char* chrIn);
+        const char* Save() const override { return m_strInstData.c_str(); }
+        void Load(const char* chrIn) override;
 
         void DoYellAtTriggerIfCan(uint32 uiTriggerId);
+
+        Creature* SelectRandomPantherTrigger(bool bIsLeft);
 
     protected:
         void DoLowerHakkarHitPoints();
@@ -60,11 +71,9 @@ class MANGOS_DLL_DECL instance_zulgurub : public ScriptedInstance
         uint32 m_auiEncounter[MAX_ENCOUNTER];
         std::string m_strInstData;
 
-        uint64 m_uiLorKhanGUID;
-        uint64 m_uiZathGUID;
-        uint64 m_uiThekalGUID;
-        uint64 m_uiJindoGUID;
-        uint64 m_uiHakkarGUID;
+        GuidList m_lRightPantherTriggerGUIDList;
+        GuidList m_lLeftPantherTriggerGUIDList;
+        GuidList m_lSpiderEggGUIDList;
 
         bool m_bHasIntroYelled;
         bool m_bHasAltarYelled;
